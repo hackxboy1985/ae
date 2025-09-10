@@ -56,6 +56,15 @@
         50% { opacity: 1; }
         100% { opacity: 0.7; }
       }
+      
+      /* 为时间指针指向的分镜添加高亮效果 */
+      .time-pointer-active {
+        opacity: 1 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+        border-color: #2563eb !important;
+        background-color: #eff6ff !important;
+        transition: all 0.2s ease !important;
+      }
     }
   </style>
 </head>
@@ -253,6 +262,11 @@
               <div class="absolute top-0 left-0 h-full" ref="shotContainer" style="width: 100%;"></div>
             </div>
             
+            <!-- 场景轨道 -->
+            <div class="timeline-track" ref="sceneTrack" style="height: 20px;">
+              <div class="absolute top-0 left-0 h-full" ref="sceneContainer" style="width: 100%;"></div>
+            </div>
+            
             <!-- 角色表情轨道 -->
             <div v-for="(role, index) in timeline.roles" :key="role.id" class="timeline-track" :ref="setExpressionTrackRef(role.id)">
               <div class="absolute top-1 left-0 h-10"  style="width: 100%;" :ref="setExpressionContainerRef(role.id)"></div>
@@ -369,6 +383,22 @@
       }
     ];
 
+    // 模拟数据 - 场景
+    const mockScenes = [
+      {
+        id: 'scene1',
+        shots: ['shot1']
+      },
+      {
+        id: 'scene2',
+        shots: ['shot2']
+      },
+      {
+        id: 'scene3',
+        shots: ['shot3', 'shot4']
+      }
+    ]
+
     // 模拟数据 - 分镜
     const mockShots = [
       {
@@ -394,6 +424,14 @@
         audio: 'audio3.mp3',
         audioDuration: 6000,
         startTime: 9000
+      },
+      {
+        id: 'shot4',
+        background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg3.webp',
+        duration: 5000, // 6秒
+        audio: 'audio3.mp3',
+        audioDuration: 5000,
+        startTime: 15000
       }
     ];
 
@@ -603,6 +641,7 @@
 
         // 时间轴数据
         const timeline = ref({
+          scenes: [...mockScenes],
           shots: [...mockShots],
           roles: [...mockRoles],
           expressionTracks: [...mockExpressionTracks]
@@ -840,8 +879,9 @@
             // 设置唯一ID
             tick.id = `tick-${t}`;
             tick.className = 'time-tick';
-            // 设置正确的位置
-            tick.style.left = `calc(50% + ${(x*1000-currentTime.value)/1000*MARGIN}px)`;
+            // 设置正确的位置，使用与其他元素一致的计算方式
+            const tickPosition = ((timeMs - currentTime.value) / 1000) * MARGIN * zoom.value;
+            tick.style.left = `calc(50% + ${tickPosition}px)`;
             // 设置宽度为父容器的宽度
             // tick.style.width = '100%';
             tick.style.width = '2px';
@@ -865,8 +905,8 @@
             if (t % 5 === 0) {
               const label = document.createElement('div');
               label.className = 'time-label';
-              //label.style.left = `calc(50% +${x}px )`;
-              label.style.left = `calc(50% + ${(x*1000-currentTime.value)/1000*MARGIN}px)`;
+              // 使用与刻度线相同的位置计算方式
+              label.style.left = `calc(50% + ${tickPosition}px)`;
               // tick.style.left = `calc(50% + ${(x*1000-currentTime.value)/1000*MARGIN}px)`;
               label.textContent = formatTime(timeMs);
               
@@ -878,6 +918,64 @@
               timeMarkers.value.appendChild(label);
             }
           }
+        };
+        
+        // DOM引用 - 添加场景轨道引用
+        const sceneTrack = ref(null);
+        const sceneContainer = ref(null);
+        
+        // 绘制场景轨道
+        const drawSceneTrack = () => {
+          if (!sceneContainer.value) return;
+          
+          // 清空现有场景
+          sceneContainer.value.innerHTML = '';
+          
+          // 为每个场景创建一个横线
+          timeline.value.scenes.forEach((scene, sceneIndex) => {
+            // 获取场景包含的所有分镜
+            const sceneShots = timeline.value.shots.filter(shot => scene.shots.includes(shot.id));
+            
+            if (sceneShots.length === 0) return;
+            
+            // 按时间顺序排序分镜
+            const sortedShots = [...sceneShots].sort((a, b) => a.startTime - b.startTime);
+            
+            // 计算场景的起始时间和持续时间
+            const sceneStartTime = sortedShots[0].startTime;
+            const sceneEndTime = Math.max(...sortedShots.map(shot => shot.startTime + shot.duration));
+            const sceneDuration = sceneEndTime - sceneStartTime;
+            
+            // 计算场景横线在轨道上的位置和宽度
+            let startX = ((sceneStartTime - currentTime.value) / 1000) * MARGIN * zoom.value;
+            let width = ((sceneDuration-200) / 1000) * MARGIN * zoom.value;
+            
+            
+            // 创建场景容器元素
+            const sceneEl = document.createElement('div');
+            sceneEl.className = 'absolute top-0 left-0 h-full';
+            sceneEl.style.left = `calc(50% + ${startX}px)`;
+            sceneEl.style.width = `${width}px`;
+            
+            // 创建横线（使用div和border样式）
+            const lineEl = document.createElement('div');
+            lineEl.className = 'w-full h-full flex items-center justify-center';
+            
+            // 创建一个更明显的横线
+            const lineDiv = document.createElement('div');
+            lineDiv.className = 'w-full border-t-2 border-purple-500';
+            
+            lineEl.appendChild(lineDiv);
+            
+            // 创建场景标签元素
+            const labelEl = document.createElement('div');
+            labelEl.className = 'absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-purple-500 text-white text-[10px] font-medium px-1.5 py-0.25 rounded whitespace-nowrap';
+            labelEl.textContent = `场景${sceneIndex + 1}`;
+            
+            sceneEl.appendChild(lineEl);
+            sceneEl.appendChild(labelEl);
+            sceneContainer.value.appendChild(sceneEl);
+          });
         };
         
         // 绘制分镜轨道
@@ -930,7 +1028,27 @@
             
             // 创建分镜元素
             const shotEl = document.createElement('div');
-            shotEl.className = `shot-item ${selectedShotId.value === shot.id ? 'editing-breathing-bg' : ''}`;
+            // 当时间指针在分镜范围内时，应用与鼠标悬停相同的效果
+            // 当时间指针在分镜范围内且分镜被选中时，额外添加蒙层效果
+            // 使用严格的时间范围判断
+            const shotEndTime = shot.startTime + shot.duration;
+            const isTimeInShot = currentTime.value >= shot.startTime && currentTime.value < shotEndTime;
+            console.log(`分镜${shot.id}: currentTime=${currentTime.value}, startTime=${shot.startTime}, endTime=${shotEndTime}, isTimeInShot=${isTimeInShot}`);
+            let shotClasses = 'shot-item';
+            
+            // 清除所有内联样式
+            shotEl.removeAttribute('style');
+            
+            if (isTimeInShot) {
+              // 当时间指针指向分镜时，添加高亮效果类
+              shotClasses = 'shot-item time-pointer-active';
+              
+              if (selectedShotId.value === shot.id) {
+                shotClasses += ' editing-breathing-bg';
+              }
+            }
+            
+            shotEl.className = shotClasses;
             shotEl.style.left = `calc(50% + ${pos.startX}px)`;
             shotEl.style.width = `${pos.width}px`; // 使用第一步计算好的宽度，已经是秒数*10px
             
@@ -940,11 +1058,11 @@
             const endTimeFormatted = formatTime(shot.startTime + shot.duration);
             
             shotEl.innerHTML = `
-              <div class="shot-header p-1 bg-black/30 text-white rounded-sm flex justify-between items-center">
-                <span>${shot.id}</span>
-                <span class="text-xs">${shotDuration}s</span>
+              <div class="shot-header p-0 text-white rounded-sm flex justify-between items-start">
+                <span class="text-[10px] -ml-0.5 -mt-1 bg-black/70 px-1 rounded">分镜${shot.id.replace('shot', '')}</span>
+                <span class="text-xs -mt-1 bg-black/50 px-1 rounded">${shotDuration}s</span>
               </div>
-              <div class="shot-time-info text-xs text-white bg-black/20 p-1 rounded-sm mt-1">
+              <div class="shot-time-info text-xs text-white p-1 rounded-sm mt-1">
                 
               </div>
             `;
@@ -1016,6 +1134,7 @@
         const updateTimelineDisplay = () => {
           drawTimeMarkers();
           drawShotTrack();
+          drawSceneTrack();
           drawExpressionTracks();
           
           // 自动滚动到当前时间点，但添加边界检查避免滚动到不合理的位置
@@ -1952,6 +2071,47 @@
           drawShotTrack();
         });
         
+        // 添加专门的函数来处理分镜高亮，确保在播放时能够正确更新
+        const updateShotHighlights = () => {
+          if (!shotContainer.value) return;
+          
+          // 获取所有分镜元素
+          const shotElements = shotContainer.value.querySelectorAll('.shot-item');
+          
+          // 遍历所有分镜元素
+          timeline.value.shots.forEach((shot, index) => {
+            const shotEl = shotElements[index];
+            if (!shotEl) return;
+            
+            // 使用更严格的计算逻辑
+            const shotEndTime = shot.startTime + shot.duration;
+            const isTimeInShot = currentTime.value >= shot.startTime && currentTime.value < shotEndTime;
+            
+            if (isTimeInShot) {
+              // 确保添加高亮类
+              shotEl.classList.add('time-pointer-active');
+              
+              if (selectedShotId.value === shot.id) {
+                shotEl.classList.add('editing-breathing-bg');
+              } else {
+                shotEl.classList.remove('editing-breathing-bg');
+              }
+            } else {
+              // 确保移除高亮类
+              shotEl.classList.remove('time-pointer-active');
+              shotEl.classList.remove('editing-breathing-bg');
+            }
+          });
+        };
+        
+        // 在播放时额外调用更新分镜高亮的函数
+        watch([currentTime, isPlaying], () => {
+          // 强制重新绘制分镜轨道
+          drawShotTrack();
+          // 然后额外应用高亮效果
+          setTimeout(() => updateShotHighlights(), 0);
+        });
+        
         return {
           debugInfo,
           canvas,
@@ -1960,6 +2120,8 @@
           timeMarkers,
           shotTrack,
           shotContainer,
+          sceneTrack,
+          sceneContainer,
           expressionContainers,
           expressionTracks,
           timeline,
