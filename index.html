@@ -295,7 +295,7 @@
     const mockRoles = [
       {
         id: 'role1',
-        name: '角色1',
+        name: '老1',
         defaultExpressionId: 'exp1-1',
         voice: 'voice1',
         expressions: [
@@ -303,7 +303,8 @@
             id: 'exp1-1',
             name: '默认表情',
             frames: [
-              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-1.gif'
+              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-1.gif',
+              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-5.webp'
             ],
             frameInterval: 300
           },
@@ -311,9 +312,10 @@
             id: 'exp1-2',
             name: '微笑',
             frames: [
-              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-2.webp'
+              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-2.webp',
+              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-3.webp'
             ],
-            frameInterval: 300
+            frameInterval: 500
           },
           {
             id: 'exp1-3',
@@ -343,7 +345,7 @@
       },
       {
         id: 'role2',
-        name: '角色2',
+        name: '陈2',
         defaultExpressionId: 'exp2-1',
         voice: 'voice2',
         expressions: [
@@ -359,21 +361,30 @@
             id: 'exp2-2',
             name: '开心',
             frames: [
+              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r2-1.webp',
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r2-2.webp'
             ],
-            frameInterval: 250
+            frameInterval: 500
           }
         ]
       },
       {
         id: 'role3',
-        name: '角色3',
+        name: '张3',
         defaultExpressionId: 'exp3-1',
         voice: 'voice3',
         expressions: [
           {
             id: 'exp3-1',
             name: '默认表情',
+            frames: [
+              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r3.webp'
+            ],
+            frameInterval: 300
+          },
+          {
+            id: 'exp3-2',
+            name: '无奈表情',
             frames: [
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r3.webp'
             ],
@@ -407,7 +418,21 @@
         duration: 5000, // 5秒
         audio: 'audio1.mp3',
         audioDuration: 5000,
-        startTime: 0
+        startTime: 0,
+        roles: [
+          {
+            roleId: 'role1',
+            expressionId: 'exp1-1',
+            x: 150,
+            y: 200
+          },
+          {
+            roleId: 'role2',
+            expressionId: 'exp2-1',
+            x: 350,
+            y: 320
+          }
+        ]
       },
       {
         id: 'shot2',
@@ -415,7 +440,21 @@
         duration: 4000, // 4秒
         audio: 'audio2.mp3',
         audioDuration: 4000,
-        startTime: 5000
+        startTime: 5000,
+        roles: [
+          {
+            roleId: 'role1',
+            expressionId: 'exp1-2',
+            x: 150,
+            y: 200
+          },
+          {
+            roleId: 'role2',
+            expressionId: 'exp2-1',
+            x: 350,
+            y: 320
+          }
+        ]
       },
       {
         id: 'shot3',
@@ -423,7 +462,27 @@
         duration: 6000, // 6秒
         audio: 'audio3.mp3',
         audioDuration: 6000,
-        startTime: 9000
+        startTime: 9000,
+        roles: [
+          {
+            roleId: 'role1',
+            expressionId: 'exp1-2',
+            x: 150,
+            y: 200
+          },
+          {
+            roleId: 'role2',
+            expressionId: 'exp2-1',
+            x: 350,
+            y: 320
+          },
+          {
+            roleId: 'role3',
+            expressionId: 'exp3-1',
+            x: 1000,
+            y: 580
+          }
+        ]
       },
       {
         id: 'shot4',
@@ -437,14 +496,7 @@
 
     // 模拟数据 - 角色表情轨道 (添加了角色3的轨道)
     const mockExpressionTracks = [
-      {
-        roleId: 'role1',
-        startTime: 0,
-        endTime: 3000,
-        expressionId: 'exp1-1',
-        x: 150,
-        y: 200
-      },
+
       {
         roleId: 'role1',
         startTime: 3000,
@@ -470,28 +522,28 @@
         y: 300
       },
       {
-        roleId: 'role2',
-        startTime: 2000,
-        endTime: 9000,
-        expressionId: 'exp2-1',
-        x: 350,
-        y: 320
+        "roleId": "role2",
+        "startTime": 5000,
+        "endTime": 9000,
+        "expressionId": "exp2-1",
+        "x": 350,
+        "y": 320
       },
       {
-        roleId: 'role2',
-        startTime: 9000,
-        endTime: 15000,
-        expressionId: 'exp2-2',
-        x: 40,
-        y: 320
+        "roleId": "role2",
+        "startTime": 15250,
+        "endTime": 20000,
+        "expressionId": "exp2-2",
+        "x": 40,
+        "y": 320
       },
       {
-        roleId: 'role3',
-        startTime: 5000,
-        endTime: 15000,
-        expressionId: 'exp3-1',
-        x: 1000,
-        y: 580
+        "roleId": "role3",
+        "startTime": 11000,
+        "endTime": 19050,
+        "expressionId": "exp3-1",
+        "x": 1000,
+        "y": 580
       }
     ];
 
@@ -1086,49 +1138,224 @@
           });
         };
         
+        // 表情片段拖拽状态变量
+        let isDraggingExpEdge = false;
+        let draggedExpTrack = null;
+        let dragEdgeType = null; // 'left' 或 'right'
+        let lastMouseX = 0;
+
         // 绘制角色表情轨道
         const drawExpressionTracks = () => {
-          // console.log('rold表情容器数组：',expressionContainers.value);
+          
+          console.log('开始绘制表情轨道...');
+          
+          // 首先清空所有表情容器，确保没有残留的表情片段
+          console.log('清空所有表情容器');
+          for (const roleId in expressionContainers.value) {
+            if (expressionContainers.value[roleId]) {
+              console.log(`  清空容器: ${roleId}`);
+              expressionContainers.value[roleId].innerHTML = '';
+            }
+          }
+          
           timeline.value.roles.forEach(role => {
             const container = expressionContainers.value[role.id];
-
-            // console.log('rold表情片段容器：',role.id,container);
-
-            if (!container) return;
+            const track = expressionTracks.value[role.id];
             
-            // 清空现有表情片段
-            container.innerHTML = '';
+            if (!container) {
+              console.warn('未找到角色容器:', role.id);
+              return;
+            }
+            
+            if (!track) {
+              console.warn('未找到角色轨道:', role.id);
+              return;
+            }
+            
+            console.log(`处理角色: ${role.id} (${role.name})`);
             
             // 找到该角色的所有表情轨道
             const expressions = timeline.value.expressionTracks.filter(
               track => track.roleId === role.id
             );
             
+            console.log(`  找到 ${expressions.length} 个表情轨道`);
+            
             expressions.forEach(exp => {
               // 计算表情片段在轨道上的位置和宽度
-              
-              const startX = ((exp.startTime-currentTime.value) / 1000) * MARGIN * zoom.value;
+              const startX = ((exp.startTime - currentTime.value) / 1000) * MARGIN * zoom.value;
               const width = ((exp.endTime - exp.startTime) / 1000) * MARGIN * zoom.value; // 秒数*MARGIN
-              //const endX = startX + width;
 
               // 找到对应的表情，添加安全检查
               const expression = role.expressions.find(e => e && e.id === exp.expressionId);
               if (!expression) return;
-
-              //console.log('rold表情片段坐标信息：',role.id, startX, width);
+              
+              // 确保表情轨道有唯一ID
+              if (!exp.id) {
+                exp.id = `track_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              }
+              
+              console.log(`  创建表情片段: ${exp.id} (${expression.name})`);
+              console.log(`    位置: left=${startX}px, width=${width}px`);
               
               // 创建表情片段元素
               const expEl = document.createElement('div');
               expEl.className = 'expression-item';
-              // expEl.style.left = `${startX}px`;
               expEl.style.left = `calc(50% + ${startX}px)`;
+              expEl.style.top = '0'; // 明确设置Y坐标为0，确保所有表情从轨道顶部开始
               expEl.style.width = `${width}px`;
               expEl.textContent = expression.name;
+              expEl.dataset.trackId = exp.id;
+              expEl.dataset.roleId = role.id;
+              expEl.style.position = 'absolute'; // 使用绝对定位确保正确定位
+              expEl.style.zIndex = '1';
+              // 根据角色ID设置不同的背景色，便于视觉区分
+              expEl.style.backgroundColor = 'rgba(74, 222, 128, 0.2)';
+              expEl.style.border = '1px solid rgba(0, 0, 0, 0.1)';
               
+              // 添加左右边缘拖拽句柄
+              const leftHandle = document.createElement('div');
+              leftHandle.className = 'expression-handle expression-handle-left';
+              leftHandle.style.position = 'absolute';
+              leftHandle.style.left = '0';
+              leftHandle.style.top = '0';
+              leftHandle.style.width = '5px';
+              leftHandle.style.height = '100%';
+              leftHandle.style.cursor = 'w-resize';
+              leftHandle.style.backgroundColor = 'rgba(59, 130, 246, 0.5)';
+              leftHandle.dataset.trackId = exp.id;
+              leftHandle.dataset.edgeType = 'left';
+              leftHandle.dataset.roleId = role.id;
+              
+              const rightHandle = document.createElement('div');
+              rightHandle.className = 'expression-handle expression-handle-right';
+              rightHandle.style.position = 'absolute';
+              rightHandle.style.right = '0';
+              rightHandle.style.top = '0';
+              rightHandle.style.width = '5px';
+              rightHandle.style.height = '100%';
+              rightHandle.style.cursor = 'e-resize';
+              rightHandle.style.backgroundColor = 'rgba(59, 130, 246, 0.5)';
+              rightHandle.dataset.trackId = exp.id;
+              rightHandle.dataset.edgeType = 'right';
+              rightHandle.dataset.roleId = role.id;
+              
+              expEl.appendChild(leftHandle);
+              expEl.appendChild(rightHandle);
+              
+              // 确保添加到正确的容器
+              console.log(`  添加表情片段: ${exp.id} (${expression.name}) 到角色: ${role.id} (${role.name})`);
               container.appendChild(expEl);
             });
           });
+          
+          console.log('表情轨道绘制完成');
         };
+
+        // 添加表情片段边缘拖拽事件监听
+        document.addEventListener('mousedown', (e) => {
+          if (e.target.classList.contains('expression-handle')) {
+            e.stopPropagation();
+            stopPlayback();
+            
+            const trackId = e.target.dataset.trackId;
+            dragEdgeType = e.target.dataset.edgeType;
+            
+            // 获取当前点击的角色ID
+            const roleId = e.target.dataset.roleId;
+            
+            // 找到对应的表情轨道 - 优先通过ID匹配
+            draggedExpTrack = timeline.value.expressionTracks.find(track => 
+              track.id && track.id === trackId
+            );
+            
+            // 如果通过ID没有找到，再通过角色ID和位置进行近似匹配
+            if (!draggedExpTrack && roleId) {
+              const expItem = e.target.closest('.expression-item');
+              if (expItem) {
+                // 尝试解析left样式
+                const leftStyle = expItem.style.left;
+                let parsedLeft = 0;
+                try {
+                  // 处理calc()表达式或直接像素值
+                  if (leftStyle.includes('calc')) {
+                    // 简化处理：提取calc中的数值部分
+                    const match = leftStyle.match(/calc\(50%\s*([+-])\s*(\d+)px\)/);
+                    if (match) {
+                      const sign = match[1];
+                      const value = parseInt(match[2]);
+                      parsedLeft = sign === '+' ? value : -value;
+                    }
+                  } else {
+                    parsedLeft = parseInt(leftStyle);
+                  }
+                } catch (error) {
+                  console.error('解析left样式失败:', error);
+                }
+                
+                // 查找最接近的轨道
+                const positionThreshold = 20; // 增大阈值以提高匹配成功率
+                draggedExpTrack = timeline.value.expressionTracks.find(track => 
+                  track.roleId === roleId &&
+                  Math.abs(((track.startTime-currentTime.value) / 1000) * MARGIN * zoom.value - parsedLeft) < positionThreshold
+                );
+              }
+            }
+            
+            if (draggedExpTrack) {
+              isDraggingExpEdge = true;
+              lastMouseX = e.clientX;
+            }
+          }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+          if (isDraggingExpEdge && draggedExpTrack) {
+            const deltaX = e.clientX - lastMouseX;
+            lastMouseX = e.clientX;
+            
+            // 计算时间变化 (像素差 -> 时间差)
+            const timeDelta = (deltaX / MARGIN / zoom.value) * 1000;
+            
+            if (dragEdgeType === 'left') {
+              // 左边拖拽：修改开始时间，结束时间不变
+              const newStartTime = Math.max(0, draggedExpTrack.startTime + timeDelta);
+              if (newStartTime < draggedExpTrack.endTime - 100) { // 确保有最小持续时间
+                draggedExpTrack.startTime = newStartTime;
+              }
+            } else if (dragEdgeType === 'right') {
+              // 右边拖拽：修改结束时间，开始时间不变
+              const newEndTime = Math.min(totalDuration.value, draggedExpTrack.endTime + timeDelta);
+              if (newEndTime > draggedExpTrack.startTime + 100) { // 确保有最小持续时间
+                draggedExpTrack.endTime = newEndTime;
+              }
+            }
+            
+            updateTimelineDisplay();
+            renderFrame();
+          }
+        });
+
+        document.addEventListener('mouseup', () => {
+          if (isDraggingExpEdge && draggedExpTrack) {
+            isDraggingExpEdge = false;
+            
+            // 打印修改后的表情对象JSON数据
+            const expressionObject = {
+              roleId: draggedExpTrack.roleId,
+              startTime: draggedExpTrack.startTime,
+              endTime: draggedExpTrack.endTime,
+              expressionId: draggedExpTrack.expressionId,
+              x: draggedExpTrack.x,
+              y: draggedExpTrack.y
+            };
+            
+            console.log('表情调整后的数据:', JSON.stringify(expressionObject, null, 2));
+            
+            draggedExpTrack = null;
+            dragEdgeType = null;
+          }
+        });
         
         // 更新时间轴显示
         const updateTimelineDisplay = () => {
@@ -1322,6 +1549,78 @@
         // 图像缓存，提高播放时的渲染性能
         const imageCache = {};
         
+        // 表情播放器类，负责管理表情时序播放
+        class ExpressionPlayer {
+          constructor() {
+            // 存储每个角色的播放状态
+            this.roleStates = {};
+            // 存储最后一帧的时间戳
+            this.lastFrameTime = {};
+          }
+          
+          // 更新角色表情状态
+          updateRoleState(roleId, currentExpression, frameInterval) {
+            if (!this.roleStates[roleId]) {
+              this.roleStates[roleId] = {
+                expressionId: null,
+                currentFrameIndex: 0,
+                startTime: Date.now()
+              };
+              this.lastFrameTime[roleId] = Date.now();
+            }
+            
+            const state = this.roleStates[roleId];
+            
+            // 如果表情发生变化，重置状态
+            if (state.expressionId !== currentExpression.id) {
+              state.expressionId = currentExpression.id;
+              state.currentFrameIndex = 0;
+              state.startTime = Date.now();
+              this.lastFrameTime[roleId] = Date.now();
+            }
+            
+            // 检查是否需要切换帧
+            const now = Date.now();
+            const elapsed = now - this.lastFrameTime[roleId];
+            
+            if (elapsed >= frameInterval) {
+              // 更新帧索引
+              state.currentFrameIndex = (state.currentFrameIndex + 1) % currentExpression.frames.length;
+              // 记录最后更新时间
+              this.lastFrameTime[roleId] = now;
+            }
+            
+            return state.currentFrameIndex;
+          }
+          
+          // 获取指定角色的当前帧
+          getCurrentFrame(roleId, currentExpression) {
+            if (!this.roleStates[roleId] || !currentExpression || !currentExpression.frames || currentExpression.frames.length === 0) {
+              return null;
+            }
+            
+            const state = this.roleStates[roleId];
+            return currentExpression.frames[state.currentFrameIndex];
+          }
+          
+          // 重置所有状态
+          reset() {
+            this.roleStates = {};
+            this.lastFrameTime = {};
+          }
+          
+          // 重置特定角色的状态
+          resetRole(roleId) {
+            if (this.roleStates[roleId]) {
+              delete this.roleStates[roleId];
+              delete this.lastFrameTime[roleId];
+            }
+          }
+        }
+        
+        // 创建ExpressionPlayer实例
+        const expressionPlayer = new ExpressionPlayer();
+        
         // 绘制角色
         const drawRoles = () => {
           if (!offscreenCtx) {
@@ -1372,9 +1671,8 @@
             
             if (!expression || !expression.frames || expression.frames.length === 0) return;
             
-            // 计算当前应显示的帧
-            const trackTime = currentTime.value - currentExpressionTrack.startTime;
-            const frameIndex = Math.floor(trackTime / expression.frameInterval) % expression.frames.length;
+            // 使用ExpressionPlayer更新角色状态并获取当前帧索引
+            const frameIndex = expressionPlayer.updateRoleState(role.id, expression, expression.frameInterval);
             
             // 创建一个备用图形，无论图片是否加载成功都会先显示
             drawRolePlaceholder(currentExpressionTrack, role);
@@ -1615,6 +1913,8 @@
         const startPlayback = () => {
           isPlaying.value = true;
           lastTime.value = null;
+          // 重置ExpressionPlayer，确保从当前时间点开始正确播放表情
+          expressionPlayer.reset();
           // 立即渲染一帧
           renderFrame();
           animationFrameId.value = requestAnimationFrame(animate);
@@ -1633,6 +1933,8 @@
         // 跳转到开始
         const goToStart = () => {
           currentTime.value = 0;
+          // 重置ExpressionPlayer，确保从开始位置重新播放表情
+          expressionPlayer.reset();
           updateTimelineDisplay();
           renderFrame();
         };
