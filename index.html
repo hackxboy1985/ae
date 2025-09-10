@@ -34,9 +34,18 @@
       .content-auto {          content-visibility: auto;        }        
       .timeline-track {          @apply h-10 border-b border-gray-300 relative;        }        
       .timeline-marker {          @apply absolute w-1 bg-red-500 top-0 bottom-0 z-10;        }        
-      .timeline-marker::after {          content: '';          @apply absolute -top-3 -left-3 w-6 h-6 rounded-full bg-red-500;        }        .shot-item {          @apply absolute top-0 h-full border border-blue-400 bg-blue-50 opacity-70 flex flex-col items-center justify-center text-xs cursor-move transition-all;          min-width: 80px; /* 增加最小宽度确保时间信息可读 */        }        .shot-item:hover {          @apply opacity-100 shadow-md border-blue-600;        }        .expression-item {          @apply absolute h-8 border border-green-400 bg-green-50 opacity-70 flex items-center justify-center text-xs cursor-move transition-all;          min-width: 40px; /* 确保表情项不会太窄 */        }        .expression-item:hover {          @apply opacity-100;        }        .time-tick {          @apply absolute h-4 w-px bg-gray-400 bottom-0;        }        .time-tick-major {          @apply h-6 bg-gray-600;        }        .time-tick-medium {          @apply h-5 bg-gray-500;        }        
-      .time-tick-minor {          @apply h-4 bg-gray-400;        }        
-      .time-label {
+      .timeline-marker::after {          content: '';          @apply absolute -top-3 -left-3 w-6 h-6 rounded-full bg-red-500;        }        
+      .shot-item {          @apply absolute top-0 h-full border border-blue-400 bg-blue-50 opacity-70 flex flex-col items-center justify-center text-xs cursor-move transition-all;          min-width: 80px; /* 增加最小宽度确保时间信息可读 */        }        
+      .shot-item:hover {          @apply opacity-100 shadow-md border-blue-600;        }        
+      .expression-item {      @apply absolute h-8 border border-green-400 bg-green-50 opacity-70 flex items-center justify-center text-xs cursor-move transition-all;
+          min-width: 3px; /* 减小最小宽度限制，允许更窄的表情项 */
+        }        
+        .expression-item:hover {          @apply opacity-100;        }        
+        .time-tick {          @apply absolute h-4 w-px bg-gray-400 bottom-0;        }        
+        .time-tick-major {          @apply h-6 bg-gray-600;        }        
+        .time-tick-medium {          @apply h-5 bg-gray-500;        }        
+        .time-tick-minor {          @apply h-4 bg-gray-400;        }        
+        .time-label {
             @apply absolute -top-2 bg-white/90 px-2 py-1 rounded-md text-xs font-medium text-gray-700 transform -translate-x-1/2 whitespace-nowrap z-10;
           }        
         .time-label-major {          @apply text-sm font-medium text-gray-700;        }        
@@ -733,7 +742,7 @@
             
             return position;
           }
-          console.log('指针找不到父div');
+          //console.log('指针找不到父div');
 
           
           // 后备方案1：使用timelineContainer的宽度
@@ -1163,12 +1172,12 @@
             const track = expressionTracks.value[role.id];
             
             if (!container) {
-              console.warn('未找到角色容器:', role.id);
+              console.warn(`can't find role container: ${role.id}`);
               return;
             }
             
             if (!track) {
-              console.warn('未找到角色轨道:', role.id);
+              console.warn(`can't find role track: ${role.id}`);
               return;
             }
             
@@ -1185,7 +1194,10 @@
               // 计算表情片段在轨道上的位置和宽度
               const startX = ((exp.startTime - currentTime.value) / 1000) * MARGIN * zoom.value;
               const width = ((exp.endTime - exp.startTime) / 1000) * MARGIN * zoom.value; // 秒数*MARGIN
-
+              if (role.id == 'role2' && exp.expressionId === 'exp2-2') {
+                console.log(`表情片段: ${exp.id}, 宽度: ${width}`);
+              }
+              
               // 找到对应的表情，添加安全检查
               const expression = role.expressions.find(e => e && e.id === exp.expressionId);
               if (!expression) return;
@@ -1201,14 +1213,20 @@
               expEl.style.left = `calc(50% + ${startX}px)`;
               expEl.style.top = '0'; // 明确设置Y坐标为0，确保所有表情从轨道顶部开始
               expEl.style.width = `${width}px`;
+              expEl.style.maxWidth = `${width}px`; // 限制最大宽度
               expEl.textContent = expression.name;
               expEl.dataset.trackId = exp.id;
               expEl.dataset.roleId = role.id;
               expEl.style.position = 'absolute'; // 使用绝对定位确保正确定位
               expEl.style.zIndex = '1';
-              // 根据角色ID设置不同的背景色，便于视觉区分
               expEl.style.backgroundColor = 'rgba(74, 222, 128, 0.2)';
               expEl.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+              // 处理文本溢出
+              expEl.style.overflow = 'hidden';
+              expEl.style.textOverflow = 'clip';
+              expEl.style.whiteSpace = 'nowrap';
+              expEl.style.fontSize = '10px'; // 减小字体大小以适应窄元素
+              expEl.style.lineHeight = '1'; // 调整行高
               
               // 添加左右边缘拖拽句柄
               const leftHandle = document.createElement('div');
@@ -1216,7 +1234,7 @@
               leftHandle.style.position = 'absolute';
               leftHandle.style.left = '0';
               leftHandle.style.top = '0';
-              leftHandle.style.width = '5px';
+              leftHandle.style.width = '3px';
               leftHandle.style.height = '100%';
               leftHandle.style.cursor = 'w-resize';
               leftHandle.style.backgroundColor = 'rgba(59, 130, 246, 0.5)';
@@ -1229,7 +1247,7 @@
               rightHandle.style.position = 'absolute';
               rightHandle.style.right = '0';
               rightHandle.style.top = '0';
-              rightHandle.style.width = '5px';
+              rightHandle.style.width = '3px';
               rightHandle.style.height = '100%';
               rightHandle.style.cursor = 'e-resize';
               rightHandle.style.backgroundColor = 'rgba(59, 130, 246, 0.5)';
@@ -1301,7 +1319,7 @@
             
             if (draggedExpTrack) {
               isDraggingExpEdge = true;
-              console.log(`isDraggingExpEdge = true`);
+              // console.log(`isDraggingExpEdge = true`);
               lastMouseX = e.clientX;
             }
           }
@@ -1315,17 +1333,40 @@
             // 计算时间变化 (像素差 -> 时间差)
             const timeDelta = (deltaX / MARGIN / zoom.value) * 1000;
             
+            // 重叠检测函数
+            const checkOverlap = (newStartTime, newEndTime) => {
+              // 获取同角色的其他表情轨道
+              const otherExpressions = timeline.value.expressionTracks.filter(
+                track => track.roleId === draggedExpTrack.roleId && track.id !== draggedExpTrack.id
+              );
+              
+              // 检查是否与任何其他表情轨道重叠
+              for (const exp of otherExpressions) {
+                // 如果新的时间范围与其他表情轨道有重叠，则返回true
+                if (!(newEndTime <= exp.startTime || newStartTime >= exp.endTime)) {
+                  return true;
+                }
+              }
+              return false;
+            };
+            
             if (dragEdgeType === 'left') {
               // 左边拖拽：修改开始时间，结束时间不变
               const newStartTime = Math.max(0, draggedExpTrack.startTime + timeDelta);
               if (newStartTime < draggedExpTrack.endTime - 100) { // 确保有最小持续时间
-                draggedExpTrack.startTime = newStartTime;
+                // 检查是否与其他表情重叠
+                if (!checkOverlap(newStartTime, draggedExpTrack.endTime)) {
+                  draggedExpTrack.startTime = newStartTime;
+                }
               }
             } else if (dragEdgeType === 'right') {
               // 右边拖拽：修改结束时间，开始时间不变
               const newEndTime = Math.min(totalDuration.value, draggedExpTrack.endTime + timeDelta);
               if (newEndTime > draggedExpTrack.startTime + 100) { // 确保有最小持续时间
-                draggedExpTrack.endTime = newEndTime;
+                // 检查是否与其他表情重叠
+                if (!checkOverlap(draggedExpTrack.startTime, newEndTime)) {
+                  draggedExpTrack.endTime = newEndTime;
+                }
               }
             }
             
