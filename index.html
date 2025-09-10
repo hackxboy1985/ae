@@ -1085,7 +1085,7 @@
             // 使用严格的时间范围判断
             const shotEndTime = shot.startTime + shot.duration;
             const isTimeInShot = currentTime.value >= shot.startTime && currentTime.value < shotEndTime;
-            console.log(`分镜${shot.id}: currentTime=${currentTime.value}, startTime=${shot.startTime}, endTime=${shotEndTime}, isTimeInShot=${isTimeInShot}`);
+            //console.log(`分镜${shot.id}: currentTime=${currentTime.value}, startTime=${shot.startTime}, endTime=${shotEndTime}, isTimeInShot=${isTimeInShot}`);
             let shotClasses = 'shot-item';
             
             // 清除所有内联样式
@@ -1147,13 +1147,13 @@
         // 绘制角色表情轨道
         const drawExpressionTracks = () => {
           
-          console.log('开始绘制表情轨道...');
+          //console.log('开始绘制表情轨道...');
           
           // 首先清空所有表情容器，确保没有残留的表情片段
-          console.log('清空所有表情容器');
+          //console.log('清空所有表情容器');
           for (const roleId in expressionContainers.value) {
             if (expressionContainers.value[roleId]) {
-              console.log(`  清空容器: ${roleId}`);
+              //console.log(`  清空容器: ${roleId}`);
               expressionContainers.value[roleId].innerHTML = '';
             }
           }
@@ -1172,14 +1172,14 @@
               return;
             }
             
-            console.log(`处理角色: ${role.id} (${role.name})`);
+            //console.log(`处理角色: ${role.id} (${role.name})`);
             
             // 找到该角色的所有表情轨道
             const expressions = timeline.value.expressionTracks.filter(
               track => track.roleId === role.id
             );
             
-            console.log(`  找到 ${expressions.length} 个表情轨道`);
+            //console.log(`${role.name}找到 ${expressions.length} 个表情片段`);
             
             expressions.forEach(exp => {
               // 计算表情片段在轨道上的位置和宽度
@@ -1194,9 +1194,6 @@
               if (!exp.id) {
                 exp.id = `track_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
               }
-              
-              console.log(`  创建表情片段: ${exp.id} (${expression.name})`);
-              console.log(`    位置: left=${startX}px, width=${width}px`);
               
               // 创建表情片段元素
               const expEl = document.createElement('div');
@@ -1244,12 +1241,12 @@
               expEl.appendChild(rightHandle);
               
               // 确保添加到正确的容器
-              console.log(`  添加表情片段: ${exp.id} (${expression.name}) 到角色: ${role.id} (${role.name})`);
+              // console.log(`  添加表情片段: ${exp.id} (${expression.name}) 到角色: ${role.id} (${role.name})`);
               container.appendChild(expEl);
             });
           });
           
-          console.log('表情轨道绘制完成');
+          //console.log('表情轨道绘制完成');
         };
 
         // 添加表情片段边缘拖拽事件监听
@@ -1304,6 +1301,7 @@
             
             if (draggedExpTrack) {
               isDraggingExpEdge = true;
+              console.log(`isDraggingExpEdge = true`);
               lastMouseX = e.clientX;
             }
           }
@@ -1378,13 +1376,13 @@
         const renderFrame = () => {
             // 1. 前置检查
             if (!canvas.value || !ctx.value || !offscreenCanvas || !offscreenCtx) {
-              console.error('Canvas或上下文不可用', {canvas: !!canvas.value, ctx: !!ctx.value, offscreenCanvas: !!offscreenCanvas, offscreenCtx: !!offscreenCtx});
-              debugInfo.value = `Canvas或上下文不可用: canvas=${!!canvas.value}, ctx=${!!ctx.value}`;
+              console.error('Canvas or context invalid', {canvas: !!canvas.value, ctx: !!ctx.value, offscreenCanvas: !!offscreenCanvas, offscreenCtx: !!offscreenCtx});
+              debugInfo.value = `Canvas or context invalid: canvas=${!!canvas.value}, ctx=${!!ctx.value}`;
               return;
             }
             
             // 添加调试信息，显示当前渲染状态
-            debugInfo.value = `渲染帧: 时间=${formatTime(currentTime.value)}, 播放状态=${isPlaying.value}, FPS=${fps.value}, canvas尺寸=${canvas.value.width}x${canvas.value.height}`;
+            debugInfo.value = `render frame: ${formatTime(currentTime.value)}, play=${isPlaying.value}, FPS=${fps.value}, canvas size=${canvas.value.width}x${canvas.value.height}`;
             
             // 2. 清空离屏画布
             offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
@@ -1487,63 +1485,55 @@
           loadImageWithCORS(
             shot.background,
             (bgImg) => {
-              console.log('异步加载背景-成功加载: ' + shot.background);
-              
-              // 清空画布并重绘所有层
-              offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-              
-              // 重绘底层
-              offscreenCtx.drawImage(bgImg, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
-              
-              // 重绘中间层
-              drawRoles();
-              
-              // 重绘顶层
-              drawTopLayerInfo();
-              
-              // 合成并显示
-              ctx.value.drawImage(offscreenCanvas, 0, 0);
+              console.log('async load bg-success: ' + shot.background);
+              // 直接调用renderFrame函数进行完整重绘
+              renderFrame();
             },
             () => {
-              console.error('异步加载背景-无法加载背景图: ' + shot.background);
-              debugInfo.value = '背景图加载失败: ' + shot.background;
+              console.error('async load bg-error: ' + shot.background);
+              debugInfo.value = 'load bg error: ' + shot.background;
               bgImagesCache.value[shot.background] = null; // 标记为加载失败
-              
-              // 清空画布并重绘所有层
-              offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-              
-              // 重绘底层（错误背景）
-              drawErrorBackground();
-              
-              // 重绘中间层
-              drawRoles();
-              
-              // 重绘顶层
-              drawTopLayerInfo();
-              
-              // 合成并显示
-              ctx.value.drawImage(offscreenCanvas, 0, 0);
+              // 直接调用renderFrame函数进行完整重绘
+              renderFrame();
             }
           );
           
           // 立即渲染角色的备用图形，避免图片加载时的空白期
-          setTimeout(() => {
-            // 清空画布并重新绘制当前状态
-            offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          // 注意：不直接使用renderFrame，因为它会调用setupAsyncRenderFallback导致循环调用
+          // drawImmediateFallback是专门设计的轻量级快速渲染函数
+          const drawImmediateFallback = () => {
+            // 更全面的前置检查，与renderFrame保持一致
+            if (!canvas.value || !ctx.value || !offscreenCanvas || !offscreenCtx) {
+              console.warn('Canvas not init，skip');
+              return;
+            }
             
-            // 重绘基础背景
-            offscreenCtx.fillStyle = '#f0f0f0';
-            offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-            
-            // 重绘中间层
-            drawRoles();
-            
-            // 重绘顶层
-            drawTopLayerInfo();
-            
-            // 合成并显示
-            ctx.value.drawImage(offscreenCanvas, 0, 0);
-          }, 50);
+            try {
+              // 清空画布并重新绘制当前状态
+              offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+              
+              // 重绘基础背景
+              offscreenCtx.fillStyle = '#f0f0f0';
+              offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+              
+              // 重绘中间层
+              drawRoles();
+              
+              // 重绘顶层
+              drawTopLayerInfo();
+              
+              // 合成并显示
+              ctx.value.drawImage(offscreenCanvas, 0, 0);
+            } catch (error) {
+              console.error('render backup image error:', error);
+            }
+          };
+          
+          // 立即执行一次，确保用户看到内容
+          drawImmediateFallback();
+          
+          // 添加小延迟后再次执行，确保在DOM更新后有更好的渲染效果
+          //setTimeout(drawImmediateFallback, 50);
         };
         
         // 图像缓存，提高播放时的渲染性能
@@ -2209,7 +2199,7 @@
           const backgroundUrls = timeline.value.shots.map(shot => shot.background);
           const uniqueUrls = [...new Set(backgroundUrls)]; // 去重
           
-          console.log('开始预加载背景图:', uniqueUrls);
+          // console.log('开始预加载背景图:', uniqueUrls);
           debugInfo.value = `开始预加载背景图: ${uniqueUrls.length}张`;
           
           // 预加载每张图片
@@ -2257,6 +2247,11 @@
           const timelineArea = document.querySelector('.overflow-x-auto');
           
           timelineArea.addEventListener('mousedown', (e) => {
+            // 检查是否正在拖拽表情边缘，如果是则不触发时间轴拖拽
+            if (isDraggingExpEdge) {
+              return;
+            }
+
             // console.log('按下1:',e.target,timeMarkers)
             // 检查是否点击了刻度
             if (e.target.className.includes('time-tick') || e.target == timeMarkers.value) {
@@ -2280,7 +2275,10 @@
               updateTimelineDisplay();
               renderFrame();
               
-            } else if (e.target === timelineArea || e.target.className.includes('timeline-track')) {
+            } 
+            // 分镜轨道拖拽 - 支持直接点击分镜轨道进行拖拽
+            else if (e.target === timelineArea || e.target.className.includes('timeline-track') || 
+                     (e.target.closest('.timeline-track') && !e.target.classList.contains('shot-item'))) {
               isDragging = true;
               lastMouseX = e.clientX;
               timelineArea.style.cursor = 'grabbing';
@@ -2288,9 +2286,32 @@
               selectedShotId.value = null; // 取消选中
               selectedRoleId.value = null;
             }
+            // 分镜项拖拽 - 当点击分镜项但不是点击分镜内部的子元素时，也支持拖拽
+            else if (e.target.classList.contains('shot-item') || e.target.closest('.shot-item')) {
+              // 如果点击的是分镜的子元素，找到最外层的分镜元素
+              const shotItem = e.target.classList.contains('shot-item') ? e.target : e.target.closest('.shot-item');
+              
+              // 检查点击是否在分镜的特定交互区域外（例如点击的是分镜本身而不是其内部按钮等）
+              if (!e.target.classList.contains('shot-header') && !e.target.closest('.shot-header')) {
+                isDragging = true;
+                lastMouseX = e.clientX;
+                timelineArea.style.cursor = 'grabbing';
+                stopPlayback();
+                selectedShotId.value = null; // 取消选中
+                selectedRoleId.value = null;
+                
+                // 阻止事件冒泡到分镜点击事件
+                e.stopPropagation();
+              }
+            }
           });
           
-          window.addEventListener('mousemove', (e) => {
+          timelineArea.addEventListener('mousemove', (e) => {
+            // 检查是否正在拖拽表情边缘，如果是则不触发时间轴拖拽
+            if (isDraggingExpEdge) {
+              return;
+            }
+            
             if (isDragging) {
               const deltaX = e.clientX - lastMouseX;
               lastMouseX = e.clientX;
@@ -2304,7 +2325,7 @@
             }
           });
           
-          window.addEventListener('mouseup', () => {
+          timelineArea.addEventListener('mouseup', () => {
             if (isDragging) {
               isDragging = false;
               timelineArea.style.cursor = 'default';
