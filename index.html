@@ -1351,9 +1351,12 @@
             };
             
             if (dragEdgeType === 'left') {
+
+              MIN_EXP_DURATION=700 //最小持续时间
+              
               // 左边拖拽：修改开始时间，结束时间不变
               const newStartTime = Math.max(0, draggedExpTrack.startTime + timeDelta);
-              if (newStartTime < draggedExpTrack.endTime - 100) { // 确保有最小持续时间
+              if (newStartTime < draggedExpTrack.endTime - MIN_EXP_DURATION) { // 确保有最小持续时间
                 // 检查是否与其他表情重叠
                 if (!checkOverlap(newStartTime, draggedExpTrack.endTime)) {
                   draggedExpTrack.startTime = newStartTime;
@@ -1362,7 +1365,7 @@
             } else if (dragEdgeType === 'right') {
               // 右边拖拽：修改结束时间，开始时间不变
               const newEndTime = Math.min(totalDuration.value, draggedExpTrack.endTime + timeDelta);
-              if (newEndTime > draggedExpTrack.startTime + 100) { // 确保有最小持续时间
+              if (newEndTime > draggedExpTrack.startTime + MIN_EXP_DURATION) { // 确保有最小持续时间
                 // 检查是否与其他表情重叠
                 if (!checkOverlap(draggedExpTrack.startTime, newEndTime)) {
                   draggedExpTrack.endTime = newEndTime;
