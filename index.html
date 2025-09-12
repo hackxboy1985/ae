@@ -417,15 +417,84 @@
     const mockScenes = [
       {
         id: 'scene1',
-        shots: ['shot1']
+        shots: ['shot1'],
+        roles: [
+          {
+            roleId: 'role1',
+            expressionId: 'exp1-1',
+            x: 150,
+            y: 200,
+            width: 100,
+            height: 150,
+            angle: 0
+          },
+          {
+            roleId: 'role2',
+            expressionId: 'exp2-1',
+            x: 350,
+            y: 320,
+            width: 120,
+            height: 180,
+            angle: 0
+          }
+        ]
       },
       {
         id: 'scene2',
-        shots: ['shot2']
+        shots: ['shot2'],
+        roles: [
+          {
+            roleId: 'role1',
+            expressionId: 'exp1-2',
+            x: 150,
+            y: 200,
+            width: 100,
+            height: 150,
+            angle: 0
+          },
+          {
+            roleId: 'role2',
+            expressionId: 'exp2-1',
+            x: 350,
+            y: 320,
+            width: 120,
+            height: 180,
+            angle: 0
+          }
+        ]
       },
       {
         id: 'scene3',
-        shots: ['shot3', 'shot4']
+        shots: ['shot3', 'shot4'],
+        roles: [
+          {
+            roleId: 'role1',
+            expressionId: 'exp1-2',
+            x: 150,
+            y: 200,
+            width: 100,
+            height: 150,
+            angle: 0
+          },
+          {
+            roleId: 'role2',
+            expressionId: 'exp2-1',
+            x: 350,
+            y: 320,
+            width: 120,
+            height: 180,
+            angle: 0
+          },
+          {
+            roleId: 'role3',
+            expressionId: 'exp3-1',
+            x: 1000,
+            y: 580,
+            width: 80,
+            height: 120,
+            angle: 0
+          }
+        ]
       }
     ]
 
@@ -437,21 +506,7 @@
         duration: 5000, // 5秒
         audio: 'audio1.mp3',
         audioDuration: 5000,
-        startTime: 0,
-        roles: [
-          {
-            roleId: 'role1',
-            expressionId: 'exp1-1',
-            x: 150,
-            y: 200
-          },
-          {
-            roleId: 'role2',
-            expressionId: 'exp2-1',
-            x: 350,
-            y: 320
-          }
-        ]
+        startTime: 0
       },
       {
         id: 'shot2',
@@ -459,21 +514,7 @@
         duration: 4000, // 4秒
         audio: 'audio2.mp3',
         audioDuration: 4000,
-        startTime: 5000,
-        roles: [
-          {
-            roleId: 'role1',
-            expressionId: 'exp1-2',
-            x: 150,
-            y: 200
-          },
-          {
-            roleId: 'role2',
-            expressionId: 'exp2-1',
-            x: 350,
-            y: 320
-          }
-        ]
+        startTime: 5000
       },
       {
         id: 'shot3',
@@ -481,27 +522,7 @@
         duration: 6000, // 6秒
         audio: 'audio3.mp3',
         audioDuration: 6000,
-        startTime: 9000,
-        roles: [
-          {
-            roleId: 'role1',
-            expressionId: 'exp1-2',
-            x: 150,
-            y: 200
-          },
-          {
-            roleId: 'role2',
-            expressionId: 'exp2-1',
-            x: 350,
-            y: 320
-          },
-          {
-            roleId: 'role3',
-            expressionId: 'exp3-1',
-            x: 1000,
-            y: 580
-          }
-        ]
+        startTime: 9000
       },
       {
         id: 'shot4',
@@ -515,7 +536,6 @@
 
     // 模拟数据 - 角色表情轨道 (添加了角色3的轨道)
     const mockExpressionTracks = [
-
       {
         roleId: 'role1',
         startTime: 0,
@@ -724,6 +744,27 @@
           roles: [...mockRoles],
           expressionTracks: [...mockExpressionTracks]
         });
+        
+        // 根据当前时间获取所属场景中的角色信息
+        const getSceneRolesByTime = (time) => {
+          // 找到当前时间所在的分镜
+          const currentShot = timeline.value.shots.find(shot => 
+            time >= shot.startTime && time < shot.startTime + shot.duration
+          );
+          
+          if (!currentShot) {
+            // 如果没有找到当前分镜，返回空数组
+            return [];
+          }
+          
+          // 找到包含当前分镜的场景
+          const currentScene = timeline.value.scenes.find(scene => 
+            scene.shots.includes(currentShot.id)
+          );
+          
+          // 返回场景中的角色信息，如果场景不存在或没有角色信息，则返回空数组
+          return currentScene && currentScene.roles ? [...currentScene.roles] : [];
+        };
         
         // 计算属性
         const totalDuration = computed(() => {
@@ -2048,14 +2089,25 @@
             if (currentExpressionTrack._tempX !== undefined && currentExpressionTrack._tempY !== undefined) {
               // 返回临时位置时，确保Y坐标在渲染坐标系中是正确的
               // 注意：这里不进行额外转换，因为拖拽时已经计算好了正确的坐标
-              return { x: currentExpressionTrack._tempX, y: currentExpressionTrack._tempY, isValid: true };
+              return { 
+                x: currentExpressionTrack._tempX, 
+                y: currentExpressionTrack._tempY, 
+                width: currentExpressionTrack._tempWidth || this.config.roleWidth,
+                height: currentExpressionTrack._tempHeight || this.config.roleHeight,
+                angle: currentExpressionTrack._tempAngle || 0,
+                isValid: true 
+              };
             }
+            
+            // 获取当前时间点的场景级角色配置
+            const sceneRoles = getSceneRolesByTime(currentTime);
+            const roleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === currentExpressionTrack.roleId) : null;
             
             // 计算当前表情位置（基于当前时间的线性插值）
             const duration = currentExpressionTrack.endTime - currentExpressionTrack.startTime;
             const elapsed = currentTime - currentExpressionTrack.startTime;
             const progress = Math.min(Math.max(elapsed / duration, 0), 1);
-              
+                
             // 获取结束位置，如果没有则使用开始位置
             let endX = currentExpressionTrack.x1;
             let endY = currentExpressionTrack.y1;
@@ -2072,10 +2124,25 @@
             
             // 检查坐标是否有效
             if (Number.isNaN(currentX) || Number.isNaN(currentY)) {
-              return { x: currentExpressionTrack.x, y: currentExpressionTrack.y, isValid: false };
+              return { 
+                x: currentExpressionTrack.x, 
+                y: currentExpressionTrack.y, 
+                width: roleConfig?.width || this.config.roleWidth,
+                height: roleConfig?.height || this.config.roleHeight,
+                angle: roleConfig?.angle || 0,
+                isValid: false 
+              };
             }
             
-            return { x: currentX, y: currentY, isValid: true };
+            // 返回位置和场景配置中的尺寸和角度
+            return { 
+              x: currentX, 
+              y: currentY, 
+              width: roleConfig?.width || this.config.roleWidth,
+              height: roleConfig?.height || this.config.roleHeight,
+              angle: roleConfig?.angle || 0,
+              isValid: true 
+            };
           }
           
           // 检测角色点击
@@ -2161,7 +2228,7 @@
           drawRoleSelection(ctx, track, role) {
             if (!ctx || !track || !role) return;
             
-            // 使用calculateCurrentPosition方法获取当前实际位置
+            // 使用calculateCurrentPosition方法获取当前实际位置和尺寸
             // 注意：这里需要currentTime，但该方法没有传入，我们假设使用当前时间
             // 由于calculateCurrentPosition需要currentTime参数，但drawRoleSelection没有直接获取
             // 所以这里使用了全局的currentTime.value
@@ -2169,8 +2236,8 @@
             
             const x = currentPosition.isValid ? currentPosition.x : track.x;
             const y = currentPosition.isValid ? currentPosition.y : track.y;
-            const width = this.config.roleWidth;
-            const height = this.config.roleHeight;
+            const width = currentPosition.isValid ? currentPosition.width : this.config.roleWidth;
+            const height = currentPosition.isValid ? currentPosition.height : this.config.roleHeight;
             
             // 绘制闪烁的黄色边框
             ctx.strokeStyle = '#EAB308';
@@ -2258,11 +2325,14 @@
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
             
+            // 尝试获取场景级角色配置
+            const currentPosition = this.calculateCurrentPosition(track, currentTime.value);
+            
             // 绘制圆角矩形
-            const x = track.x;
-            const y = track.y;
-            const width = this.config.roleWidth;
-            const height = this.config.roleHeight;
+            const x = currentPosition.isValid ? currentPosition.x : track.x;
+            const y = currentPosition.isValid ? currentPosition.y : track.y;
+            const width = currentPosition.isValid ? currentPosition.width : this.config.roleWidth;
+            const height = currentPosition.isValid ? currentPosition.height : this.config.roleHeight;
             const radius = 10;
             
             // 应用反向缩放，确保备用图形在翻转的坐标系中是正立的
@@ -2326,7 +2396,7 @@
             if (img) {
               console.log('使用缓存图片: ' + imageUrl);
               try {
-                // 使用calculateCurrentPosition方法获取当前实际位置
+                // 使用calculateCurrentPosition方法获取当前实际位置和尺寸角度
                 const currentPosition = this.calculateCurrentPosition(currentExpressionTrack, currentTime);
                 
                 // 如果坐标计算无效，返回
@@ -2337,24 +2407,40 @@
                 
                 const currentX = currentPosition.x;
                 const currentY = currentPosition.y;
+                const currentWidth = currentPosition.width;
+                const currentHeight = currentPosition.height;
+                const currentAngle = currentPosition.angle;
                 
                 
                 // 保存当前状态，准备临时应用反向缩放以抵消全局翻转
                 ctx.save();
                 
                 // 在角色绘制前应用反向缩放，确保图片在翻转的坐标系中是正立的
-                ctx.translate(currentX + this.config.roleWidth / 2, currentY + this.config.roleHeight / 2);
+                ctx.translate(currentX + currentWidth / 2, currentY + currentHeight / 2);
                 ctx.scale(1, -1);
-                ctx.translate(-(currentX + this.config.roleWidth / 2), -(currentY + this.config.roleHeight / 2));
+                ctx.translate(-(currentX + currentWidth / 2), -(currentY + currentHeight / 2));
+                
+                // 如果有角度，应用旋转
+                if (currentAngle && currentAngle !== 0) {
+                  ctx.save();
+                  ctx.translate(currentX + currentWidth / 2, currentY + currentHeight / 2);
+                  ctx.rotate((currentAngle * Math.PI) / 180); // 转换为弧度
+                  ctx.translate(-(currentX + currentWidth / 2), -(currentY + currentHeight / 2));
+                }
                 
                 // 绘制角色图片
                 ctx.drawImage(
                   img, 
                   currentX, 
                   currentY,
-                  this.config.roleWidth, // 宽度
-                  this.config.roleHeight  // 高度
+                  currentWidth, // 使用场景配置的宽度
+                  currentHeight  // 使用场景配置的高度
                 );
+                
+                // 如果应用了旋转，恢复状态
+                if (currentAngle && currentAngle !== 0) {
+                  ctx.restore();
+                }
                 
                 // 恢复原始状态
                 ctx.restore();
@@ -2389,7 +2475,7 @@
                 
                 // 不使用save/restore和缩放，直接在正确的位置绘制角色名称
                 // 由于全局坐标系已经翻转，需要将Y坐标调整为在角色上方
-                const nameY = currentY + this.config.roleHeight + 15;
+                const nameY = currentY + currentHeight + 15;
                 
                 ctx.fillStyle = 'white';
                 ctx.strokeStyle = 'black';
@@ -2398,12 +2484,12 @@
                 ctx.textAlign = 'center';
                 ctx.strokeText(
                   role.name, 
-                  currentX + this.config.roleWidth / 2, 
+                  currentX + currentWidth / 2, 
                   nameY
                 );
                 ctx.fillText(
                     role.name, 
-                    currentX + this.config.roleWidth / 2, 
+                    currentX + currentWidth / 2, 
                     nameY
                   );
                   
