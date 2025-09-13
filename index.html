@@ -324,7 +324,9 @@
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/man_1_1.webp',
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/man_1_2.webp'
             ],
-            frameInterval: 300
+            frameInterval: 300,
+            width:100,
+            height:150
           },
           {
             id: 'exp1-2',
@@ -333,7 +335,9 @@
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/man_2_1.webp',
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/man_2_2.webp'
             ],
-            frameInterval: 400
+            frameInterval: 400,
+            width:100,
+            height:150
           },
           {
             id: 'exp1-3',
@@ -342,7 +346,9 @@
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/man_3_1.webp',
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/man_3_2.webp'
             ],
-            frameInterval: 200
+            frameInterval: 200,
+            width:100,
+            height:150
           },
           {
             id: 'exp1-4',
@@ -350,7 +356,9 @@
             frames: [
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-4.webp'
             ],
-            frameInterval: 250
+            frameInterval: 250,
+            width:100,
+            height:150
           },
           {
             id: 'exp1-5',
@@ -358,7 +366,9 @@
             frames: [
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-5.webp'
             ],
-            frameInterval: 200
+            frameInterval: 200,
+            width:100,
+            height:150
           }
         ]
       },
@@ -374,7 +384,9 @@
             frames: [
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r2-1.webp'
             ],
-            frameInterval: 300
+            frameInterval: 300,
+            width:100,
+            height:150
           },
           {
             id: 'exp2-2',
@@ -383,7 +395,9 @@
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r2-1.webp',
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r2-2.webp'
             ],
-            frameInterval: 500
+            frameInterval: 500,
+            width:100,
+            height:150
           }
         ]
       },
@@ -399,7 +413,9 @@
             frames: [
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r3.webp'
             ],
-            frameInterval: 300
+            frameInterval: 300,
+            width:100,
+            height:150
           },
           {
             id: 'exp3-2',
@@ -407,7 +423,9 @@
             frames: [
               'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r3.webp'
             ],
-            frameInterval: 300
+            frameInterval: 300,
+            width:100,
+            height:150
           }
         ]
       }
@@ -426,7 +444,8 @@
             y: 200,
             width: 100,
             height: 150,
-            angle: 0
+            angle: 0,
+            scale: 1
           },
           
         ]
@@ -442,7 +461,8 @@
             y: 200,
             width: 100,
             height: 150,
-            angle: 0
+            angle: 0,
+            scale: 1
           },
           {
             roleId: 'role2',
@@ -451,7 +471,8 @@
             y: 320,
             width: 120,
             height: 180,
-            angle: 0
+            angle: 0,
+            scale: 1
           }
         ]
       },
@@ -466,7 +487,8 @@
             y: 200,
             width: 100,
             height: 150,
-            angle: 0
+            angle: 0,
+            scale: 1
           },
           {
             roleId: 'role2',
@@ -475,7 +497,8 @@
             y: 320,
             width: 120,
             height: 180,
-            angle: 0
+            angle: 0,
+            scale: 1
           },
           {
             roleId: 'role3',
@@ -484,7 +507,8 @@
             y: 580,
             width: 80,
             height: 120,
-            angle: 0
+            angle: 0,
+            scale: 1
           }
         ]
       }
@@ -572,8 +596,7 @@
         x1: 300,
         y1: 250,
         angle: 0,
-        width: 0,
-        height: 0
+        scale: 1
       },
       {
         roleId: 'role1',
@@ -585,8 +608,7 @@
         x1: 450,
         y1: 350,
         angle: 0,
-        width: 0,
-        height: 0
+        scale: 1
       },
       {
         roleId: 'role1',
@@ -596,8 +618,7 @@
         x: 250,
         y: 300,
         angle: 0,
-        width: 0,
-        height: 0
+        scale: 1
       },
       {
         "roleId": "role2",
@@ -607,8 +628,7 @@
         "x": 350,
         "y": 320,
         angle: 0,
-        width: 0,
-        height: 0
+        scale: 1
       },
       {
         "roleId": "role2",
@@ -618,8 +638,7 @@
         "x": 40,
         "y": 320,
         angle: 0,
-        width: 0,
-        height: 0
+        scale: 1,
       },
       {
         "roleId": "role3",
@@ -629,8 +648,7 @@
         "x": 1000,
         "y": 580,
         angle: 0,
-        width: 0,
-        height: 0
+        scale: 1,
       }
     ];
 
@@ -648,17 +666,17 @@
         let offscreenCanvas = null;
         let offscreenCtx = null;
         const isPlaying = ref(false);
-        const currentTime = ref(0);
+        let currentTime = 0;
         const loop = ref(false);
         const zoom = ref(1);
         const animationFrameId = ref(null);
-        const lastTime = ref(0);
+        let lastTime = 0;
         const selectedShotId = ref(null); // 选中的分镜
         const selectedRoleId = ref(null); // 选中的角色
         // FPS相关变量
-        const fps = ref(0);
-        const frameCount = ref(0);
-        const lastFpsUpdate = ref(0);
+        let fps = 0;
+        let frameCount = 0;
+        let lastFpsUpdate = 0;
         // 目标FPS，范围25-30，默认25
         const targetFps = ref(25);
         // 背景图缓存对象，用于预加载
@@ -681,6 +699,13 @@
           }
         };
         
+        function round(num) {
+          if(num === undefined) {
+            return 0;
+          }
+          return Math.round(num * 100) / 100;
+        }
+
         // 统一的图片加载函数，强化跨域处理和错误恢复
         // 跟踪正在请求中的图片URL
         const loadingImages = {};
@@ -870,8 +895,8 @@
           // 找到当前时间点该角色的表情轨道
           selectedTrack = timeline.value.expressionTracks.find(track => 
             track.roleId === selectedRoleId.value && 
-            currentTime.value >= track.startTime && 
-            currentTime.value < track.endTime
+            currentTime >= track.startTime && 
+            currentTime < track.endTime
           ) || null;
           if (selectedTrack) {
             console.log('选中角色设置的表情轨道:',selectedTrack)
@@ -1043,7 +1068,7 @@
             tick.id = `tick-${t}`;
             tick.className = 'time-tick';
             // 设置正确的位置，使用与其他元素一致的计算方式
-            const tickPosition = ((timeMs - currentTime.value) / 1000) * MARGIN * zoom.value;
+            const tickPosition = ((timeMs - currentTime) / 1000) * MARGIN * zoom.value;
             tick.style.left = `calc(50% + ${tickPosition}px)`;
             // 设置宽度为父容器的宽度
             // tick.style.width = '100%';
@@ -1070,7 +1095,7 @@
               label.className = 'time-label';
               // 使用与刻度线相同的位置计算方式
               label.style.left = `calc(50% + ${tickPosition}px)`;
-              // tick.style.left = `calc(50% + ${(x*1000-currentTime.value)/1000*MARGIN}px)`;
+              // tick.style.left = `calc(50% + ${(x*1000-currentTime)/1000*MARGIN}px)`;
               label.textContent = formatTime(timeMs);
               
               // 重要时间点使用更醒目的样式
@@ -1110,7 +1135,7 @@
             const sceneDuration = sceneEndTime - sceneStartTime;
             
             // 计算场景横线在轨道上的位置和宽度
-            let startX = ((sceneStartTime - currentTime.value) / 1000) * MARGIN * zoom.value;
+            let startX = ((sceneStartTime - currentTime) / 1000) * MARGIN * zoom.value;
             let width = ((sceneDuration-200) / 1000) * MARGIN * zoom.value;
             
             
@@ -1158,10 +1183,10 @@
           // 第一步：计算所有分镜的初始位置
           sortedShots.forEach((shot, index) => {
             // 计算分镜在轨道上的位置和宽度
-            const startX = ((shot.startTime-currentTime.value) / 1000) * MARGIN * zoom.value;
+            const startX = ((shot.startTime-currentTime) / 1000) * MARGIN * zoom.value;
             const width = ((shot.duration) / 1000) * MARGIN * zoom.value; // 秒数*MARGIN
             const endX = startX + width;
-            //console.log('currentTime:',currentTime, currentTime.value, shot.startTime);
+            //console.log('currentTime:',currentTime, currentTime, shot.startTime);
             shotPositions.push({
               shot,
               startX,
@@ -1195,8 +1220,8 @@
             // 当时间指针在分镜范围内且分镜被选中时，额外添加蒙层效果
             // 使用严格的时间范围判断
             const shotEndTime = shot.startTime + shot.duration;
-            const isTimeInShot = currentTime.value >= shot.startTime && currentTime.value < shotEndTime;
-            //console.log(`分镜${shot.id}: currentTime=${currentTime.value}, startTime=${shot.startTime}, endTime=${shotEndTime}, isTimeInShot=${isTimeInShot}`);
+            const isTimeInShot = currentTime >= shot.startTime && currentTime < shotEndTime;
+            //console.log(`分镜${shot.id}: currentTime=${currentTime}, startTime=${shot.startTime}, endTime=${shotEndTime}, isTimeInShot=${isTimeInShot}`);
             let shotClasses = 'shot-item';
             
             // 清除所有内联样式
@@ -1306,7 +1331,7 @@
             
             expressions.forEach(exp => {
               // 计算表情片段在轨道上的位置和宽度
-              const startX = ((exp.startTime - currentTime.value) / 1000) * MARGIN * zoom.value;
+              const startX = ((exp.startTime - currentTime) / 1000) * MARGIN * zoom.value;
               const width = ((exp.endTime - exp.startTime) / 1000) * MARGIN * zoom.value; // 秒数*MARGIN
               if (role.id == 'role2' && exp.expressionId === 'exp2-2') {
                 // console.trace(`表情片段: ${exp.id}, 宽度: ${width}`);
@@ -1455,7 +1480,7 @@
                 const positionThreshold = 20; // 增大阈值以提高匹配成功率
                 draggedExpTrack = timeline.value.expressionTracks.find(track => 
                   track.roleId === roleId &&
-                  Math.abs(((track.startTime-currentTime.value) / 1000) * MARGIN * zoom.value - parsedLeft) < positionThreshold
+                  Math.abs(((track.startTime-currentTime) / 1000) * MARGIN * zoom.value - parsedLeft) < positionThreshold
                 );
               }
             }
@@ -1565,14 +1590,14 @@
             switch (action) {
               case 'set-start':
                 // 设置开始位置为当前时间
-                currentTime.value = expTrack.startTime;
-                //console.log(`设置表情开始位置: ${trackId}, 时间: ${currentTime.value}`);
+                currentTime = expTrack.startTime;
+                //console.log(`设置表情开始位置: ${trackId}, 时间: ${currentTime}`);
                 renderFrame();
                 break;
               case 'set-end':
                 // 设置结束位置为当前时间
-                currentTime.value = expTrack.endTime-1;
-                console.log(`设置表情结束位置: ${trackId}, 时间: ${currentTime.value}`);
+                currentTime = expTrack.endTime-1;
+                console.log(`设置表情结束位置: ${trackId}, 时间: ${currentTime}`);
                 renderFrame();
                 break;
               case 'fix-start':
@@ -1858,7 +1883,7 @@
           // 自动滚动到当前时间点，但添加边界检查避免滚动到不合理的位置
           const container = document.querySelector('.overflow-x-auto');
           const scrollPosition = Math.max(0, Math.min(
-            (currentTime.value / 1000) * zoom.value + 20 - markerPosition.value,
+            (currentTime / 1000) * zoom.value + 20 - markerPosition.value,
             timelineWidth.value - container.clientWidth
           ));
           container.scrollLeft = scrollPosition;
@@ -1874,15 +1899,15 @@
             }
             
             // 添加调试信息，显示当前渲染状态
-            debugInfo.value = `render frame: ${formatTime(currentTime.value)}, play=${isPlaying.value}, FPS=${fps.value}, canvas size=${canvas.value.width}x${canvas.value.height}`;
+            debugInfo.value = `render frame: ${formatTime(currentTime)}, play=${isPlaying.value}, FPS=${fps}, canvas size=${canvas.value.width}x${canvas.value.height}`;
             
             // 2. 清空离屏画布
             offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
           
             // 3. 找到当前分镜
             const currentShot = timeline.value.shots.find(shot => 
-              currentTime.value >= shot.startTime && 
-              currentTime.value < shot.startTime + shot.duration
+              currentTime >= shot.startTime && 
+              currentTime < shot.startTime + shot.duration
             );
             
             // 4. 绘制底层背景
@@ -1895,7 +1920,7 @@
             if (currentShot) {
               // 绘制分镜背景层
               isBackgroundDrawn = drawBackgroundLayer(currentShot);
-            } else if(currentTime.value >= totalDuration.value){
+            } else if(currentTime >= totalDuration.value){
               // 如果没有当前分镜，尝试使用最后一个分镜的背景图
               // 找到最后一个分镜
               const lastShot = timeline.value.shots.length > 0 ? 
@@ -1978,7 +2003,7 @@
           offscreenCtx.fillStyle = '#ffffff';
           offscreenCtx.font = '14px Arial';
           offscreenCtx.textAlign = 'left';
-          offscreenCtx.fillText(`FPS: ${fps.value}`, 15, 28);
+          offscreenCtx.fillText(`FPS: ${fps}`, 15, 28);
         };
         
         // 设置异步渲染备用方案
@@ -2034,8 +2059,6 @@
           // 立即执行一次，确保用户看到内容
           drawImmediateFallback();
           
-          // 添加小延迟后再次执行，确保在DOM更新后有更好的渲染效果
-          //setTimeout(drawImmediateFallback, 50);
         };
         
         // 图像缓存，提高播放时的渲染性能
@@ -2052,8 +2075,8 @@
             this.lastFrameTime = {};
             // 配置项
             this.config = {
-              roleWidth: 100,
-              roleHeight: 150,
+              roleWidth: 50,
+              roleHeight: 50,
               roleColors: {
                 'role1': '#3B82F6', // 蓝色
                 'role2': '#10B981', // 绿色
@@ -2126,7 +2149,7 @@
           }
           
           // 获取指定角色的当前帧图片
-          getCurrentFrame(roleId, currentExpression) {
+          getCurrentFrameUrl(roleId, currentExpression) {
             if (!this.roleStates[roleId] || !currentExpression || !currentExpression.frames || currentExpression.frames.length === 0) {
               return null;
             }
@@ -2135,85 +2158,111 @@
             return currentExpression.frames[state.currentFrameIndex];
           }
           
+          getRoleExpression(roleId,expressionId) {
+            const role = timeline.value.roles.find(r => r.id === roleId);
+            const expression = role.expressions.find(exp => exp && exp.id === expressionId) ||
+                    role.expressions.find(exp => exp && exp.id === role.defaultExpressionId);
+            return expression;
+          }
+
           // 计算角色当前实际位置（基于时间的线性插值）
-          calculateCurrentPosition(currentExpressionTrack, currentTime) {
-            // 检查是否存在临时位置（拖拽过程中使用）
-            if (currentExpressionTrack._tempX !== undefined && currentExpressionTrack._tempY !== undefined) {
-              // 返回临时位置时，确保Y坐标在渲染坐标系中是正确的
-              // 注意：这里不进行额外转换，因为拖拽时已经计算好了正确的坐标
-              return { 
-                x: currentExpressionTrack._tempX, 
-                y: currentExpressionTrack._tempY, 
-                width: currentExpressionTrack._tempWidth || this.config.roleWidth,
-                height: currentExpressionTrack._tempHeight || this.config.roleHeight,
-                angle: currentExpressionTrack._tempAngle || 0,
-                isValid: true 
-              };
-            }
-            
+          calculateCurrentExpressPosition(currentExpressionTrack, currentTime) {
+            let  currentX = 0;
+            let  currentY = 0;
             // 获取当前时间点的场景级角色配置
             const sceneRoles = getSceneRolesByTime(currentTime);
             const roleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === currentExpressionTrack.roleId) : null;
+
+            // 检查是否存在临时位置（拖拽过程中使用）
+            if (currentExpressionTrack._tempX !== undefined && currentExpressionTrack._tempY !== undefined) {
+              
+              // 返回临时位置时，确保Y坐标在渲染坐标系中是正确的
+              // 注意：这里不进行额外转换，因为拖拽时已经计算好了正确的坐标
+              console.log('calculateCurrentPosition 1:',currentExpressionTrack);
+
+              currentX = currentExpressionTrack._tempX;
+              currentY = currentExpressionTrack._tempY;
+            }else{
+              // 计算当前表情位置（基于当前时间的线性插值）
+              const duration = currentExpressionTrack.endTime - currentExpressionTrack.startTime;
+              const elapsed = currentTime - currentExpressionTrack.startTime;
+              const progress = Math.min(Math.max(elapsed / duration, 0), 1);
+              // console.log('currentTime',typeof(currentTime),currentTime,',startTime=',currentExpressionTrack.startTime,',elapsed=',elapsed)
+              // console.log('calculateCurrentPosition :',duration,elapsed,progress);
+              // 获取结束位置，如果没有则使用开始位置
+              let endX = currentExpressionTrack.x1;
+              let endY = currentExpressionTrack.y1;
+              if (endX === undefined) {
+                endX = currentExpressionTrack.x;
+              }
+              if (endY === undefined) {
+                endY = currentExpressionTrack.y;
+              }
+              // console.log('calculateCurrentPosition 2:',currentExpressionTrack,progress);
+              // 线性插值计算当前位置
+              currentX = currentExpressionTrack.x + (endX - currentExpressionTrack.x) * progress;
+              currentY = currentExpressionTrack.y + (endY - currentExpressionTrack.y) * progress;
+              // console.log('calculateCurrentPosition currentX:',currentX,',currentY:',currentY);
+            }
             
-            // 计算当前表情位置（基于当前时间的线性插值）
-            const duration = currentExpressionTrack.endTime - currentExpressionTrack.startTime;
-            const elapsed = currentTime - currentExpressionTrack.startTime;
-            const progress = Math.min(Math.max(elapsed / duration, 0), 1);
+            // 获取当前帧图片的实际宽高
+            let frameWidth = 50;
+            let frameHeight = 50;
+            
+            try {
+              // 获取当前帧图片URL
+              const currentExpression = this.getRoleExpression(currentExpressionTrack.roleId,currentExpressionTrack.expressionId);
+              const currentFrameUrl = this.getCurrentFrameUrl(currentExpressionTrack.roleId,currentExpression);
+              const imageUrl = currentFrameUrl;  
+              // console.log('currentExpression:',currentExpression,',imageUrl:',imageUrl);
+              // 尝试从图片缓存中获取图片的实际宽高
+              // 注意：这里假设imageCache是全局可访问的
+              if (typeof imageCache !== 'undefined' && imageCache[imageUrl]) {
                 
-            // 获取结束位置，如果没有则使用开始位置
-            let endX = currentExpressionTrack.x1;
-            let endY = currentExpressionTrack.y1;
-            if (endX === undefined) {
-              endX = currentExpressionTrack.x;
-            }
-            if (endY === undefined) {
-              endY = currentExpressionTrack.y;
-            }
-            
-            // 线性插值计算当前位置
-            const currentX = currentExpressionTrack.x + (endX - currentExpressionTrack.x) * progress;
-            const currentY = currentExpressionTrack.y + (endY - currentExpressionTrack.y) * progress;
-            
-            // 检查坐标是否有效
-            if (Number.isNaN(currentX) || Number.isNaN(currentY)) {
-              return { 
-                x: currentExpressionTrack.x, 
-                y: currentExpressionTrack.y, 
-                width: roleConfig?.width || this.config.roleWidth,
-                height: roleConfig?.height || this.config.roleHeight,
-                angle: roleConfig?.angle || 0,
-                isValid: false 
-              };
+                const cachedImg = imageCache[imageUrl];
+                if (cachedImg && cachedImg.width && cachedImg.height) {
+                  //console.log('cachedImg.width:',cachedImg.width);
+                  frameWidth = cachedImg.width;
+                  frameHeight = cachedImg.height;
+                }
+              }
+              } catch (error) {
+              console.error('获取当前帧图片宽高时出错:', error);
+              // 出错时使用默认宽高
             }
             
-            // 返回位置和场景配置中的尺寸和角度
-            return { 
+            console.log('222>>>>',currentX,currentY,currentExpressionTrack.scale);
+            // 返回位置和场景配置中的尺寸和角度，优先使用当前帧图片的实际宽高
+            const position = { 
               x: currentX, 
               y: currentY, 
-              width: roleConfig?.width || this.config.roleWidth,
-              height: roleConfig?.height || this.config.roleHeight,
-              angle: roleConfig?.angle || 0,
+              width: frameWidth || roleConfig?.width ,
+              height: frameHeight ||roleConfig?.height,
+              angle: currentExpressionTrack.angle || roleConfig?.angle || 0,
+              scale: round(currentExpressionTrack.scale) || 1,
               isValid: true 
-            };
+            }
+            console.log('333>>>>',position);
+            return position;
           }
           
           // 检测角色点击
-          checkRoleClick(x, y, roles, expressionTracks, currentTime) {
+          checkRoleClick(x, y, roles, expressionTracks, _currentTime) {
             // 遍历所有角色，检查点击位置是否在角色范围内
             const clickedRole = roles.find(role => {
               // 找到当前时间点该角色的表情轨道
               let currentExpressionTrack = expressionTracks.find(track => 
                 track.roleId === role.id && 
-                currentTime >= track.startTime && 
-                currentTime < track.endTime
+                _currentTime >= track.startTime && 
+                _currentTime < track.endTime
               );
                
               
               // 如果没有找到，检查是否在最后一帧
-              if (!currentExpressionTrack && currentTime >= totalDuration.value) {
+              if (!currentExpressionTrack && _currentTime >= totalDuration.value) {
                 // 找到最后一个结束的轨道
                 const lastTracks = expressionTracks  
-                  .filter(track => track.roleId === role.id && track.endTime <= currentTime && track.endTime > currentTime-1)
+                  .filter(track => track.roleId === role.id && track.endTime <= _currentTime && track.endTime > _currentTime-1)
                   .sort((a, b) => b.endTime - a.endTime);
                 
                 currentExpressionTrack = lastTracks.length > 0 ? lastTracks[0] : null;
@@ -2222,20 +2271,21 @@
               // 如果没有找到表情轨道，尝试从当前场景中获取角色配置
               if (!currentExpressionTrack) {
                 // 获取当前时间点的场景角色配置
-                const sceneRoles = getSceneRolesByTime(currentTime);
-                const roleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === role.id) : null;
+                const sceneRoles = getSceneRolesByTime(_currentTime);
+                const sceneRoleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === role.id) : null;
                 
                 // 如果场景中找到了角色配置，创建一个临时的表达式轨道用于位置计算
-                if (roleConfig) {
+                if (sceneRoleConfig) {
                   currentExpressionTrack = {
                     roleId: role.id,
-                    expressionId: roleConfig.expressionId,
-                    x: roleConfig.x,
-                    y: roleConfig.y,
-                    x1: roleConfig.x1 || roleConfig.x,
-                    y1: roleConfig.y1 || roleConfig.y,
-                    startTime: currentTime,
-                    endTime: currentTime + 1,
+                    expressionId: sceneRoleConfig.expressionId,
+                    x: sceneRoleConfig.x,
+                    y: sceneRoleConfig.y,
+                    x1: sceneRoleConfig.x1 || sceneRoleConfig.x,
+                    y1: sceneRoleConfig.y1 || sceneRoleConfig.y,
+                    startTime: _currentTime,
+                    endTime: _currentTime + 1,
+                    scale: sceneRoleConfig.scale?.toFixed(2) || 1,
                     _isTemp: true
                   };
                   this.canvasCurrentExpTrack = currentExpressionTrack
@@ -2245,34 +2295,39 @@
                   return false;
                 }
               }
-              this.canvasCurrentExpTrack = currentExpressionTrack
+
 
                
               // 使用calculateCurrentPosition方法获取当前实际位置
-              const currentPosition = this.calculateCurrentPosition(currentExpressionTrack, currentTime);
-              
-              //console.log('当前时间点的场景默认角色表情轨道:', currentExpressionTrack);
+              const currentPosition = this.calculateCurrentExpressPosition(currentExpressionTrack, _currentTime);
+              // console.log('点击表情的 Position:', currentPosition);
+              currentExpressionTrack.width = currentPosition.width;
+              currentExpressionTrack.height = currentPosition.height;
+              currentExpressionTrack.angle = currentPosition.angle;
+              currentExpressionTrack.scale = currentPosition.scale;
+              this.canvasCurrentExpTrack = currentExpressionTrack
+              // console.log('点击表情:', currentExpressionTrack);
 
               // 如果坐标计算无效，返回false
               if (!currentPosition.isValid) {
-                console.log(`角色 ${role.name} 在时间点 ${currentTime} 位置计算无效`);
+                // console.log(`角色 ${role.name} 在时间点 ${currentTime} 位置计算无效`);
                 return false;
               }
               
               const { currentX, currentY } = { currentX: currentPosition.x, currentY: currentPosition.y };
-              
+              // console.log(`点击:${x},${y} 角色 ${role.name} in [${currentX}, ${currentX + currentPosition.width*currentPosition.scale},${currentY},${currentY +currentPosition.height*currentPosition.scale}]`);
               // 检查点击是否在角色当前位置的区域内
               return x >= currentX && 
-                     x <= currentX + this.config.roleWidth && 
+                     x <= currentX + currentPosition.width*currentPosition.scale && 
                      y >= currentY && 
-                     y <= currentY + this.config.roleHeight;
+                     y <= currentY +currentPosition.height*currentPosition.scale;
             });
             
-            console.log('checkRoleClick :', clickedRole);
+            //console.log('checkRoleClick :', clickedRole);
             return clickedRole;
           }
           
-          // 绘制角色表情
+          // 绘制角色表情-- 暂未使用
           drawRoleExpression(ctx, role, currentExpressionTrack, expression, imageCache) {
             if (!ctx || !role || !currentExpressionTrack || !expression) {
               return false;
@@ -2280,28 +2335,21 @@
             
             try {
               // 获取当前帧索引
-              const frameIndex = this.updateRoleState(role.id, expression, expression.frameInterval, currentExpressionTrack.startTime,currentTime.value);
+              const frameIndex = this.updateRoleState(role.id, expression, expression.frameInterval, currentExpressionTrack.startTime,currentTime);
               
               // 检查是否有有效的表情帧
               if (!expression.frames || !expression.frames[frameIndex]) {
+                console.log(`角色 ${role.name} 在时间点 ${currentTime} 没有有效的表情帧`);
                 return false;
               }
               
               // 获取图片URL
               const imageUrl = expression.frames[frameIndex];
-              
-              // 返回图片信息供外部加载和绘制
-              return {
-                imageUrl: imageUrl,
-                x: currentExpressionTrack.x,
-                y: currentExpressionTrack.y,
-                width: this.config.roleWidth,
-                height: this.config.roleHeight,
-                role: role,
-                expression: expression
-              };
+              var img = imageCache[imageUrl];
+              this.drawRoleImage(offscreenCtx, role, currentExpressionTrack, expression, imageUrl, img, currentTime, selectedRoleId.value, isPlaying.value, imageCache);
+
             } catch (error) {
-              console.error(`绘制角色表情出错: ${error}`);
+              console.error(`draw role expression error: ${error}`);
               return false;
             }
           }
@@ -2313,13 +2361,13 @@
             // 使用calculateCurrentPosition方法获取当前实际位置和尺寸
             // 注意：这里需要currentTime，但该方法没有传入，我们假设使用当前时间
             // 由于calculateCurrentPosition需要currentTime参数，但drawRoleSelection没有直接获取
-            // 所以这里使用了全局的currentTime.value
-            const currentPosition = this.calculateCurrentPosition(track, currentTime.value);
-            
+            // 所以这里使用了全局的currentTime
+            const currentPosition = this.calculateCurrentExpressPosition(track, currentTime);
+            console.log('drawRoleSelection the currentPosition :', currentPosition);
             const x = currentPosition.isValid ? currentPosition.x : track.x;
             const y = currentPosition.isValid ? currentPosition.y : track.y;
-            const width = currentPosition.isValid ? currentPosition.width : this.config.roleWidth;
-            const height = currentPosition.isValid ? currentPosition.height : this.config.roleHeight;
+            const width = currentPosition.isValid ? currentPosition.width * track.scale : this.config.roleWidth;
+            const height = currentPosition.isValid ? currentPosition.height * track.scale : this.config.roleHeight;
             
             // 绘制闪烁的黄色边框
             ctx.strokeStyle = '#EAB308';
@@ -2343,7 +2391,7 @@
             // 重置线条样式
             ctx.setLineDash([]);
             
-            // 绘制右上角调整圆点
+            // 绘制右上角宽高调整圆点
             const cornerDotSize = 12;
             const cornerDotX = x + width;
             const cornerDotY = y;
@@ -2363,6 +2411,28 @@
             ctx.fillStyle = '#FFFFFF';
             ctx.fill();
             
+            // 恢复状态
+            ctx.restore();
+            
+            // 绘制右下角角度调整圆点
+            const angleDotX = x + width;
+            const angleDotY = y + height;
+            
+            // 保存当前状态以绘制角度调整圆点
+            ctx.save();
+            
+            // 绘制圆点背景（黑色外圈）
+            ctx.beginPath();
+            ctx.arc(angleDotX, angleDotY, cornerDotSize, 0, Math.PI * 2);
+            ctx.fillStyle = '#000000';
+            ctx.fill();
+            
+            // 绘制圆点内芯（红色 - 用于区分角度调整点）
+            ctx.beginPath();
+            ctx.arc(angleDotX, angleDotY, cornerDotSize - 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#FF0000';
+            ctx.fill();
+            
             // 恢复状态以继续绘制表情名称标签
             ctx.restore();
             ctx.save();
@@ -2373,12 +2443,12 @@
             
             // 计算文本宽度以正确设置背景
             ctx.font = '12px Arial';
-            const textWidth = ctx.measureText(expressionName).width + 10;
+            const textWidth = ctx.measureText(expressionName).width + 20;
             const textHeight = 20;
             const labelX = x + width / 2 - textWidth / 2;
             
             // 由于全局坐标系已经翻转，需要将Y坐标调整为在角色下方
-            const labelY = y + height + 5;
+            const labelY = y + height + 15;
             
             // 应用反向缩放，确保标签在翻转的坐标系中是正立的
             const centerX = labelX + textWidth / 2;
@@ -2429,7 +2499,7 @@
             ctx.lineWidth = 2;
             
             // 尝试获取场景级角色配置
-            const currentPosition = this.calculateCurrentPosition(track, currentTime.value);
+            const currentPosition = this.calculateCurrentExpressPosition(track, currentTime);
             
             // 绘制圆角矩形
             const x = currentPosition.isValid ? currentPosition.x : track.x;
@@ -2490,7 +2560,7 @@
           }
 
           // 绘制角色图片的具体实现
-          drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, img, currentTime, selectedRoleId, isPlaying, imageCache) {
+          drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, img, _currentTime, selectedRoleId, isPlaying, imageCache) {
             if (!ctx || !role || !currentExpressionTrack || !expression) {
               return;
             }
@@ -2500,7 +2570,7 @@
               // console.log('使用缓存图片: ' + imageUrl);
               try {
                 // 使用calculateCurrentPosition方法获取当前实际位置和尺寸角度
-                const currentPosition = this.calculateCurrentPosition(currentExpressionTrack, currentTime);
+                const currentPosition = this.calculateCurrentExpressPosition(currentExpressionTrack, _currentTime);
                 
                 // 如果坐标计算无效，返回
                 if (!currentPosition.isValid) {
@@ -2508,13 +2578,26 @@
                   return;
                 }
                 
+                console.log(`will draw ${expression.name} ${currentPosition.width} ${currentPosition.height} scale:${currentExpressionTrack.scale}`);
+                // console.log('currentExpressionTrack:',currentExpressionTrack);
                 const currentX = currentPosition.x;
                 const currentY = currentPosition.y;
-                const currentWidth = currentPosition.width;
-                const currentHeight = currentPosition.height;
+                // 计算缩放系数，考虑canvas实际尺寸与分辨率的关系
+                // const container = document.getElementById('canvasContainer');
+                // const parentWidth = container.parentElement.clientWidth;
+                // const parentHeight = container.parentElement.clientHeight;
+                // const widthRatio = parentWidth / canvas.value.width;
+                // const heightRatio = parentHeight / canvas.value.height;
+                // const scale = Math.min(widthRatio, heightRatio, 1);
+                // console.log('scale:', scale,',widthRatio:',widthRatio,',heightRatio:',heightRatio,', container:',parentWidth,parentHeight,'canvas w h:',canvas.value.width,canvas.value.height,currentExpressionTrack.scale);
+
+                // 计算当前宽高，考虑表情缩放和canvas分辨率缩放
+                const currentWidth = img.width * (currentExpressionTrack.scale || 1);
+                const currentHeight = img.height * (currentExpressionTrack.scale || 1);
                 const currentAngle = currentPosition.angle;
                 
-                
+                // console.log('current:',currentWidth,currentHeight,currentExpressionTrack.scale);
+
                 // 保存当前状态，准备临时应用反向缩放以抵消全局翻转
                 ctx.save();
                 
@@ -2531,13 +2614,14 @@
                   ctx.translate(-(currentX + currentWidth / 2), -(currentY + currentHeight / 2));
                 }
                 
-                // 绘制角色图片
+                // console.log('w h:',img.width, img.height,currentWidth,currentHeight);
+                // 绘制角色图片，使用计算后的宽高代替图片原始宽高，解决分辨率误差问题
                 ctx.drawImage(
                   img, 
                   currentX, 
                   currentY,
-                  currentWidth, // 使用场景配置的宽度
-                  currentHeight  // 使用场景配置的高度
+                  currentWidth, // 使用计算后的宽度
+                  currentHeight  // 使用计算后的高度
                 );
                 
                 // 如果应用了旋转，恢复状态
@@ -2548,30 +2632,7 @@
                 // 恢复原始状态
                 ctx.restore();
 
-                // // 检查是否为带运动轨迹的表情（x,y与x1,y1不同）
-                // if (currentExpressionTrack.x1 !== undefined && currentExpressionTrack.y1 !== undefined && 
-                //     (currentExpressionTrack.x !== currentExpressionTrack.x1 || currentExpressionTrack.y !== currentExpressionTrack.y1)) {
-                //     // 保存当前状态，准备绘制运动轨迹标记
-                //     ctx.save();
-                    
-                //     // 绘制从左到右的横线
-                //     ctx.strokeStyle = 'white';
-                //     ctx.lineWidth = 2;
-                //     ctx.beginPath();
-                //     ctx.moveTo(currentX, currentY - 10);
-                //     ctx.lineTo(currentX + this.config.roleWidth - 15, currentY - 10);
-                //     ctx.stroke();
-                    
-                //     // 绘制向右的箭头
-                //     ctx.fillStyle = 'white';
-                //     ctx.font = '10px Arial';
-                //     ctx.textAlign = 'center';
-                //     ctx.textBaseline = 'middle';
-                //     ctx.fillText('>', currentX + this.config.roleWidth - 8, currentY - 10);
-                    
-                //     // 恢复原始状态
-                //     ctx.restore();
-                // }
+                
 
                 // 保存当前状态，准备绘制角色名称
                 ctx.save();
@@ -2614,7 +2675,7 @@
                       // 添加到缓存
                       //console.log('加载角色图片成功: ' + imageUrl);
                       imageCache[imageUrl] = loadedImg;
-                      self.drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, loadedImg, currentTime, selectedRoleId, isPlaying, imageCache);
+                      self.drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, loadedImg, _currentTime, selectedRoleId, isPlaying, imageCache);
                     },
                     () => {
                       console.error('无法加载角色图片: ' + imageUrl);
@@ -2635,7 +2696,7 @@
               this.drawRoleSelection(ctx, currentExpressionTrack, role);
             }
           }
-        }
+        }//类定义结束
         
         // 创建RoleExpressionManager实例
         const expressionManager = new RoleExpressionManager();
@@ -2662,11 +2723,11 @@
           }
           
           // 1. 先用当前时间，寻找对应的场景，获取场景中的角色
-          const sceneRoles = getSceneRolesByTime(currentTime.value);
+          const sceneRoles = getSceneRolesByTime(currentTime);
           
           // 2. 获取表情轨道中当前时间包含的角色
           const expressionTracksAtCurrentTime = timeline.value.expressionTracks.filter(track => 
-            currentTime.value >= track.startTime && currentTime.value < track.endTime
+            currentTime >= track.startTime && currentTime < track.endTime
           );
           
           // 3. 创建一个包含所有需要绘制的角色ID的集合（避免重复）
@@ -2687,19 +2748,19 @@
             // 找到对应的角色对象
             const role = timeline.value.roles.find(r => r.id === roleId);
             if (!role) return;
-            console.log('rednder role:',role)
+            // console.log('rednder role:',role)
             // 5. 绘制时，先寻找表情轨道中当前时间该角色是否包含表情
             let currentExpressionTrack = timeline.value.expressionTracks.find(track => 
               track.roleId === roleId && 
-              currentTime.value >= track.startTime && 
-              currentTime.value < track.endTime
+              currentTime >= track.startTime && 
+              currentTime < track.endTime
             );
 
             // 如果当前最后一帧，没有找到，使用默认表情和最后位置
-            if (!currentExpressionTrack && currentTime.value >= totalDuration.value) {
+            if (!currentExpressionTrack && currentTime >= totalDuration.value) {
               // 找到最后一个结束的轨道
               const lastTracks = timeline.value.expressionTracks  
-                .filter(track => track.roleId === roleId && track.endTime <= currentTime.value && track.endTime > currentTime.value-1)
+                .filter(track => track.roleId === roleId && track.endTime <= currentTime && track.endTime > currentTime-1)
                 .sort((a, b) => b.endTime - a.endTime);
               
               currentExpressionTrack = lastTracks.length > 0 
@@ -2721,6 +2782,7 @@
                   width: sceneRoleConfig.width,
                   height: sceneRoleConfig.height,
                   angle: sceneRoleConfig.angle,
+                  scale: round(sceneRoleConfig.scale) || 1,
                   // 设置默认的开始和结束时间以确保计算位置时不会出错
                   startTime: 0,
                   endTime: Infinity
@@ -2730,38 +2792,39 @@
                 return;
               }
             }
-            
+            console.log('draw currentExpressionTrack:',roleId,currentExpressionTrack);
+
+
+            //ctx, role, currentExpressionTrack, expression, imageCache
             // 获取表情，添加安全检查
             const expression = role.expressions.find(exp => exp && exp.id === currentExpressionTrack.expressionId) ||
                               role.expressions.find(exp => exp && exp.id === role.defaultExpressionId);
             
             if (!expression || !expression.frames || expression.frames.length === 0) return;
             
-            // 使用角色表情管理器更新角色状态并获取当前帧索引
-            const frameIndex = expressionManager.updateRoleState(role.id, expression, expression.frameInterval, currentExpressionTrack.startTime,currentTime.value);
-            console.log('rednder role frameIndex:',frameIndex)
 
-            
+            expressionManager.drawRoleExpression(offscreenCtx, role, currentExpressionTrack, expression, imageCache);
+            return;
+       
+            // 使用角色表情管理器更新角色状态并获取当前帧索引
+            // const frameIndex = expressionManager.updateRoleState(role.id, expression, expression.frameInterval, currentExpressionTrack.startTime,currentTime);
+            // console.log('rednder role frameIndex:',frameIndex)
+         
             
             // 检查是否有有效的表情帧
-            if (!expression || !expression.frames || !expression.frames[frameIndex]) {
-              // 使用角色表情管理器创建备用图形
-            // expressionManager.drawRolePlaceholder(offscreenCtx, currentExpressionTrack, role);
-              console.log('rednder currentExpressionTrack:',currentExpressionTrack);
-              return;
-            }
+            // if (!expression || !expression.frames || !expression.frames[frameIndex]) {
+            //   return;
+            // }
             
-            // 检查图片是否已在缓存中
-            var imageUrl = expression.frames[frameIndex];
-            var img = imageCache[imageUrl];
-            
-            if (img === null || img === undefined) {
-              //console.log('draw role no expression frame cache: ' + imageUrl);
-            }
+            // // 检查图片是否已在缓存中
+            // var imageUrl = expression.frames[frameIndex];
+            // var img = imageCache[imageUrl];
+
 
             // 调用抽取的drawRoleImage函数来处理具体的图片加载和绘制逻辑
-            expressionManager.drawRoleImage(offscreenCtx, role, currentExpressionTrack, expression, imageUrl, img, currentTime.value, selectedRoleId.value, isPlaying.value, imageCache);
+            // expressionManager.drawRoleImage(offscreenCtx, role, currentExpressionTrack, expression, imageUrl, img, currentTime, selectedRoleId.value, isPlaying.value, imageCache);
           });
+        
         };
         
 
@@ -2771,34 +2834,34 @@
           if (!isPlaying.value) return;
           
           // 计算时间增量
-          if (!lastTime.value) lastTime.value = timestamp;
-          const deltaTime = timestamp - lastTime.value;
+          if (!lastTime) lastTime = timestamp;
+          const deltaTime = timestamp - lastTime;
           
           // 根据目标FPS控制帧更新
           const targetFrameInterval = 1000 / targetFps.value;
           
           // 只有当经过的时间大于目标帧间隔时才更新时间和渲染
           if (deltaTime >= targetFrameInterval) {
-            lastTime.value = timestamp;
+            lastTime = timestamp;
             
             // 更新当前时间
-            currentTime.value += deltaTime;
+            currentTime += deltaTime;
             
             // 计算FPS
-            frameCount.value++;
-            if (!lastFpsUpdate.value) lastFpsUpdate.value = timestamp;
-            if (timestamp - lastFpsUpdate.value >= 1000) { // 每秒更新一次FPS
-              fps.value = Math.round((frameCount.value * 1000) / (timestamp - lastFpsUpdate.value));
-              frameCount.value = 0;
-              lastFpsUpdate.value = timestamp;
+            frameCount++;
+            if (!lastFpsUpdate) lastFpsUpdate = timestamp;
+            if (timestamp - lastFpsUpdate >= 1000) { // 每秒更新一次FPS
+              fps = Math.round((frameCount * 1000) / (timestamp - lastFpsUpdate));
+              frameCount = 0;
+              lastFpsUpdate = timestamp;
             }
             // 检查是否结束
-            if (currentTime.value >= totalDuration.value) {
+            if (currentTime >= totalDuration.value) {
               if (loop.value) {
-                currentTime.value = 0;
+                currentTime = 0;
               } else {
                 stopPlayback();
-                currentTime.value = totalDuration.value;
+                currentTime = totalDuration.value;
               }
             }
             
@@ -2823,7 +2886,7 @@
         // 开始播放
         const startPlayback = () => {
           isPlaying.value = true;
-          lastTime.value = null;
+          lastTime = null;
           // 重置角色表情管理器，确保从当前时间点开始正确播放表情
           expressionManager.reset();
           // 立即渲染一帧
@@ -2843,7 +2906,7 @@
         
         // 跳转到开始
         const goToStart = () => {
-          currentTime.value = 0;
+          currentTime = 0;
           // 重置角色表情管理器，确保从开始位置重新播放表情
           expressionManager.reset();
           updateTimelineDisplay();
@@ -2852,7 +2915,7 @@
         
         // 跳转到结束
         const goToEnd = () => {
-          currentTime.value = totalDuration.value;
+          currentTime = totalDuration.value;
           updateTimelineDisplay();
           renderFrame();
         };
@@ -2860,7 +2923,7 @@
         // 切换循环模式
         const toggleLoop = () => {
           loop.value = !loop.value;
-          console.log('rednder')
+          // console.log('rednder')
           renderFrame();
         };
         
@@ -2930,7 +2993,7 @@
           const flippedY = canvasHeight - y;
           
           // 使用角色表情管理器检测点击的角色
-          const clickedRole = expressionManager.checkRoleClick(x, flippedY, timeline.value.roles, timeline.value.expressionTracks, currentTime.value);
+          const clickedRole = expressionManager.checkRoleClick(x, flippedY, timeline.value.roles, timeline.value.expressionTracks, currentTime);
           //console.log('checkRoleClick :', clickedRole);
           if (clickedRole) {
             selectRole(clickedRole.id);
@@ -3011,8 +3074,8 @@
           // 检查当前时间点是否已有该角色的表情轨道
           const hasExistingTrack = timeline.value.expressionTracks.some(track => 
             track.roleId === selectedRoleId.value && 
-            track.startTime <= currentTime.value && 
-            track.endTime > currentTime.value
+            track.startTime <= currentTime && 
+            track.endTime > currentTime
           );
           
           if (!hasExistingTrack) {
@@ -3025,15 +3088,15 @@
               y: 300, // 默认y坐标
               x1: 100, // 默认结束x坐标
               y1: 300, // 默认结束y坐标
-              startTime: currentTime.value,
-              endTime: currentTime.value + 2000 // 2秒时长
+              startTime: currentTime,
+              endTime: currentTime + 2000 // 2秒时长
             };
             
             // 获取角色当前时间点的位置信息（与checkRoleClick函数使用相同的逻辑）
             const currentTrack = timeline.value.expressionTracks.find(track => 
               track.roleId === selectedRoleId.value && 
-              currentTime.value >= track.startTime && 
-              currentTime.value < track.endTime
+              currentTime >= track.startTime && 
+              currentTime < track.endTime
             );
             
             if (currentTrack) {
@@ -3053,8 +3116,8 @@
           // 查找当前时间点该角色的表情轨道
           const currentTrackIndex = timeline.value.expressionTracks.findIndex(track => 
             track.roleId === selectedRoleId.value && 
-            track.startTime <= currentTime.value && 
-            track.endTime > currentTime.value
+            track.startTime <= currentTime && 
+            track.endTime > currentTime
           );
           
           if (currentTrackIndex !== -1) {
@@ -3074,8 +3137,8 @@
           // 查找当前时间点该角色的表情轨道
           const currentTrackIndex = timeline.value.expressionTracks.findIndex(track => 
             track.roleId === selectedRoleId.value && 
-            track.startTime <= currentTime.value && 
-            track.endTime > currentTime.value
+            track.startTime <= currentTime && 
+            track.endTime > currentTime
           );
           
           if (currentTrackIndex !== -1) {
@@ -3151,17 +3214,18 @@
           renderFrame();
           
           // 角色拖拽相关状态
-          let isDraggingRole = false;
-          let isDraggingResizeDot = false;
-          let draggedRoleId = null;
-          let dragOffsetX = 0;
-          let dragOffsetY = 0;
-          let initialWidth = 0;
-          let initialHeight = 0;
-          let initialAngle = 0;
-          let initialMouseX = 0;
-          let initialMouseY = 0;
-          let cornerDotSize = 12;
+          let isDraggingRole = false; // 角色拖拽状态
+          let isDraggingResizeDot = false; // 右上角宽高调整点拖拽状态
+          let isDraggingAngleDot = false; // 右下角角度调整点拖拽状态
+          let draggedRoleId = null; // 被拖拽的角色ID
+          let dragOffsetX = 0; // 拖拽偏移量X
+          let dragOffsetY = 0; // 拖拽偏移量Y
+          let initialWidth = 0; // 初始宽度
+          let initialHeight = 0; // 初始高度
+          let initialAngle = 0; // 初始角度
+          let initialMouseX = 0; // 初始鼠标X坐标
+          let initialMouseY = 0; // 初始鼠标Y坐标
+          let cornerDotSize = 12; // 调整圆点大小
           let canvasCurrentScene = null;
           let canvasCurrentRole = null;
 
@@ -3187,42 +3251,24 @@
             // 检查是否点击了选中的角色
             if (selectedRoleId.value) {
               let currentExpTrack = expressionManager.canvasCurrentExpTrack;
-              console.log('mouse down 当前选择表情:',currentExpTrack)
-
-              // 找到当前时间点该角色的表情轨道
-              // let currentExpTrack = timeline.value.expressionTracks.find(track => 
-              //   track.roleId === selectedRoleId.value &&
-              //   currentTime.value >= track.startTime &&
-              //   currentTime.value < track.endTime
-              // );
+              // console.log('mouse down 当前选择表情:',currentExpTrack)
               
               // 如果没有找到表情轨道，获取场景角色配置用于拖拽时的初始位置
-              let sceneRoleConfig = null;
-              if (!currentExpTrack) {
-                // const sceneRoles = getSceneRolesByTime(currentTime.value);
+              // let sceneRoleConfig = null;
+              // if (!currentExpTrack) {
+                // const sceneRoles = getSceneRolesByTime(currentTime);
                 // sceneRoleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === selectedRoleId.value) : null;
-              }
+              // }
               
-              if (currentExpTrack || sceneRoleConfig) {
-                // 计算角色当前位置
-                let pos = {x: 0, y: 0};
-                let roleWidth = expressionManager.config.roleWidth;
-                let roleHeight = expressionManager.config.roleHeight;
-                let currentAngle = 0;
-                
-                if (currentExpTrack) {
-                  pos = expressionManager.calculateCurrentPosition(currentExpTrack, currentTime.value);
-                  roleWidth = currentExpTrack.width || expressionManager.config.roleWidth;
-                  roleHeight = currentExpTrack.height || expressionManager.config.roleHeight;
-                  currentAngle = currentExpTrack.angle || 0;
-                } else if (sceneRoleConfig) {
-                  pos = {x: sceneRoleConfig.x, y: sceneRoleConfig.y};
-                  roleWidth = sceneRoleConfig.width || expressionManager.config.roleWidth;
-                  roleHeight = sceneRoleConfig.height || expressionManager.config.roleHeight;
-                  currentAngle = sceneRoleConfig.angle || 0;
+              if (currentExpTrack) {
 
-                  // canvasCurrentScene = sceneRoleConfig.sceneId;
-                }
+                const currentPressPosition = expressionManager.calculateCurrentExpressPosition(currentExpTrack, currentTime);
+                console.log('点击表情的 Position:', currentPressPosition);
+                // 计算角色当前位置
+                // let pos = {x: 0, y: 0};
+                let roleWidth = currentPressPosition.width*currentPressPosition.scale || 50;
+                let roleHeight = currentPressPosition.height*currentPressPosition.scale || 50;
+                let currentAngle = currentPressPosition.angle || 0;
                 
                 // canvasCurrentRole = selectedRoleId;
                 //console.log('mouse down 找到当前选择表情:',currentExpTrack)
@@ -3230,17 +3276,28 @@
                 // 在新坐标系下，Y轴需要翻转
                 const flippedY = canvasHeight - y;
                 
-                // 计算角色右上角调整圆点的位置
-                const cornerDotX = pos.x + roleWidth;
-                const cornerDotY = pos.y;
-                
-                // 检查点击是否在调整圆点范围内
+                // 计算角色右上角宽高调整圆点的位置
+                const cornerDotX = currentPressPosition.x + roleWidth;
+                const cornerDotY = currentPressPosition.y + roleHeight;
+                console.log('调整 wh点:',cornerDotX,cornerDotY,roleWidth,roleHeight);
+                // 计算角色右下角角度调整圆点的位置
+                const angleDotX = currentPressPosition.x + roleWidth;
+                const angleDotY = currentPressPosition.y ;
+                console.log('调整 angle点:',angleDotX,angleDotY);
+
+                // 检查点击是否在右上角宽高调整圆点范围内
                 const distanceToCornerDot = Math.sqrt(
                   Math.pow(x - cornerDotX, 2) + Math.pow(flippedY - cornerDotY, 2)
                 );
                 
+                // 检查点击是否在右下角角度调整圆点范围内
+                const distanceToAngleDot = Math.sqrt(
+                  Math.pow(x - angleDotX, 2) + Math.pow(flippedY - angleDotY, 2)
+                );
+                
+                // 优先检测点击是否在右上角宽高调整圆点
                 if (distanceToCornerDot <= cornerDotSize) {
-                  // 点击了调整圆点
+                  // 点击了右上角宽高调整圆点
                   isDraggingResizeDot = true;
                   draggedRoleId = selectedRoleId.value;
                   initialWidth = roleWidth;
@@ -3248,28 +3305,44 @@
                   initialAngle = currentAngle;
                   initialMouseX = x;
                   initialMouseY = flippedY;
-                  canvasElement.style.cursor = 'nwse-resize';
-                } 
-                else if (x >= pos.x && x <= pos.x + roleWidth &&
-                           flippedY >= pos.y && flippedY <= pos.y + roleHeight) {
+                  canvasElement.style.cursor = 'nesw-resize';
+                }
+                // 其次检测点击是否在右下角角度调整圆点
+                else if (distanceToAngleDot <= cornerDotSize) {
+                  // 点击了右下角角度调整圆点
+                  isDraggingAngleDot = true;
+                  draggedRoleId = selectedRoleId.value;
+                  initialWidth = roleWidth;
+                  initialHeight = roleHeight;
+                  initialAngle = currentAngle;
+                  initialMouseX = x;
+                  initialMouseY = flippedY;
+                  canvasElement.style.cursor = 'grab';
+                }
+                // 最后检测点击是否在角色本身
+                else if (x >= currentPressPosition.x && x <= currentPressPosition.x + roleWidth &&
+                           flippedY >= currentPressPosition.y && flippedY <= currentPressPosition.y + roleHeight) {
+                  console.log('点击了角色本身，但不在调整圆点上');
                   // 点击了角色本身，但不在调整圆点上
                   isDraggingRole = true;
                   draggedRoleId = selectedRoleId.value;
                   
                   // 精确计算点击位置相对于角色左下角原点的偏移量
                   // 这样无论点击角色的哪个位置，拖拽时都会保持这个相对位置
-                  dragOffsetX = x - pos.x;
-                  dragOffsetY = flippedY - pos.y;
+                  dragOffsetX = x - currentPressPosition.x;
+                  dragOffsetY = flippedY - currentPressPosition.y;
                   
                   console.log(`拖拽偏移量: X=${dragOffsetX.toFixed(2)}, Y=${dragOffsetY.toFixed(2)}`);
                   canvasElement.style.cursor = 'grabbing';
                 }
+                console.log('click initialWidth:',initialWidth,initialHeight);
+
               }
             }
           });
           
           // 鼠标移动事件（添加到document以确保拖拽过程中鼠标离开Canvas也能继续）
-          document.addEventListener('mousemove', (e) => {
+          canvasElement.addEventListener('mousemove', (e) => {
             const rect = canvasElement.getBoundingClientRect();
             const scaleX = canvasElement.width / rect.width;
             const scaleY = canvasElement.height / rect.height;
@@ -3287,117 +3360,129 @@
             const flippedY = canvasHeight - mouseY;
             const y = flippedY - dragOffsetY;
             
-            if (!isDraggingRole && !isDraggingResizeDot || !draggedRoleId || isPlaying.value) return;
-            
+            //console.log('move ',isDraggingRole,isDraggingResizeDot,isDraggingAngleDot,draggedRoleId);
+            if (!isDraggingRole && !isDraggingResizeDot && !isDraggingAngleDot || !draggedRoleId || isPlaying.value) return;
+
+
             if (isDraggingResizeDot) {
-              // 拖拽调整圆点
-              // 找到当前时间点该角色的表情轨道或临时轨道
-              // const currentExpTrack = timeline.value.expressionTracks.find(track => 
-              //   track.roleId === draggedRoleId &&
-              //   (currentTime.value >= track.startTime &&
-              //   currentTime.value < track.endTime || track._isTemp)
-              // );
-              const currentExpTrack = expressionManager.canvasCurrentExpTrack;
+              // 右上角宽高调整点 - 只处理宽高调整
+              let currentExpTrack = expressionManager.canvasCurrentExpTrack;
+              const currentPosition = expressionManager.calculateCurrentExpressPosition(currentExpTrack, currentTime);
+              console.log('move, resize current express Position:',currentPosition);
               
               if (currentExpTrack) {
                 // 计算鼠标移动的差值
                 const deltaX = mouseX - initialMouseX;
                 const deltaY = flippedY - initialMouseY;
+                //console.log('move 宽高调整:', deltaX,deltaY,currentExpTrack);
                 
-                // 判断拖拽方向
-                // 45度方向判断：当deltaX和deltaY的绝对值之差小于阈值时，视为45度方向拖拽
-                const is45DegreeDrag = Math.abs(Math.abs(deltaX) - Math.abs(deltaY)) < 5;
+                // 计算新的宽高
+                const scaleFactor = round(1 + (deltaX + deltaY) / (initialWidth + initialHeight)) || 1;
+                const newWidth = Math.max(20, initialWidth * scaleFactor);
+                const newHeight = Math.max(20, initialHeight * scaleFactor);
+                console.log('initialWidth:',initialWidth,initialHeight);
+                const newScaleFactor = round(newWidth/currentPosition.width);
+                console.log('newWidth newHeight scaleFactor:',newWidth,newHeight,scaleFactor,newScaleFactor);
+
+
                 
-                if (is45DegreeDrag) {
-                  // 45度方向拖拽 - 修改宽高
-                  // 确保宽高不为负数
-                  const scaleFactor = 1 + (deltaX + deltaY) / (initialWidth + initialHeight);
-                  const newWidth = Math.max(20, initialWidth * scaleFactor);
-                  const newHeight = Math.max(20, initialHeight * scaleFactor);
-                  
-                  if (currentExpTrack._isTemp) {
-                    // 如果是临时轨道，直接更新场景中的角色配置
-                    console.log('修改角色缺省位置：tempTrack',currentExpTrack)
-                    const sceneRoles = getSceneRolesByTime(currentTime.value);
-                    if (sceneRoles) {
-                      const currentScene = timeline.value.scenes.find(scene => {
-                        const sceneShots = timeline.value.shots.filter(shot => scene.shots.includes(shot.id));
-                        return sceneShots.some(shot => 
-                          currentTime.value >= shot.startTime && 
-                          currentTime.value < shot.startTime + shot.duration
-                        );
-                      });
-                       
-                      if (currentScene) {
-                        const sceneRoleIndex = currentScene.roles.findIndex(r => r.roleId === draggedRoleId);
-                        if (sceneRoleIndex !== -1) {
-                          currentScene.roles[sceneRoleIndex].width = newWidth;
-                          currentScene.roles[sceneRoleIndex].height = newHeight;
-                        }
+
+                // let ww = currentPosition.width+newWidth;
+                // let hh = currentPosition.height+newHeight;
+                // console.log('ww hh:',ww,hh);
+                
+                if (currentExpTrack._isTemp) {
+                  // 如果是临时轨道，直接更新场景中的角色配置
+                  console.log('modify default size-scale：',currentExpTrack)
+                  const sceneRoles = getSceneRolesByTime(currentTime);
+                  if (sceneRoles) {
+                    const currentScene = timeline.value.scenes.find(scene => {
+                      const sceneShots = timeline.value.shots.filter(shot => scene.shots.includes(shot.id));
+                      return sceneShots.some(shot => 
+                        currentTime >= shot.startTime && 
+                        currentTime < shot.startTime + shot.duration
+                      );
+                    });
+                      
+                    if (currentScene) {
+                      const sceneRoleIndex = currentScene.roles.findIndex(r => r.roleId === draggedRoleId);
+                      if (sceneRoleIndex !== -1) {
+                        // currentScene.roles[sceneRoleIndex].width = newWidth;
+                        // currentScene.roles[sceneRoleIndex].height = newHeight;
+                        currentScene.roles[sceneRoleIndex].scale = newScaleFactor;
                       }
                     }
-                  } else {
-                    // 使用临时变量更新宽高
-                    currentExpTrack._tempWidth = newWidth;
-                    currentExpTrack._tempHeight = newHeight;
                   }
                 } else {
-                  // 非45度方向拖拽 - 修改角度
-                  // 计算相对于角色中心的角度变化
-                  // 获取当前角色位置
-                  const pos = expressionManager.calculateCurrentPosition(currentExpTrack, currentTime.value);
-                  const roleCenterX = pos.x + initialWidth / 2;
-                  const roleCenterY = pos.y + initialHeight / 2;
-                  
-                  // 计算初始角度（相对于角色中心）
-                  const initialAngleRad = Math.atan2(initialMouseY - roleCenterY, initialMouseX - roleCenterX);
-                  // 计算当前角度（相对于角色中心）
-                  const currentAngleRad = Math.atan2(flippedY - roleCenterY, mouseX - roleCenterX);
-                  
-                  // 计算角度差并转换为度数
-                  let angleDiff = (currentAngleRad - initialAngleRad) * 180 / Math.PI;
-                  // 确保角度差在合理范围内
-                  if (angleDiff > 180) angleDiff -= 360;
-                  if (angleDiff < -180) angleDiff += 360;
-                  
-                  // 计算新角度
-                  const newAngle = (initialAngle + angleDiff) % 360;
-                  
-                  if (currentExpTrack._isTemp) {
-                    // 如果是临时轨道，直接更新场景中的角色配置
-                    const sceneRoles = getSceneRolesByTime(currentTime.value);
-                    if (sceneRoles) {
-                      const currentScene = timeline.value.scenes.find(scene => {
-                        const sceneShots = timeline.value.shots.filter(shot => scene.shots.includes(shot.id));
-                        return sceneShots.some(shot => 
-                          currentTime.value >= shot.startTime && 
-                          currentTime.value < shot.startTime + shot.duration
-                        );
-                      });
-                       
-                      if (currentScene) {
-                        const sceneRoleIndex = currentScene.roles.findIndex(r => r.roleId === draggedRoleId);
-                        if (sceneRoleIndex !== -1) {
-                          currentScene.roles[sceneRoleIndex].angle = newAngle;
-                        }
+                  // 使用临时变量更新宽高
+                  // currentExpTrack._tempWidth = newWidth;
+                  // currentExpTrack._tempHeight = newHeight;
+                  currentExpTrack.scale = newScaleFactor;
+                  console.log('modify expTrack size-scale：', newScaleFactor);
+                }
+                
+                renderFrame();
+              }
+            } else if (isDraggingAngleDot) {
+              // 角度调整点 - 只处理角度调整
+              let currentExpTrack = expressionManager.canvasCurrentExpTrack;
+              console.log('move, angle current express Position:',currentPosition);
+
+              if (currentExpTrack) {
+                // 获取当前角色位置
+                const pos = expressionManager.calculateCurrentExpressPosition(currentExpTrack, currentTime);
+                const roleCenterX = pos.x + initialWidth / 2;
+                const roleCenterY = pos.y + initialHeight / 2;
+                
+                // 计算初始角度（相对于角色中心）
+                const initialAngleRad = Math.atan2(initialMouseY - roleCenterY, initialMouseX - roleCenterX);
+                // 计算当前角度（相对于角色中心）
+                const currentAngleRad = Math.atan2(flippedY - roleCenterY, mouseX - roleCenterX);
+                
+                // 计算角度差并转换为度数
+                let angleDiff = (currentAngleRad - initialAngleRad) * 180 / Math.PI;
+                // 确保角度差在合理范围内
+                if (angleDiff > 180) angleDiff -= 360;
+                if (angleDiff < -180) angleDiff += 360;
+                
+                // 计算新角度
+                const newAngle = (initialAngle + angleDiff) % 360;
+                
+                if (currentExpTrack._isTemp) {
+                  // 如果是临时轨道，直接更新场景中的角色配置
+                  const sceneRoles = getSceneRolesByTime(currentTime);
+                  if (sceneRoles) {
+                    const currentScene = timeline.value.scenes.find(scene => {
+                      const sceneShots = timeline.value.shots.filter(shot => scene.shots.includes(shot.id));
+                      return sceneShots.some(shot => 
+                        currentTime >= shot.startTime && 
+                        currentTime < shot.startTime + shot.duration
+                      );
+                    });
+                      
+                    if (currentScene) {
+                      const sceneRoleIndex = currentScene.roles.findIndex(r => r.roleId === draggedRoleId);
+                      if (sceneRoleIndex !== -1) {
+                        currentScene.roles[sceneRoleIndex].angle = newAngle;
                       }
                     }
-                  } else {
-                    // 使用临时变量更新角度
-                    currentExpTrack._tempAngle = newAngle;
                   }
+                } else {
+                  // 使用临时变量更新角度
+                  currentExpTrack._tempAngle = newAngle;
+                  console.log('修改角色角度：tempTrack', currentExpTrack);
                 }
                 
                 renderFrame();
               }
             } else if (isDraggingRole) {
               // 只有在拖拽角色时才打印日志
-              // console.log(`鼠标位置: (${mouseX.toFixed(2)}, ${flippedY.toFixed(2)}), 角色位置: (${x.toFixed(2)}, ${y.toFixed(2)})`);
+              console.log(`move dragging role 鼠标位置: (${mouseX.toFixed(2)}, ${flippedY.toFixed(2)}), 角色位置: (${x.toFixed(2)}, ${y.toFixed(2)})`);
               // 找到当前时间点该角色的表情轨道或临时轨道
               // const currentExpTrack = timeline.value.expressionTracks.find(track => 
               //   track.roleId === draggedRoleId &&
-              //   (currentTime.value >= track.startTime &&
-              //   currentTime.value < track.endTime || track._isTemp)
+              //   (currentTime >= track.startTime &&
+              //   currentTime < track.endTime || track._isTemp)
               // );
               const currentExpTrack = expressionManager.canvasCurrentExpTrack;
               //console.log('mouse moving 找到当前选择表情:',currentExpTrack)
@@ -3405,13 +3490,13 @@
                 if (currentExpTrack._isTemp) {
                   // 如果是临时轨道，直接更新场景中的角色配置
                   console.log('临时轨道:修改角色缺省位置1', currentExpTrack);
-                  const sceneRoles = getSceneRolesByTime(currentTime.value);
+                  const sceneRoles = getSceneRolesByTime(currentTime);
                   if (sceneRoles) {
                     const currentScene = timeline.value.scenes.find(scene => {
                       const sceneShots = timeline.value.shots.filter(shot => scene.shots.includes(shot.id));
                       return sceneShots.some(shot => 
-                        currentTime.value >= shot.startTime && 
-                        currentTime.value < shot.startTime + shot.duration
+                        currentTime >= shot.startTime && 
+                        currentTime < shot.startTime + shot.duration
                       );
                     });
                      
@@ -3436,18 +3521,19 @@
           });
           
           // 鼠标释放事件
-          document.addEventListener('mouseup', () => {
+          canvasElement.addEventListener('mouseup', () => {
             if ((!isDraggingRole && !isDraggingResizeDot) || !draggedRoleId) return;
             
             isDraggingRole = false;
             isDraggingResizeDot = false;
+            isDraggingAngleDot = false;
             canvasElement.style.cursor = 'default';
             
             // 找到当前时间点该角色的表情轨道
             // const currentExpTrack = timeline.value.expressionTracks.find(track => 
             //   track.roleId === draggedRoleId &&
-            //   currentTime.value >= track.startTime &&
-            //   currentTime.value < track.endTime
+            //   currentTime >= track.startTime &&
+            //   currentTime < track.endTime
             // );
             const currentExpTrack = expressionManager.canvasCurrentExpTrack;
 
@@ -3457,13 +3543,13 @@
               if (currentExpTrack._isTemp) {
                   // 如果是临时轨道，直接更新场景中的角色配置
                   console.log('临时轨道:修改角色缺省位置1', currentExpTrack);
-                  const sceneRoles = getSceneRolesByTime(currentTime.value);
+                  const sceneRoles = getSceneRolesByTime(currentTime);
                   if (sceneRoles) {
                     const currentScene = timeline.value.scenes.find(scene => {
                       const sceneShots = timeline.value.shots.filter(shot => scene.shots.includes(shot.id));
                       return sceneShots.some(shot => 
-                        currentTime.value >= shot.startTime && 
-                        currentTime.value < shot.startTime + shot.duration
+                        currentTime >= shot.startTime && 
+                        currentTime < shot.startTime + shot.duration
                       );
                     });
                      
@@ -3478,7 +3564,7 @@
                   }
               }else{
                 // 检查是否是表情的最后时刻
-                const isLastMoment = Math.abs(currentTime.value - (currentExpTrack.endTime - 100)) < 400;
+                const isLastMoment = Math.abs(currentTime - (currentExpTrack.endTime - 100)) < 400;
                 
                 // 保存位置
                 if (currentExpTrack._tempX !== undefined && currentExpTrack._tempY !== undefined) {
@@ -3491,11 +3577,11 @@
                     currentExpTrack.x = currentExpTrack._tempX;
                     currentExpTrack.y = currentExpTrack._tempY;
                   }
-                  if (currentExpTrack._isTemp) {
-                    console.log('修改角色缺省位置：tempTrack',currentExpTrack)
-                    // 从临时轨道中删除
-                    //timeline.value.expressionTracks = timeline.value.expressionTracks.filter(track => track !== currentExpTrack);
-                  }
+
+                  console.log('mouse up 修改表情位置：tempTrack',currentExpTrack)
+                  // 从临时轨道中删除
+                  //timeline.value.expressionTracks = timeline.value.expressionTracks.filter(track => track !== currentExpTrack);
+
                   // 清除临时位置
                   delete currentExpTrack._tempX;
                   delete currentExpTrack._tempY;
@@ -3505,7 +3591,7 @@
                 if (currentExpTrack._tempWidth !== undefined && currentExpTrack._tempHeight !== undefined) {
                   currentExpTrack.width = currentExpTrack._tempWidth;
                   currentExpTrack.height = currentExpTrack._tempHeight;
-                  
+                  console.log('mouse up 修改表情宽高：tempTrack',currentExpTrack._tempWidth)
                   // 清除临时宽高
                   delete currentExpTrack._tempWidth;
                   delete currentExpTrack._tempHeight;
@@ -3514,7 +3600,8 @@
                 // 保存角度
                 if (currentExpTrack._tempAngle !== undefined) {
                   currentExpTrack.angle = currentExpTrack._tempAngle;
-                  
+                  console.log('mouse up 修改表情角度：tempTrack',currentExpTrack)
+
                   // 清除临时角度
                   delete currentExpTrack._tempAngle;
                 }
@@ -3530,7 +3617,7 @@
             //   // 点击寻找时，而不是拖拽时走这，如果没有找到表情轨道，尝试从当前场景中获取角色配置
             //   console.log('寻找缺省角色')
 
-            //   const sceneRoles = getSceneRolesByTime(currentTime.value);
+            //   const sceneRoles = getSceneRolesByTime(currentTime);
             //   if (sceneRoles) {
             //     const roleConfigIndex = sceneRoles.findIndex(r => r.roleId === draggedRoleId);
             //     if (roleConfigIndex !== -1) {
@@ -3538,8 +3625,8 @@
             //       const currentScene = timeline.value.scenes.find(scene => {
             //         const sceneShots = timeline.value.shots.filter(shot => scene.shots.includes(shot.id));
             //         return sceneShots.some(shot => 
-            //           currentTime.value >= shot.startTime && 
-            //           currentTime.value < shot.startTime + shot.duration
+            //           currentTime >= shot.startTime && 
+            //           currentTime < shot.startTime + shot.duration
             //         );
             //       });
                   
@@ -3593,7 +3680,6 @@
             //   renderFrame();
             // }
 
-
             expressionManager.canvasCurrentExpTrack = null;
             draggedRoleId = null;
           });
@@ -3639,7 +3725,7 @@
               // 从刻度ID中提取时间（例如 'tick-5' 对应 5 秒）
               const timeStr = draggedTickId.split('-')[1];
               const time = parseInt(timeStr) * 1000; // 转换为毫秒
-              //currentTime.value = Math.max(0, Math.min(time, totalDuration.value));
+              //currentTime = Math.max(0, Math.min(time, totalDuration.value));
               updateTimelineDisplay();
               renderFrame();
               
@@ -3686,7 +3772,7 @@
               
               // 计算时间变化 (像素差 -> 时间差)
               const timeDelta = (deltaX / MARGIN / zoom.value) * 1000;
-              currentTime.value = Math.max(0, Math.min(currentTime.value - timeDelta, totalDuration.value));
+              currentTime = Math.max(0, Math.min(currentTime - timeDelta, totalDuration.value));
               
               updateTimelineDisplay();
               renderFrame();
@@ -3788,7 +3874,7 @@
             
             // 使用更严格的计算逻辑
             const shotEndTime = shot.startTime + shot.duration;
-            const isTimeInShot = currentTime.value >= shot.startTime && currentTime.value < shotEndTime;
+            const isTimeInShot = currentTime >= shot.startTime && currentTime < shotEndTime;
             
             if (isTimeInShot) {
               // 确保添加高亮类
