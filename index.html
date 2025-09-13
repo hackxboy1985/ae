@@ -2231,6 +2231,8 @@
               // 出错时使用默认宽高
             }
             
+
+
             console.log('222>>>>',currentX,currentY,currentExpressionTrack.scale);
             // 返回位置和场景配置中的尺寸和角度，优先使用当前帧图片的实际宽高
             const position = { 
@@ -2392,7 +2394,7 @@
             ctx.setLineDash([]);
             
             // 绘制右上角宽高调整圆点
-            const cornerDotSize = 12;
+            const cornerDotSize = 10;
             const cornerDotX = x + width;
             const cornerDotY = y;
             
@@ -2402,7 +2404,7 @@
             // 绘制圆点背景（黑色外圈）
             ctx.beginPath();
             ctx.arc(cornerDotX, cornerDotY, cornerDotSize, 0, Math.PI * 2);
-            ctx.fillStyle = '#000000';
+            ctx.fillStyle = '#0000FF';
             ctx.fill();
             
             // 绘制圆点内芯（白色）
@@ -2421,10 +2423,10 @@
             // 保存当前状态以绘制角度调整圆点
             ctx.save();
             
-            // 绘制圆点背景（黑色外圈）
+            // 绘制圆点背景（蓝色外圈）
             ctx.beginPath();
             ctx.arc(angleDotX, angleDotY, cornerDotSize, 0, Math.PI * 2);
-            ctx.fillStyle = '#000000';
+            ctx.fillStyle = '#0000FF';
             ctx.fill();
             
             // 绘制圆点内芯（红色 - 用于区分角度调整点）
@@ -2592,8 +2594,8 @@
                 // console.log('scale:', scale,',widthRatio:',widthRatio,',heightRatio:',heightRatio,', container:',parentWidth,parentHeight,'canvas w h:',canvas.value.width,canvas.value.height,currentExpressionTrack.scale);
 
                 // 计算当前宽高，考虑表情缩放和canvas分辨率缩放
-                const currentWidth = img.width * (currentExpressionTrack.scale || 1);
-                const currentHeight = img.height * (currentExpressionTrack.scale || 1);
+                const currentWidth = img.width * (currentPosition.scale || 1);
+                const currentHeight = img.height * (currentPosition.scale || 1);
                 const currentAngle = currentPosition.angle;
                 
                 // console.log('current:',currentWidth,currentHeight,currentExpressionTrack.scale);
@@ -3279,11 +3281,11 @@
                 // 计算角色右上角宽高调整圆点的位置
                 const cornerDotX = currentPressPosition.x + roleWidth;
                 const cornerDotY = currentPressPosition.y + roleHeight;
-                console.log('调整 wh点:',cornerDotX,cornerDotY,roleWidth,roleHeight);
+                //console.log('调整 wh点:',cornerDotX,cornerDotY,roleWidth,roleHeight);
                 // 计算角色右下角角度调整圆点的位置
                 const angleDotX = currentPressPosition.x + roleWidth;
                 const angleDotY = currentPressPosition.y ;
-                console.log('调整 angle点:',angleDotX,angleDotY);
+                //console.log('调整 angle点:',angleDotX,angleDotY);
 
                 // 检查点击是否在右上角宽高调整圆点范围内
                 const distanceToCornerDot = Math.sqrt(
@@ -3317,7 +3319,7 @@
                   initialAngle = currentAngle;
                   initialMouseX = x;
                   initialMouseY = flippedY;
-                  canvasElement.style.cursor = 'grab';
+                  canvasElement.style.cursor = 'alias';
                 }
                 // 最后检测点击是否在角色本身
                 else if (x >= currentPressPosition.x && x <= currentPressPosition.x + roleWidth &&
@@ -3364,11 +3366,13 @@
             if (!isDraggingRole && !isDraggingResizeDot && !isDraggingAngleDot || !draggedRoleId || isPlaying.value) return;
 
 
+            let currentExpTrack = expressionManager.canvasCurrentExpTrack;
+            const currentExpressPosition = expressionManager.calculateCurrentExpressPosition(currentExpTrack, currentTime);
+
             if (isDraggingResizeDot) {
               // 右上角宽高调整点 - 只处理宽高调整
-              let currentExpTrack = expressionManager.canvasCurrentExpTrack;
-              const currentPosition = expressionManager.calculateCurrentExpressPosition(currentExpTrack, currentTime);
-              console.log('move, resize current express Position:',currentPosition);
+              
+              console.log('move, resize current express Position:',currentExpressPosition);
               
               if (currentExpTrack) {
                 // 计算鼠标移动的差值
@@ -3381,7 +3385,7 @@
                 const newWidth = Math.max(20, initialWidth * scaleFactor);
                 const newHeight = Math.max(20, initialHeight * scaleFactor);
                 console.log('initialWidth:',initialWidth,initialHeight);
-                const newScaleFactor = round(newWidth/currentPosition.width);
+                const newScaleFactor = round(newWidth/currentExpressPosition.width);
                 console.log('newWidth newHeight scaleFactor:',newWidth,newHeight,scaleFactor,newScaleFactor);
 
 
@@ -3426,13 +3430,13 @@
             } else if (isDraggingAngleDot) {
               // 角度调整点 - 只处理角度调整
               let currentExpTrack = expressionManager.canvasCurrentExpTrack;
-              console.log('move, angle current express Position:',currentPosition);
+              console.log('move, angle current express Position:',currentExpressPosition);
 
               if (currentExpTrack) {
                 // 获取当前角色位置
-                const pos = expressionManager.calculateCurrentExpressPosition(currentExpTrack, currentTime);
-                const roleCenterX = pos.x + initialWidth / 2;
-                const roleCenterY = pos.y + initialHeight / 2;
+                // const pos = expressionManager.calculateCurrentExpressPosition(currentExpTrack, currentTime);
+                const roleCenterX = currentExpressPosition.x + initialWidth / 2;
+                const roleCenterY = currentExpressPosition.y + initialHeight / 2;
                 
                 // 计算初始角度（相对于角色中心）
                 const initialAngleRad = Math.atan2(initialMouseY - roleCenterY, initialMouseX - roleCenterX);
@@ -3446,8 +3450,8 @@
                 if (angleDiff < -180) angleDiff += 360;
                 
                 // 计算新角度
-                const newAngle = (initialAngle + angleDiff) % 360;
-                
+                const newAngle = (initialAngle - angleDiff) % 360;
+                console.log('mov newAngle:',newAngle);
                 if (currentExpTrack._isTemp) {
                   // 如果是临时轨道，直接更新场景中的角色配置
                   const sceneRoles = getSceneRolesByTime(currentTime);
@@ -3469,7 +3473,7 @@
                   }
                 } else {
                   // 使用临时变量更新角度
-                  currentExpTrack._tempAngle = newAngle;
+                  currentExpTrack.angle = newAngle;
                   console.log('修改角色角度：tempTrack', currentExpTrack);
                 }
                 
@@ -3522,7 +3526,7 @@
           
           // 鼠标释放事件
           canvasElement.addEventListener('mouseup', () => {
-            if ((!isDraggingRole && !isDraggingResizeDot) || !draggedRoleId) return;
+            if ((!isDraggingRole && !isDraggingResizeDot && !isDraggingAngleDot) || !draggedRoleId) return;
             
             isDraggingRole = false;
             isDraggingResizeDot = false;
