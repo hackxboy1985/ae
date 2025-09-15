@@ -122,9 +122,8 @@
       <!-- 画布区域 -->
       <div class="flex-1 relative bg-gray-200 border-b border-gray-300 overflow-hidden flex items-center justify-center">
 
-        
         <!-- 底层画布div -->
-        <div id="backgroundCanvas" class="absolute"></div>
+        <!-- <div id="backgroundCanvas" class="absolute"></div> -->
         
         <!-- Canvas容器，作为摄像机视图 -->
         <div id="canvasContainer" class="relative" :style="cameraStyle">
@@ -133,8 +132,8 @@
           <div v-if="showCamera" class="absolute inset-0 border-2 border-red-500 pointer-events-none"></div>
         </div>
         
-                <!-- 控制选项 -->
-        <div class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-lg flex flex-col space-y-2">
+        <!-- 控制选项 -->
+        <!-- <div class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-lg flex flex-col space-y-2">
           <label class="flex items-center space-x-2">
             <input type="checkbox" v-model="showCamera" class="form-checkbox rounded">
             <span>显示摄像机</span>
@@ -143,7 +142,7 @@
             <input type="checkbox" v-model="showCameraPreview" class="form-checkbox rounded">
             <span>显示相机预览</span>
           </label>
-        </div>
+        </div> -->
 
         
         <!-- 表情选择面板 -->
@@ -199,33 +198,39 @@
         
         <!-- 画布控制按钮 -->
         <div class="absolute top-4 right-4 bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-lg flex space-x-2">
-          <button @click="resetCamera" class="p-2 hover:bg-gray-100 rounded" title="重置相机位置">
-            <i class="fa fa-refresh"></i>
-          </button>
+          
           <button @click="zoomIn" class="p-2 hover:bg-gray-100 rounded" title="放大">
             <i class="fa fa-search-plus"></i>
           </button>
           <button @click="zoomOut" class="p-2 hover:bg-gray-100 rounded" title="缩小">
             <i class="fa fa-search-minus"></i>
           </button>
-          <!-- 摄像机开关 -->
-          <button @click="showCamera = !showCamera" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机"
-                  :class="{ 'bg-red-100': showCamera }">
-            <i class="fa fa-video-camera"></i>
-          </button>
           <button @click="resetZoom" class="p-2 hover:bg-gray-100 rounded" title="重置缩放">
             <i class="fa fa-home"></i>
           </button>
           <div class="w-px bg-gray-300 h-8"></div>
+          <!-- 摄像机开关 -->
+          <button @click="showCameraClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机"
+                  :class="{ 'bg-red-100': showCamera }">
+            <i class="fa fa-video-camera" title="显示摄像机"></i>
+          </button>
+          <button @click="showCameraPreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机"
+                  :class="{ 'bg-red-100': showCamera }">
+            <i class="fa fa-eye " title="摄像机预览"></i>
+          </button>
+          <button @click="resetCamera" class="p-2 hover:bg-gray-100 rounded" title="重置相机位置">
+            <i class="fa fa-refresh" ></i>
+          </button>
+
           <button @click="toggleAspectRatio" class="p-2 hover:bg-gray-100 rounded" :class="{ 'bg-blue-100': isMaintainingAspectRatio }" title="切换宽高比锁定">
             <i class="fa fa-arrows-alt"></i>
           </button>
           <button @click="toggleCameraRotation" class="p-2 hover:bg-gray-100 rounded" :class="{ 'bg-blue-100': enableCameraRotation }" title="切换旋转功能">
             <i class="fa fa-refresh fa-rotate-45"></i>
           </button>
-          <button @click="toggleCameraInfo" class="p-2 hover:bg-gray-100 rounded" :class="{ 'bg-blue-100': showCameraInfo }" title="显示相机信息">
+          <!-- <button @click="toggleCameraInfo" class="p-2 hover:bg-gray-100 rounded" :class="{ 'bg-blue-100': showCameraInfo }" title="显示相机信息">
             <i class="fa fa-info"></i>
-          </button>
+          </button> -->
           <button @click="useSmoothTransition = !useSmoothTransition" class="p-2 hover:bg-gray-100 rounded" :class="{ 'bg-blue-100': useSmoothTransition }" title="平滑过渡">
             <i class="fa fa-film"></i>
           </button>
@@ -266,11 +271,12 @@
       <div v-if="showCameraPreview" id="cameraPreview" class="absolute top-1/4 right-1/4 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
         <div class="bg-gray-800 text-white p-2 rounded-t-lg flex justify-between items-center cursor-move">
           <span>相机预览</span>
+          <!-- 关闭按钮 -->
           <button @click="showCameraPreview = false" class="text-white hover:text-gray-300">
             <i class="fa fa-times"></i>
           </button>
         </div>
-        <div class="p-2 preview-canvas-container" style="min-width: 200px; min-height: 150px;">
+        <div class="p-2 preview-canvas-container" style="min-width: 267px; min-height: 150px;">
           <canvas id="previewCanvas"></canvas>
         </div>
       </div>
@@ -784,13 +790,20 @@
         // 背景图缓存对象，用于预加载
         const bgImagesCache = ref({});
         
+        // 摄像机尺寸选项
+        const cameraSizes = ref([
+          { name: '640 × 480', width: 640, height: 480 },
+          { name: '1280 × 720', width: 1280, height: 720 },
+          { name: '1920 × 1080', width: 1920, height: 1080 }
+        ]);
+
         // 摄像机相关状态
         const showCamera = ref(false); // 是否显示摄像机
         const showCameraPreview = ref(false); // 是否显示相机预览
         let cameraX = 0; // 摄像机X位置
         let cameraY = 0; // 摄像机Y位置
-        let cameraWidth = 640; // 摄像机宽度
-        let cameraHeight = 480; // 摄像机高度
+        let cameraWidth = cameraSizes.value[1].width; // 摄像机宽度
+        let cameraHeight = cameraSizes.value[1].height; // 摄像机高度
         let isDraggingCamera = false; // 摄像机拖拽状态
         let dragStartX = 0; // 拖拽开始时的鼠标X
         let dragStartY = 0; // 拖拽开始时的鼠标Y
@@ -1148,6 +1161,8 @@
                 canvas.value.style.cursor = 'default';
               }
             }
+
+            renderFrame();
           });
           
           window.addEventListener('mouseup', () => {
@@ -1167,31 +1182,28 @@
           // 检查是否启用了相机预览
           if (!showCameraPreview.value) return;
           
+          //console.info('updateCameraPreview1',previewCanvas.value,previewCtx)
           // 检查并确保预览画布和上下文有效
-          if (!previewCanvas.value || !previewCtx) {
+          if (!previewCanvas.value || !previewCtx || document.getElementById('previewCanvas') !== previewCanvas.value) {
             previewCanvas.value = document.getElementById('previewCanvas');
             if (previewCanvas.value) {
               previewCtx = previewCanvas.value.getContext('2d');
-              console.log('预览画布重新初始化完成');
-              console.info('init 3')
-              setupCameraPreviewDrag();
+              //console.info('updateCameraPreview2',previewCanvas.value,previewCtx)
             } else {
-              console.warn('未找到previewCanvas元素');
+              console.warn('can not find previewCanvas element');
               return;
             }
           }
           
           // 检查并确保离屏画布和上下文有效
           if (!offscreenCanvas || !offscreenCtx) {
-            console.warn('离屏画布或上下文无效，等待初始化...');
-            // 延迟重试
-            setTimeout(updateCameraPreview, 100);
+            //console.warn('offscreenCanvas or offscreenCtx invalid  ...');
             return;
           }
           
           // 确保预览画布保持与摄像机相同的宽高比
           const cameraAspectRatio = cameraWidth / cameraHeight;
-          console.info('cameraAspectRatio',cameraAspectRatio,cameraWidth,cameraHeight)
+          //console.info('cameraAspectRatio',cameraAspectRatio,cameraWidth,cameraHeight)
           // 获取预览画布容器的尺寸限制
           let maxPreviewWidth = 320; // 默认最大宽度
           let maxPreviewHeight = 240; // 默认最大高度
@@ -1201,8 +1213,14 @@
             const containerRect = canvasContainer.getBoundingClientRect();
             maxPreviewWidth = containerRect.width - 16; // 减去一些内边距
             maxPreviewHeight = containerRect.height - 16;
+            //console.info('containerRect',containerRect)
           }
-          
+          if(maxPreviewWidth<0 || maxPreviewHeight<0){
+            maxPreviewWidth = 320;
+            maxPreviewHeight = 240;
+          }
+          // console.info('maxPreviewSize',maxPreviewWidth,maxPreviewHeight)
+
           // 计算适合容器的预览尺寸，保持宽高比
           let previewWidth, previewHeight;
           if (maxPreviewWidth / maxPreviewHeight > cameraAspectRatio) {
@@ -1214,17 +1232,13 @@
             previewWidth = maxPreviewWidth;
             previewHeight = previewWidth / cameraAspectRatio;
           }
-          
-          // 设置画布的实际尺寸（canvas元素的像素尺寸）
-          // 这里我们使用与显示尺寸相同的比例，但设置为更大的值以提高图像质量
-          const scaleFactor = 1.5; // 缩放因子，可根据需要调整
-          const pixelWidth = Math.round(previewWidth * scaleFactor);
-          const pixelHeight = Math.round(previewHeight * scaleFactor);
-          
-          if (previewCanvas.value.width !== pixelWidth || previewCanvas.value.height !== pixelHeight) {
-            previewCanvas.value.width = pixelWidth;
-            previewCanvas.value.height = pixelHeight;
-            console.log('设置预览画布像素尺寸:', pixelWidth, pixelHeight);
+           //console.info('previewSize',previewWidth,previewHeight)
+
+          // 设置画布的实际尺寸 相机尺寸（canvas元素的像素尺寸）
+          if (previewCanvas.value.width !== cameraWidth || previewCanvas.value.height !== cameraHeight) {
+            previewCanvas.value.width = cameraWidth;//pixelWidth;
+            previewCanvas.value.height = cameraHeight;//pixelHeight;
+            // console.log('设置预览画布像素尺寸:', cameraWidth, cameraHeight);
           }
           
           // 设置画布的显示尺寸（通过CSS样式）
@@ -1235,12 +1249,13 @@
             // 清除预览画布
             previewCtx.clearRect(0, 0, previewCanvas.value.width, previewCanvas.value.height);
             
-            console.log('尝试复制相机预览区域:', {
-              source: {x: cameraX, y: cameraY, width: cameraWidth, height: cameraHeight},
-              target: {width: previewCanvas.value.width, height: previewCanvas.value.height},
-              display: {width: previewWidth, height: previewHeight},
-              aspectRatio: cameraAspectRatio
-            });
+            //debug
+            // console.log('尝试复制相机预览区域:', {
+            //   source: {x: cameraX, y: cameraY, width: cameraWidth, height: cameraHeight},
+            //   target: {width: previewCanvas.value.width, height: previewCanvas.value.height},
+            //   display: {width: previewWidth, height: previewHeight},
+            //   aspectRatio: cameraAspectRatio
+            // });
             
             // 从离屏画布上复制相机区域到预览画布（系统实际渲染是在离屏画布上进行的）
             previewCtx.drawImage(
@@ -1249,12 +1264,12 @@
               0, 0, previewCanvas.value.width, previewCanvas.value.height
             );
           } catch (error) {
-            console.error('更新相机预览时出错:', error);
+            console.error('update camera preview error:', error);
           }
           
           // 添加调试信息显示当前的宽高比
-          console.log('当前相机宽高比:', cameraAspectRatio);
-          console.log('预览画布显示尺寸:', previewCanvas.value.style.width, previewCanvas.value.style.height);
+          //console.log('当前相机宽高比:', cameraAspectRatio);
+          //console.log('预览画布显示尺寸:', previewCanvas.value.style.width, previewCanvas.value.style.height );
         };
         
         // 添加拖拽功能
@@ -1262,25 +1277,44 @@
         let offsetX, offsetY;
         let previewWindow, dragHandle;
         
+        const showCameraClick = () => {
+          showCamera.value = !showCamera.value;
+          renderFrame();
+        }
+
+        const showCameraPreviewClick = ()=>{
+          showCameraPreview.value = !showCameraPreview.value;
+          setTimeout(setupCameraPreviewDrag, 300);
+          if(!showCameraPreview.value){
+            previewCtx = null;
+          }
+        };
+
+        // 关闭相机预览
+        const closeCameraPreview = () => {
+          showCameraPreview.value = false;
+        };
+
         // 为预览窗口添加拖拽功能
         const setupCameraPreviewDrag = () => {
-          console.log('尝试设置相机预览窗口拖拽功能');
-          
+          //console.log('尝试设置相机预览窗口拖拽功能');
+
+          //preview下面的canvas
+          //previewCanvas.value = document.getElementById('previewCanvas');
+
           // 先检查元素是否存在
           previewWindow = document.getElementById('cameraPreview');
-          console.log('相机预览窗口元素:', previewWindow);
+          //console.log('相机预览窗口元素:', previewWindow);
           
           dragHandle = previewWindow ? previewWindow.querySelector('.cursor-move') : null;
-          console.log('拖拽句柄元素:', dragHandle);
+          //console.log('拖拽句柄元素:', dragHandle);
           
-          if (!dragHandle || !previewWindow) {
-            console.log('未找到相机预览窗口或标题栏，1秒后重试');
-            // 重试机制
-            console.info('init 4')
-            setTimeout(setupCameraPreviewDrag, 1000);
+          if (!dragHandle || !previewWindow ) {
+            console.log('未找到相机预览窗口或标题栏',previewWindow,dragHandle);
             return;
           }
           
+          console.log('打开预览:previewWindow',previewWindow)
           // 确保样式设置正确
           previewWindow.style.position = 'absolute';
           previewWindow.style.left = previewWindow.style.left || '25%';
@@ -1303,7 +1337,7 @@
             e.stopPropagation();
             
             isDragging = true;
-            console.log('开始拖拽预览窗口');
+            console.log('drag move preview');
             
             // 获取鼠标相对于窗口左上角的偏移量
             const rect = previewWindow.getBoundingClientRect();
@@ -1375,11 +1409,6 @@
         
         // 在组件挂载后设置拖拽功能
         onMounted(() => {
-          // 等待DOM渲染完成后设置拖拽功能
-          setTimeout(() => {
-            console.info('init 1')
-            setupCameraPreviewDrag();
-          }, 1000);
         });
         
         // 绘制摄像机边框
@@ -1665,11 +1694,7 @@
           cameraPresets.value = cameraPresets.value.filter(p => p.name !== name);
         };
         
-        // 关闭相机预览
-        const closeCameraPreview = () => {
-          showCameraPreview.value = false;
-        };
-        
+
         // 监听showCameraPreview变化，当开启时立即更新预览
         const unwatchCameraPreview = watch(showCameraPreview, (newValue) => {
           if (newValue) {
@@ -1745,6 +1770,7 @@
         document.querySelectorAll('input[type="checkbox"][v-model="showCameraPreview"]').forEach(checkbox => {
           checkbox.addEventListener('change', () => {
             if (checkbox.checked) {
+              console.log('打开相机预览');
               // 使用setTimeout确保DOM更新完成后再刷新
               setTimeout(forceUpdateCameraPreview, 100);
             }
@@ -1977,11 +2003,11 @@
           return '未知表情';
         };
         
-        // 摄像机尺寸选项
-        const cameraSizes = ref([
-          { name: '640 × 480', width: 640, height: 480 },
-          { name: '1280 × 720', width: 1280, height: 720 }
-        ]);
+        // // 摄像机尺寸选项
+        // const cameraSizes = ref([
+        //   { name: '640 × 480', width: 640, height: 480 },
+        //   { name: '1280 × 720', width: 1280, height: 720 }
+        // ]);
         
         // 选中的摄像机尺寸 - 设置为1280 × 720比例
         const selectedCameraSize = ref(cameraSizes.value[1]);
@@ -1994,37 +2020,27 @@
             cameraHeight = selectedCameraSize.value.height;
             resetCamera(); // 重置摄像机位置到画布中心
             renderFrame(); // 重新渲染
-            if (showCameraPreview.value) {
-              updateCameraPreview(); // 更新预览
-            }
+            
           }
         });
         
         // 监听相机预览显示状态变化
-        watch(showCameraPreview, (newValue) => {
-          if (newValue) {
-            // 确保previewCanvas和previewCtx初始化
-            if (!previewCanvas.value || !previewCtx) {
-              previewCanvas.value = document.getElementById('previewCanvas');
-              if (previewCanvas.value) {
-                previewCtx = previewCanvas.value.getContext('2d');
-                console.log('预览画布初始化完成');
+        // watch(showCameraPreview, (newValue) => {
+        //   if (newValue) {
+        //     // 确保previewCanvas和previewCtx初始化
+        //     if (!previewCanvas.value || !previewCtx) {
+        //       previewCanvas.value = document.getElementById('previewCanvas');
+        //       if (previewCanvas.value) {
+        //         previewCtx = previewCanvas.value.getContext('2d');
+        //         console.log('预览画布初始化完成');
 
-              } else {
-                console.warn('未找到previewCanvas元素');
-                return;
-              }
-            }
-            
-            // 立即更新预览
-            setTimeout(() => {
-              updateCameraPreview();
-              // 初始化拖拽功能
-              console.info('init 2')
-              setupCameraPreviewDrag();
-            }, 10);
-          }
-        });
+        //       } else {
+        //         console.warn('未找到previewCanvas元素');
+        //         return;
+        //       }
+        //     }
+        //   }
+        // });
         
         // 表情面板相关状态
         const showExpressionPanel = ref(false);
@@ -2759,8 +2775,6 @@
             // 更新显示
             updateTimelineDisplay();
             renderFrame();
-            // 更新相机预览（如果启用）
-            updateCameraPreview();
           };
           
           // 为所有现有的表情元素添加右键菜单事件
@@ -3060,7 +3074,7 @@
             offscreenCtx.restore();
             
             // 6. 绘制上层信息（FPS等）
-            drawTopLayerInfo();
+            //drawTopLayerInfo(offscreenCtx);
             
             // 7. 清空可见画布，防止残影
             ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
@@ -3071,11 +3085,18 @@
             // 8. 绘制摄像机边框（如果启用）
             drawCamera();
             
+
             // 9. 为异步加载场景提供备用渲染
             if (currentShot && !isBackgroundDrawn) {
               // 对于正在加载的图片，设置备用渲染
               setupAsyncRenderFallback(currentShot);
             }
+
+            if (showCameraPreview.value) {
+              updateCameraPreview(); // 更新预览
+            }
+
+            drawTopLayerInfo(ctx.value);
         };
         
         // 绘制背景层
@@ -3134,14 +3155,14 @@
         };
         
         // 绘制顶层信息
-        const drawTopLayerInfo = () => {
+        const drawTopLayerInfo = (ctx) => {
           // 在左上角显示FPS信息
-          offscreenCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-          offscreenCtx.fillRect(10, 10, 60, 25);
-          offscreenCtx.fillStyle = '#ffffff';
-          offscreenCtx.font = '14px Arial';
-          offscreenCtx.textAlign = 'left';
-          offscreenCtx.fillText(`FPS: ${fps}`, 15, 28);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.fillRect(10, 10, 60, 25);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '14px Arial';
+          ctx.textAlign = 'left';
+          ctx.fillText(`FPS: ${fps}`, 15, 28);
         };
         
         // 设置异步渲染备用方案
@@ -3185,7 +3206,7 @@
               drawRoles();
               
               // 重绘顶层
-              drawTopLayerInfo();
+              drawTopLayerInfo(offscreenCtx);
               
               // 合成并显示
               ctx.value.drawImage(offscreenCanvas, 0, 0);
@@ -3371,7 +3392,7 @@
             
 
 
-            console.log('222>>>>',currentX,currentY,currentExpressionTrack.scale);
+            //console.log('222>>>>',currentX,currentY,currentExpressionTrack.scale);
             // 返回位置和场景配置中的尺寸和角度，优先使用当前帧图片的实际宽高
             const position = { 
               x: currentX, 
@@ -3382,7 +3403,7 @@
               scale: round(currentExpressionTrack.scale) || 1,
               isValid: true 
             }
-            console.log('333>>>>',position);
+            //console.log('333>>>>',position);
             return position;
           }
           
@@ -3718,7 +3739,7 @@
                   return;
                 }
                 
-                console.log(`will draw ${expression.name} ${currentPosition.width} ${currentPosition.height} scale:${currentExpressionTrack.scale}`);
+                //console.log(`will draw ${expression.name} ${currentPosition.width} ${currentPosition.height} scale:${currentExpressionTrack.scale}`);
                 // console.log('currentExpressionTrack:',currentExpressionTrack);
                 const currentX = currentPosition.x;
                 const currentY = currentPosition.y;
@@ -3932,7 +3953,7 @@
                 return;
               }
             }
-            console.log('draw currentExpressionTrack:',roleId,currentExpressionTrack);
+            //console.log('draw currentExpressionTrack:',roleId,currentExpressionTrack);
 
 
             //ctx, role, currentExpressionTrack, expression, imageCache
@@ -4008,7 +4029,6 @@
             // 更新显示
             updateTimelineDisplay();
             renderFrame();
-            updateCameraPreview()
           }
           
           // 继续动画
@@ -5097,9 +5117,12 @@
           updateTimelineDisplay,
           // 摄像机相关状态和方法
           showCamera,
+          showCameraClick,
           showCameraPreview,
+          showCameraPreviewClick,
           closeCameraPreview,
           resetCamera,
+          
           // 虚拟镜头系统扩展功能
           cameraZoom,
           cameraRotation,
