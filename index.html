@@ -210,12 +210,12 @@
           </button>
           <div class="w-px bg-gray-300 h-8"></div>
           <!-- 摄像机开关 -->
-          <button @click="showCameraClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机"
+          <button @click="showCameraClick" class="p-2 hover:bg-gray-100 rounded"
                   :class="{ 'bg-red-100': showCamera }">
             <i class="fa fa-video-camera" title="显示摄像机"></i>
           </button>
           <button @click="showCameraPreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机"
-                  :class="{ 'bg-red-100': showCamera }">
+                  :class="{ 'bg-red-100': showCameraPreview }">
             <i class="fa fa-eye " title="摄像机预览"></i>
           </button>
           <button @click="resetCamera" class="p-2 hover:bg-gray-100 rounded" title="重置相机位置">
@@ -268,7 +268,7 @@
       </div>
       
       <!-- 相机预览小页面 -->
-      <div v-if="showCameraPreview" id="cameraPreview" class="absolute top-1/4 right-1/4 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
+      <div v-if="showCameraPreview" id="cameraPreview" class="absolute top-1/4 left-1/4 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
         <div class="bg-gray-800 text-white p-2 rounded-t-lg flex justify-between items-center cursor-move">
           <span>相机预览</span>
           <!-- 关闭按钮 -->
@@ -276,8 +276,8 @@
             <i class="fa fa-times"></i>
           </button>
         </div>
-        <div class="p-2 preview-canvas-container" style="min-width: 267px; min-height: 150px;">
-          <canvas id="previewCanvas"></canvas>
+        <div class="p-2 preview-canvas-container" style="min-width: 283px; min-height: 166px;">
+          <canvas id="previewCanvas" style="width: 267px; height: 150px;"></canvas>
         </div>
       </div>
       
@@ -298,6 +298,8 @@
           display: flex;
           align-items: center;
           justify-content: center;
+          min-width: 283px; 
+          min-height: 166px;
         }
       </style>
       
@@ -1181,7 +1183,8 @@
         const updateCameraPreview = () => {
           // 检查是否启用了相机预览
           if (!showCameraPreview.value) return;
-          
+          // if (!showCamera.value) return;
+
           //console.info('updateCameraPreview1',previewCanvas.value,previewCtx)
           // 检查并确保预览画布和上下文有效
           if (!previewCanvas.value || !previewCtx || document.getElementById('previewCanvas') !== previewCanvas.value) {
@@ -1219,7 +1222,7 @@
             maxPreviewWidth = 320;
             maxPreviewHeight = 240;
           }
-          // console.info('maxPreviewSize',maxPreviewWidth,maxPreviewHeight)
+          console.info('maxPreviewSize',maxPreviewWidth,maxPreviewHeight)
 
           // 计算适合容器的预览尺寸，保持宽高比
           let previewWidth, previewHeight;
@@ -1238,7 +1241,7 @@
           if (previewCanvas.value.width !== cameraWidth || previewCanvas.value.height !== cameraHeight) {
             previewCanvas.value.width = cameraWidth;//pixelWidth;
             previewCanvas.value.height = cameraHeight;//pixelHeight;
-            // console.log('设置预览画布像素尺寸:', cameraWidth, cameraHeight);
+            //console.log('设置预览画布像素尺寸:', cameraWidth, cameraHeight);
           }
           
           // 设置画布的显示尺寸（通过CSS样式）
@@ -1286,6 +1289,7 @@
           showCameraPreview.value = !showCameraPreview.value;
           setTimeout(setupCameraPreviewDrag, 300);
           if(!showCameraPreview.value){
+            //必须设置，否则会有异常
             previewCtx = null;
           }
         };
@@ -1316,15 +1320,15 @@
           
           console.log('打开预览:previewWindow',previewWindow)
           // 确保样式设置正确
-          previewWindow.style.position = 'absolute';
-          previewWindow.style.left = previewWindow.style.left || '25%';
-          previewWindow.style.top = previewWindow.style.top || '25%';
-          previewWindow.style.right = 'auto';
-          previewWindow.style.bottom = 'auto';
-          previewWindow.style.zIndex = '50';
-          previewWindow.style.pointerEvents = 'auto';
+          // previewWindow.style.position = 'absolute';
+          // previewWindow.style.left = previewWindow.style.left || '25%';
+          // previewWindow.style.top = previewWindow.style.top || '25%';
+          // previewWindow.style.right = 'auto';
+          // previewWindow.style.bottom = 'auto';
+          // previewWindow.style.zIndex = '50';
+          // previewWindow.style.pointerEvents = 'auto';
           
-          console.log('设置预览窗口样式完成');
+          // console.log('设置预览窗口样式完成');
           
           // 先移除可能存在的旧监听器，避免重复绑定
           const handleMouseDown = (e) => {
