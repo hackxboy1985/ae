@@ -1,0 +1,830 @@
+// 摄像机相关功能模块
+
+// 导出函数，供主应用调用
+export function initCamera(app) {
+  // 摄像机尺寸选项
+  const cameraSizes = app.cameraSizes;
+  
+  // 摄像机相关状态
+  let showCamera = app.showCamera;
+  let showCameraPreview = app.showCameraPreview;
+  let cameraX = 0; // 摄像机X位置
+  let cameraY = 0; // 摄像机Y位置
+  let cameraWidth = cameraSizes.value[1].width; // 摄像机宽度
+  let cameraHeight = cameraSizes.value[1].height; // 摄像机高度
+  let isDraggingCamera = false; // 摄像机拖拽状态
+  let dragStartX = 0; // 拖拽开始时的鼠标X
+  let dragStartY = 0;
+  
+  // 从app对象获取canvas引用
+  let canvas = null;
+  if (app.canvas && app.canvas.value) {
+    canvas = app.canvas.value;
+    // console.log('Camera module: Canvas initialized successfully');
+  } else {
+    console.error('Camera module: Canvas reference not available');
+  }
+  
+  // 摄像机调整大小相关变量
+  let isResizingCamera = false; // 摄像机调整大小状态
+  let resizeHandle = ''; // 正在调整的手柄
+  let dragStartWidth = 0; // 调整大小开始时的宽度
+  let dragStartHeight = 0; // 调整大小开始时的高度
+  let dragStartCameraX = 0; // 调整大小开始时的摄像机X位置
+  let dragStartCameraY = 0; // 调整大小开始时的摄像机Y位置
+  let aspectRatio = cameraWidth / cameraHeight; // 宽高比
+  
+  // 预览窗口相关
+  let previewCanvas = app.previewCanvas;
+  let previewCtx = null;
+  let previewWindow = null;
+  let dragHandle = null;
+  let isDragging = false;
+  let offsetX = 0;
+  let offsetY = 0;
+  
+  // 虚拟镜头系统扩展功能
+  let cameraZoom = app.cameraZoom;
+  let cameraRotation = app.cameraRotation;
+  let enableCameraRotation = app.enableCameraRotation;
+  let showCameraInfo = app.showCameraInfo;
+  let useSmoothTransition = app.useSmoothTransition;
+  let cameraPresets = app.cameraPresets;
+  
+  // 引用主应用的变量和函数
+  const ctx = app.ctx;
+  const offscreenCanvas = app.offscreenCanvas;
+  const offscreenCtx = app.offscreenCtx;
+  const renderFrame = app.renderFrame;
+  const selectedCameraSize = app.selectedCameraSize;
+  const timeline = app.timeline;
+  const isMaintainingAspectRatio = app.isMaintainingAspectRatio;
+  
+  // 显示/隐藏摄像机
+  const showCameraClick = () => {
+    showCamera.value = !showCamera.value;
+    renderFrame();
+  };
+  
+  // 显示/隐藏摄像机预览
+  const showCameraPreviewClick = () => {
+    console.log('showCameraPreviewClick showCameraPreview.value:', showCameraPreview.value);
+    showCameraPreview.value = !showCameraPreview.value;
+    
+    // 使用try-catch包装setTimeout回调，确保异常能够被捕获和显示
+    setTimeout(() => {
+      try {
+        setupCameraPreviewDrag();
+        if (showCameraPreview.value) {
+          // 必须设置，否则会有异常
+          previewCtx = null;
+        }
+        updateCameraPreview();
+      } catch (error) {
+        console.error('setupCameraPreviewDrag error:', error);
+        throw error; // 重新抛出异常，确保它能在控制台中显示
+      }
+    }, 200);
+    
+    // if (showCameraPreview.value) {
+    //   // 必须设置，否则会有异常
+    //   previewCtx = null;
+    // }
+    // setTimeout(updateCameraPreview, 350)
+  };
+  
+  // 关闭相机预览
+  const closeCameraPreview = () => {
+    showCameraPreview.value = false;
+  };
+  
+  // 为预览窗口添加拖拽功能
+  const setupCameraPreviewDrag = () => {
+    // if(showCameraPreview.value)
+    //   throw "setupCameraPreviewDrag";
+
+    // 先检查元素是否存在
+    previewWindow = document.getElementById('cameraPreview');
+    dragHandle = previewWindow ? previewWindow.querySelector('.cursor-move') : null;
+    
+    if (!dragHandle || !previewWindow) {
+      console.log('未找到相机预览窗口或标题栏', previewWindow, dragHandle);
+      return;
+    }
+    
+    console.log('打开预览:previewWindow', previewWindow);
+    
+    // 先移除可能存在的旧监听器，避免重复绑定
+    const handleMouseDown = (e) => {
+      // 确保点击的是标题栏本身，而不是关闭按钮
+      if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+        return;
+      }
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      isDragging = true;
+      console.log('drag move preview');
+      
+      // 获取鼠标相对于窗口左上角的偏移量
+      const rect = previewWindow.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      
+      // 提高z-index防止被遮挡
+      previewWindow.style.zIndex = '1000';
+      
+      // 添加拖拽中的样式
+      document.body.style.cursor = 'grabbing';
+      previewWindow.style.userSelect = 'none';
+      previewWindow.style.transition = 'none';
+      
+      // 创建临时的移动和释放处理函数
+      const handleMouseMove = (moveEvent) => {
+        if (!isDragging || !previewWindow) return;
+        
+        moveEvent.preventDefault();
+        moveEvent.stopPropagation();
+        
+        // 计算新位置（考虑窗口边界）
+        let newLeft = moveEvent.clientX - offsetX;
+        let newTop = moveEvent.clientY - offsetY;
+        
+        // 限制在可视区域内
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const windowWidth = previewWindow.offsetWidth;
+        const windowHeight = previewWindow.offsetHeight;
+        
+        newLeft = Math.max(0, Math.min(newLeft, viewportWidth - windowWidth));
+        newTop = Math.max(0, Math.min(newTop, viewportHeight - windowHeight));
+        
+        // 设置新位置
+        previewWindow.style.left = `${newLeft}px`;
+        previewWindow.style.top = `${newTop}px`;
+      };
+      
+      const handleMouseUp = () => {
+        if (isDragging) {
+          isDragging = false;
+          console.log('结束拖拽预览窗口');
+          
+          document.body.style.cursor = 'default';
+          if (previewWindow) {
+            previewWindow.style.zIndex = '50';
+            previewWindow.style.userSelect = 'auto';
+            previewWindow.style.transition = '';
+          }
+          
+          // 移除临时事件监听器
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+          document.removeEventListener('mouseleave', handleMouseUp);
+        }
+      };
+      
+      // 添加临时事件监听器
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mouseleave', handleMouseUp);
+    };
+    
+    // 移除旧的事件监听器，使用新的方式
+    dragHandle.onmousedown = handleMouseDown;
+    console.log('拖拽功能设置完成');
+  };
+  
+  // 更新相机预览
+  const updateCameraPreview = () => {
+    // 检查是否启用了相机预览
+    if (!showCameraPreview.value) {
+      //console.log('updateCameraPreview showCameraPreview.value:', showCameraPreview.value);
+      return;
+    }
+    
+    // 检查并确保预览画布和上下文有效
+    if (!previewCanvas.value || !previewCtx || document.getElementById('previewCanvas') !== previewCanvas.value) {
+      previewCanvas.value = document.getElementById('previewCanvas');
+      if (previewCanvas.value) {
+        previewCtx = previewCanvas.value.getContext('2d');
+      } else {
+        console.warn('can not find previewCanvas element');
+        return;
+      }
+    }
+    
+    // 检查并确保离屏画布和上下文有效
+    if (!offscreenCanvas || !offscreenCtx) {
+      console.log('updateCameraPreview offscreenCanvas', offscreenCanvas, 'offscreenCtx', offscreenCtx);
+      return;
+    }
+    
+    // 确保预览画布保持与摄像机相同的宽高比
+    const cameraAspectRatio = cameraWidth / cameraHeight;
+    
+    // 获取预览画布容器的尺寸限制
+    let maxPreviewWidth = 320; // 默认最大宽度
+    let maxPreviewHeight = 240; // 默认最大高度
+    
+    const canvasContainer = previewCanvas.value.parentElement;
+    if (canvasContainer) {
+      const containerRect = canvasContainer.getBoundingClientRect();
+      maxPreviewWidth = containerRect.width - 16; // 减去一些内边距
+      maxPreviewHeight = containerRect.height - 16;
+    }
+    if (maxPreviewWidth < 0 || maxPreviewHeight < 0) {
+      maxPreviewWidth = 320;
+      maxPreviewHeight = 240;
+    }
+    //console.log('updateCameraPreview maxPreviewWidth', maxPreviewWidth, 'maxPreviewHeight', maxPreviewHeight);
+    
+    // 计算适合容器的预览尺寸，保持宽高比
+    let previewWidth, previewHeight;
+    if (maxPreviewWidth / maxPreviewHeight > cameraAspectRatio) {
+      // 以高度为基准
+      previewHeight = maxPreviewHeight;
+      previewWidth = previewHeight * cameraAspectRatio;
+    } else {
+      // 以宽度为基准
+      previewWidth = maxPreviewWidth;
+      previewHeight = previewWidth / cameraAspectRatio;
+    }
+    
+    // 设置预览画布尺寸
+    previewCanvas.value.width = cameraWidth;
+    previewCanvas.value.height = cameraHeight;
+    
+    // 设置CSS样式使预览画布适应容器
+    previewCanvas.value.style.width = `${previewWidth}px`;
+    previewCanvas.value.style.height = `${previewHeight}px`;
+    
+    // 清除预览画布
+    previewCtx.clearRect(0, 0, cameraWidth, cameraHeight);
+    
+    try {
+      // 从离屏画布复制摄像机区域的内容到预览画布
+      previewCtx.drawImage(
+        offscreenCanvas,
+        cameraX, cameraY, cameraWidth, cameraHeight, // 源区域
+        0, 0, cameraWidth, cameraHeight // 目标区域
+      );
+    } catch (error) {
+      console.error('复制预览内容出错:', error);
+    }
+  };
+  
+  // 绘制摄像机边框
+  const drawCamera = () => {
+    if (!showCamera.value || !ctx.value) return;
+    
+    ctx.value.save();
+    
+    // 绘制摄像机边框
+    ctx.value.strokeStyle = '#FF0000';
+    ctx.value.lineWidth = 2;
+    
+    // 应用旋转（如果启用）
+    if (cameraRotation.value !== 0 && enableCameraRotation.value) {
+      const centerX = cameraX + cameraWidth / 2;
+      const centerY = cameraY + cameraHeight / 2;
+      ctx.value.translate(centerX, centerY);
+      ctx.value.rotate((cameraRotation.value * Math.PI) / 180);
+      
+      // 绘制旋转后的矩形
+      ctx.value.strokeRect(-cameraWidth / 2, -cameraHeight / 2, cameraWidth, cameraHeight);
+      
+      // 绘制边框内部的半透明区域
+      ctx.value.fillStyle = 'rgba(255, 0, 0, 0.1)';
+      ctx.value.fillRect(-cameraWidth / 2, -cameraHeight / 2, cameraWidth, cameraHeight);
+      
+      // 绘制摄像机角标记
+      const cornerSize = 10;
+      ctx.value.strokeStyle = '#FF0000';
+      ctx.value.lineWidth = 3;
+      
+      // 左上角
+      ctx.value.beginPath();
+      ctx.value.moveTo(-cameraWidth / 2, -cameraHeight / 2);
+      ctx.value.lineTo(-cameraWidth / 2 + cornerSize, -cameraHeight / 2);
+      ctx.value.moveTo(-cameraWidth / 2, -cameraHeight / 2);
+      ctx.value.lineTo(-cameraWidth / 2, -cameraHeight / 2 + cornerSize);
+      ctx.value.stroke();
+      
+      // 右上角
+      ctx.value.beginPath();
+      ctx.value.moveTo(cameraWidth / 2, -cameraHeight / 2);
+      ctx.value.lineTo(cameraWidth / 2 - cornerSize, -cameraHeight / 2);
+      ctx.value.moveTo(cameraWidth / 2, -cameraHeight / 2);
+      ctx.value.lineTo(cameraWidth / 2, -cameraHeight / 2 + cornerSize);
+      ctx.value.stroke();
+      
+      // 右下角
+      ctx.value.beginPath();
+      ctx.value.moveTo(cameraWidth / 2, cameraHeight / 2);
+      ctx.value.lineTo(cameraWidth / 2 - cornerSize, cameraHeight / 2);
+      ctx.value.moveTo(cameraWidth / 2, cameraHeight / 2);
+      ctx.value.lineTo(cameraWidth / 2, cameraHeight / 2 - cornerSize);
+      ctx.value.stroke();
+      
+      // 左下角
+      ctx.value.beginPath();
+      ctx.value.moveTo(-cameraWidth / 2, cameraHeight / 2);
+      ctx.value.lineTo(-cameraWidth / 2 + cornerSize, cameraHeight / 2);
+      ctx.value.moveTo(-cameraWidth / 2, cameraHeight / 2);
+      ctx.value.lineTo(-cameraWidth / 2, cameraHeight / 2 - cornerSize);
+      ctx.value.stroke();
+    } else {
+      // 不旋转时直接绘制矩形边框
+      ctx.value.strokeRect(cameraX, cameraY, cameraWidth, cameraHeight);
+      
+      // 绘制边框内部的半透明区域
+      ctx.value.fillStyle = 'rgba(255, 0, 0, 0.1)';
+      ctx.value.fillRect(cameraX, cameraY, cameraWidth, cameraHeight);
+      
+      // 绘制摄像机角标记
+      const cornerSize = 10;
+      ctx.value.strokeStyle = '#FF0000';
+      ctx.value.lineWidth = 3;
+      
+      // 左上角
+      ctx.value.beginPath();
+      ctx.value.moveTo(cameraX, cameraY);
+      ctx.value.lineTo(cameraX + cornerSize, cameraY);
+      ctx.value.moveTo(cameraX, cameraY);
+      ctx.value.lineTo(cameraX, cameraY + cornerSize);
+      ctx.value.stroke();
+      
+      // 右上角
+      ctx.value.beginPath();
+      ctx.value.moveTo(cameraX + cameraWidth, cameraY);
+      ctx.value.lineTo(cameraX + cameraWidth - cornerSize, cameraY);
+      ctx.value.moveTo(cameraX + cameraWidth, cameraY);
+      ctx.value.lineTo(cameraX + cameraWidth, cameraY + cornerSize);
+      ctx.value.stroke();
+      
+      // 右下角
+      ctx.value.beginPath();
+      ctx.value.moveTo(cameraX + cameraWidth, cameraY + cameraHeight);
+      ctx.value.lineTo(cameraX + cameraWidth - cornerSize, cameraY + cameraHeight);
+      ctx.value.moveTo(cameraX + cameraWidth, cameraY + cameraHeight);
+      ctx.value.lineTo(cameraX + cameraWidth, cameraY + cameraHeight - cornerSize);
+      ctx.value.stroke();
+      
+      // 左下角
+      ctx.value.beginPath();
+      ctx.value.moveTo(cameraX, cameraY + cameraHeight);
+      ctx.value.lineTo(cameraX + cornerSize, cameraY + cameraHeight);
+      ctx.value.moveTo(cameraX, cameraY + cameraHeight);
+      ctx.value.lineTo(cameraX, cameraY + cameraHeight - cornerSize);
+      ctx.value.stroke();
+    }
+    
+    // 恢复上下文状态
+    ctx.value.restore();
+  };
+  
+  // 重置摄像机位置到画布中心
+  const resetCamera = () => {
+    cameraX = (offscreenCanvas.width - cameraWidth) / 2;
+    cameraY = (offscreenCanvas.height - cameraHeight) / 2;
+    console.log('resetCamera:', cameraX, cameraY);
+    renderFrame();
+  };
+  
+  // 虚拟镜头控制方法
+  const toggleAspectRatio = () => {
+    if (isMaintainingAspectRatio && isMaintainingAspectRatio.value !== undefined) {
+      isMaintainingAspectRatio.value = !isMaintainingAspectRatio.value;
+    }
+  };
+  
+  const toggleCameraRotation = () => {
+    enableCameraRotation.value = !enableCameraRotation.value;
+    if (!enableCameraRotation.value) {
+      cameraRotation.value = 0;
+    }
+    renderFrame();
+  };
+  
+  const toggleCameraInfo = () => {
+    showCameraInfo.value = !showCameraInfo.value;
+  };
+  
+  const zoomCamera = (factor) => {
+    const newWidth = cameraWidth * factor;
+    const newHeight = isMaintainingAspectRatio && isMaintainingAspectRatio.value !== undefined ? 
+                      (isMaintainingAspectRatio.value ? cameraHeight * factor : cameraHeight) : 
+                      cameraHeight;
+    
+    // 确保摄像机尺寸不会太小
+    if (newWidth >= 100 && newHeight >= 100) {
+      // 计算中心位置
+      const centerX = cameraX + cameraWidth / 2;
+      const centerY = cameraY + cameraHeight / 2;
+      
+      // 更新尺寸
+      cameraWidth = newWidth;
+      cameraHeight = newHeight;
+      
+      // 重新定位摄像机，保持中心点不变
+      cameraX = centerX - cameraWidth / 2;
+      cameraY = centerY - cameraHeight / 2;
+      
+      renderFrame();
+    }
+  };
+  
+  const rotateCamera = (degrees) => {
+    if (!enableCameraRotation.value) return;
+    
+    cameraRotation.value = (cameraRotation.value + degrees + 360) % 360;
+    renderFrame();
+  };
+  
+  const applyCameraPreset = (preset) => {
+    if (preset) {
+      cameraX = preset.x || cameraX;
+      cameraY = preset.y || cameraY;
+      cameraWidth = preset.width || cameraWidth;
+      cameraHeight = preset.height || cameraHeight;
+      cameraRotation.value = preset.rotation || cameraRotation.value;
+      renderFrame();
+    }
+  };
+  
+  const saveCameraPreset = (name) => {
+    const newPreset = {
+      name,
+      x: cameraX,
+      y: cameraY,
+      width: cameraWidth,
+      height: cameraHeight,
+      rotation: cameraRotation.value
+    };
+    
+    cameraPresets.value.push(newPreset);
+  };
+  
+  const deleteCameraPreset = (index) => {
+    if (index >= 0 && index < cameraPresets.value.length) {
+      cameraPresets.value.splice(index, 1);
+    }
+  };
+  
+  // 强制刷新相机预览
+  const forceUpdateCameraPreview = () => {
+    if (showCameraPreview.value) {
+      updateCameraPreview();
+    }
+  };
+  
+  // 监听摄像机尺寸变化
+  const watchCameraSize = () => {
+    return (newValue) => {
+      if (newValue) {
+        cameraWidth = newValue.width;
+        cameraHeight = newValue.height;
+        resetCamera(); // 重置摄像机位置到画布中心
+        renderFrame(); // 重新渲染
+      }
+    };
+  };
+
+  // 设置摄像机拖拽和调整大小事件
+  const setupCameraEvents = () => {
+    if (!canvas) return;
+    
+    // 拖拽摄像机
+    canvas.addEventListener('mousedown', (e) => {
+      if (!showCamera.value) return;
+      
+      // 阻止默认行为，确保拖拽流畅
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
+      
+      // 检查是否点击了调整大小的手柄
+      const resizeRegionSize = 10; // 调整区域大小
+      
+      // 检查角落
+      if (mouseX >= cameraX - resizeRegionSize && mouseX <= cameraX + resizeRegionSize && 
+          mouseY >= cameraY - resizeRegionSize && mouseY <= cameraY + resizeRegionSize) {
+        isResizingCamera = true;
+        resizeHandle = 'nw';
+        dragStartX = mouseX;
+        dragStartY = mouseY;
+        dragStartWidth = cameraWidth;
+        dragStartHeight = cameraHeight;
+        dragStartCameraX = cameraX;
+        dragStartCameraY = cameraY;
+        canvas.style.cursor = 'nwse-resize';
+        return;
+      } else if (mouseX >= cameraX + cameraWidth - resizeRegionSize && mouseX <= cameraX + cameraWidth + resizeRegionSize && 
+                 mouseY >= cameraY - resizeRegionSize && mouseY <= cameraY + resizeRegionSize) {
+        isResizingCamera = true;
+        resizeHandle = 'ne';
+        dragStartX = mouseX;
+        dragStartY = mouseY;
+        dragStartWidth = cameraWidth;
+        dragStartHeight = cameraHeight;
+        dragStartCameraX = cameraX;
+        dragStartCameraY = cameraY;
+        canvas.style.cursor = 'nesw-resize';
+        return;
+      } else if (mouseX >= cameraX - resizeRegionSize && mouseX <= cameraX + resizeRegionSize && 
+                 mouseY >= cameraY + cameraHeight - resizeRegionSize && mouseY <= cameraY + cameraHeight + resizeRegionSize) {
+        isResizingCamera = true;
+        resizeHandle = 'sw';
+        dragStartX = mouseX;
+        dragStartY = mouseY;
+        dragStartWidth = cameraWidth;
+        dragStartHeight = cameraHeight;
+        dragStartCameraX = cameraX;
+        dragStartCameraY = cameraY;
+        canvas.style.cursor = 'nesw-resize';
+        return;
+      } else if (mouseX >= cameraX + cameraWidth - resizeRegionSize && mouseX <= cameraX + cameraWidth + resizeRegionSize && 
+                 mouseY >= cameraY + cameraHeight - resizeRegionSize && mouseY <= cameraY + cameraHeight + resizeRegionSize) {
+        isResizingCamera = true;
+        resizeHandle = 'se';
+        dragStartX = mouseX;
+        dragStartY = mouseY;
+        dragStartWidth = cameraWidth;
+        dragStartHeight = cameraHeight;
+        dragStartCameraX = cameraX;
+        dragStartCameraY = cameraY;
+        canvas.style.cursor = 'nwse-resize';
+        return;
+      }
+      
+      // 检查边
+      else if (mouseX >= cameraX - resizeRegionSize && mouseX <= cameraX + resizeRegionSize && 
+               mouseY >= cameraY && mouseY <= cameraY + cameraHeight) {
+        isResizingCamera = true;
+        resizeHandle = 'w';
+        dragStartX = mouseX;
+        dragStartY = mouseY;
+        dragStartWidth = cameraWidth;
+        dragStartHeight = cameraHeight;
+        dragStartCameraX = cameraX;
+        dragStartCameraY = cameraY;
+        canvas.style.cursor = 'ew-resize';
+        return;
+      } else if (mouseX >= cameraX + cameraWidth - resizeRegionSize && mouseX <= cameraX + cameraWidth + resizeRegionSize && 
+                 mouseY >= cameraY && mouseY <= cameraY + cameraHeight) {
+        isResizingCamera = true;
+        resizeHandle = 'e';
+        dragStartX = mouseX;
+        dragStartY = mouseY;
+        dragStartWidth = cameraWidth;
+        dragStartHeight = cameraHeight;
+        dragStartCameraX = cameraX;
+        dragStartCameraY = cameraY;
+        canvas.style.cursor = 'ew-resize';
+        return;
+      } else if (mouseY >= cameraY - resizeRegionSize && mouseY <= cameraY + resizeRegionSize && 
+                 mouseX >= cameraX && mouseX <= cameraX + cameraWidth) {
+        isResizingCamera = true;
+        resizeHandle = 'n';
+        dragStartX = mouseX;
+        dragStartY = mouseY;
+        dragStartWidth = cameraWidth;
+        dragStartHeight = cameraHeight;
+        dragStartCameraX = cameraX;
+        dragStartCameraY = cameraY;
+        canvas.style.cursor = 'ns-resize';
+        return;
+      } else if (mouseY >= cameraY + cameraHeight - resizeRegionSize && mouseY <= cameraY + cameraHeight + resizeRegionSize && 
+                 mouseX >= cameraX && mouseX <= cameraX + cameraWidth) {
+        isResizingCamera = true;
+        resizeHandle = 's';
+        dragStartX = mouseX;
+        dragStartY = mouseY;
+        dragStartWidth = cameraWidth;
+        dragStartHeight = cameraHeight;
+        dragStartCameraX = cameraX;
+        dragStartCameraY = cameraY;
+        canvas.style.cursor = 'ns-resize';
+        return;
+      }
+      
+      // 检查是否点击了摄像机区域用于拖拽
+      if (mouseX >= cameraX && mouseX <= cameraX + cameraWidth && 
+          mouseY >= cameraY && mouseY <= cameraY + cameraHeight) {
+        isDraggingCamera = true;
+        dragStartX = mouseX;
+        dragStartY = mouseY;
+        dragStartCameraX = cameraX;
+        dragStartCameraY = cameraY;
+        canvas.style.cursor = 'grabbing';
+      }
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
+      
+      // 处理摄像机拖拽
+      if (isDraggingCamera) {
+        // 阻止默认行为
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // 计算新的摄像机位置
+        const deltaX = mouseX - dragStartX;
+        const deltaY = mouseY - dragStartY;
+        cameraX = dragStartCameraX + deltaX;
+        cameraY = dragStartCameraY + deltaY;
+        
+        // 限制摄像机在画布范围内
+        if (cameraX < 0) cameraX = 0;
+        if (cameraY < 0) cameraY = 0;
+        if (cameraX + cameraWidth > canvas.width) cameraX = canvas.width - cameraWidth;
+        if (cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
+        
+        // 立即渲染更新后的位置
+        renderFrame();
+      }
+      // 处理摄像机调整大小
+      else if (isResizingCamera) {
+        // 阻止默认行为
+        e.preventDefault();
+        e.stopPropagation();
+        let newWidth = dragStartWidth;
+        let newHeight = dragStartHeight;
+        let newX = dragStartCameraX;
+        let newY = dragStartCameraY;
+        
+        // 计算新的尺寸和位置
+        switch (resizeHandle) {
+          case 'n':
+            newHeight = dragStartHeight - (mouseY - dragStartY);
+            newY = dragStartCameraY + (mouseY - dragStartY);
+            break;
+          case 's':
+            newHeight = dragStartHeight + (mouseY - dragStartY);
+            break;
+          case 'w':
+            newWidth = dragStartWidth - (mouseX - dragStartX);
+            newX = dragStartCameraX + (mouseX - dragStartX);
+            break;
+          case 'e':
+            newWidth = dragStartWidth + (mouseX - dragStartX);
+            break;
+          case 'nw':
+            newWidth = dragStartWidth - (mouseX - dragStartX);
+            newHeight = dragStartHeight - (mouseY - dragStartY);
+            newX = dragStartCameraX + (mouseX - dragStartX);
+            newY = dragStartCameraY + (mouseY - dragStartY);
+            break;
+          case 'ne':
+            newWidth = dragStartWidth + (mouseX - dragStartX);
+            newHeight = dragStartHeight - (mouseY - dragStartY);
+            newY = dragStartCameraY + (mouseY - dragStartY);
+            break;
+          case 'sw':
+            newWidth = dragStartWidth - (mouseX - dragStartX);
+            newHeight = dragStartHeight + (mouseY - dragStartY);
+            newX = dragStartCameraX + (mouseX - dragStartX);
+            break;
+          case 'se':
+            newWidth = dragStartWidth + (mouseX - dragStartX);
+            newHeight = dragStartHeight + (mouseY - dragStartY);
+            break;
+        }
+        
+        // 应用宽高比约束
+        if (isMaintainingAspectRatio && isMaintainingAspectRatio.value !== undefined && (resizeHandle.includes('n') || resizeHandle.includes('s') || 
+                                        resizeHandle.includes('e') || resizeHandle.includes('w'))) {
+          // 根据调整的方向决定使用哪个维度作为基准
+          if (resizeHandle.includes('n') || resizeHandle.includes('s')) {
+            // 基于高度调整宽度
+            newWidth = newHeight * aspectRatio;
+          } else if (resizeHandle.includes('e') || resizeHandle.includes('w')) {
+            // 基于宽度调整高度
+            newHeight = newWidth / aspectRatio;
+          }
+        }
+        
+        // 限制最小尺寸
+        const minSize = 100;
+        if (newWidth < minSize) newWidth = minSize;
+        if (newHeight < minSize) newHeight = minSize;
+        
+        // 限制摄像机在画布范围内
+        if (newX < 0) {
+          newWidth += newX;
+          newX = 0;
+        }
+        if (newY < 0) {
+          newHeight += newY;
+          newY = 0;
+        }
+        if (newX + newWidth > canvas.width) {
+          newWidth = canvas.width - newX;
+        }
+        if (newY + newHeight > canvas.height) {
+          newHeight = canvas.height - newY;
+        }
+        
+        // 更新摄像机属性
+        cameraX = newX;
+        cameraY = newY;
+        cameraWidth = newWidth;
+        cameraHeight = newHeight;
+      }
+      // 更新鼠标样式
+      else if (showCamera.value) {
+        const resizeRegionSize = 10;
+        
+        // 检查角落
+        if ((mouseX >= cameraX - resizeRegionSize && mouseX <= cameraX + resizeRegionSize && 
+             mouseY >= cameraY - resizeRegionSize && mouseY <= cameraY + resizeRegionSize) ||
+            (mouseX >= cameraX + cameraWidth - resizeRegionSize && mouseX <= cameraX + cameraWidth + resizeRegionSize && 
+             mouseY >= cameraY + cameraHeight - resizeRegionSize && mouseY <= cameraY + cameraHeight + resizeRegionSize)) {
+          canvas.style.cursor = 'nwse-resize';
+        } else if ((mouseX >= cameraX + cameraWidth - resizeRegionSize && mouseX <= cameraX + cameraWidth + resizeRegionSize && 
+                   mouseY >= cameraY - resizeRegionSize && mouseY <= cameraY + resizeRegionSize) ||
+                  (mouseX >= cameraX - resizeRegionSize && mouseX <= cameraX + resizeRegionSize && 
+                   mouseY >= cameraY + cameraHeight - resizeRegionSize && mouseY <= cameraY + cameraHeight + resizeRegionSize)) {
+          canvas.style.cursor = 'nesw-resize';
+        } 
+        // 检查边
+        else if ((mouseX >= cameraX - resizeRegionSize && mouseX <= cameraX + resizeRegionSize && 
+                  mouseY >= cameraY && mouseY <= cameraY + cameraHeight) ||
+                 (mouseX >= cameraX + cameraWidth - resizeRegionSize && mouseX <= cameraX + cameraWidth + resizeRegionSize && 
+                  mouseY >= cameraY && mouseY <= cameraY + cameraHeight)) {
+          canvas.style.cursor = 'ew-resize';
+        } else if ((mouseY >= cameraY - resizeRegionSize && mouseY <= cameraY + resizeRegionSize && 
+                    mouseX >= cameraX && mouseX <= cameraX + cameraWidth) ||
+                   (mouseY >= cameraY + cameraHeight - resizeRegionSize && mouseY <= cameraY + cameraHeight + resizeRegionSize && 
+                    mouseX >= cameraX && mouseX <= cameraX + cameraWidth)) {
+          canvas.style.cursor = 'ns-resize';
+        } 
+        // 检查内部
+        else if (mouseX >= cameraX && mouseX <= cameraX + cameraWidth && 
+                 mouseY >= cameraY && mouseY <= cameraY + cameraHeight) {
+          canvas.style.cursor = 'grab';
+        } 
+        // 默认
+        else {
+          canvas.style.cursor = 'default';
+        }
+      }
+
+      renderFrame();
+    });
+    
+    window.addEventListener('mouseup', (e) => {
+      if (isDraggingCamera && canvas) {
+        isDraggingCamera = false;
+        canvas.style.cursor = 'default';
+        // 确保释放后立即更新视图
+        renderFrame();
+      }
+      if (isResizingCamera && canvas) {
+        isResizingCamera = false;
+        canvas.style.cursor = 'default';
+        // 确保释放后立即更新视图
+        renderFrame();
+      }
+    });
+  };
+  
+  // 返回摄像机模块的公共接口
+  return {
+    cameraWidth,
+    cameraHeight,
+    cameraX,
+    cameraY,
+    showCameraClick,
+    showCameraPreviewClick,
+    closeCameraPreview,
+    resetCamera,
+    drawCamera,
+    setupCameraPreviewDrag,
+    setupCameraEvents,
+    updateCameraPreview,
+    forceUpdateCameraPreview,
+    toggleAspectRatio,
+    toggleCameraRotation,
+    toggleCameraInfo,
+    zoomCamera,
+    rotateCamera,
+    applyCameraPreset,
+    saveCameraPreset,
+    deleteCameraPreset,
+    watchCameraSize
+  };
+}
