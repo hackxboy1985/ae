@@ -10,12 +10,14 @@ export function initCamera(app) {
   let showCameraPreview = app.showCameraPreview;
   let cameraX = 0; // 摄像机X位置
   let cameraY = 0; // 摄像机Y位置
-  let cameraWidth = cameraSizes.value[1].width; // 摄像机宽度
-  let cameraHeight = cameraSizes.value[1].height; // 摄像机高度
+  let cameraWidth = cameraSizes.value[1].width; // cavas上的虚拟摄像机宽度，不代表输出宽
+  let cameraHeight = cameraSizes.value[1].height; // cavas上的虚拟摄像机高度，不代表输出高
   let isDraggingCamera = false; // 摄像机拖拽状态
   let dragStartX = 0; // 拖拽开始时的鼠标X
   let dragStartY = 0;
-  
+  let outputCameraWidth = cameraWidth; // 输出的摄像机宽度
+  let outputCameraHeight = cameraHeight; // 输出的摄像机高度
+
   // 从app对象获取canvas引用
   let canvas = null;
   if (app.canvas && app.canvas.value) {
@@ -113,7 +115,12 @@ export function initCamera(app) {
     }
     
     console.log('打开预览:previewWindow', previewWindow);
-    
+    // if(previewCanvas !=null){
+    //     console.log('open camera preview set size:', outputCameraWidth,outputCameraHeight);
+    //     previewCanvas.value.width = outputCameraWidth;
+    //     previewCanvas.value.height = outputCameraHeight;
+    // }
+
     // 先移除可能存在的旧监听器，避免重复绑定
     const handleMouseDown = (e) => {
       // 确保点击的是标题栏本身，而不是关闭按钮
@@ -251,23 +258,25 @@ export function initCamera(app) {
       previewHeight = previewWidth / cameraAspectRatio;
     }
     
-    // 设置预览画布尺寸
-    previewCanvas.value.width = cameraWidth;
-    previewCanvas.value.height = cameraHeight;
+    // 设置预览画布尺寸为虚拟镜头还是实际尺寸
+    // previewCanvas.value.width = cameraWidth;
+    // previewCanvas.value.height = cameraHeight;
+    previewCanvas.value.width = outputCameraWidth;
+    previewCanvas.value.height = outputCameraHeight;
     
     // 设置CSS样式使预览画布适应容器
     previewCanvas.value.style.width = `${previewWidth}px`;
     previewCanvas.value.style.height = `${previewHeight}px`;
     
     // 清除预览画布
-    previewCtx.clearRect(0, 0, cameraWidth, cameraHeight);
+    previewCtx.clearRect(0, 0, outputCameraWidth, outputCameraHeight);
     
     try {
       // 从离屏画布复制摄像机区域的内容到预览画布
       previewCtx.drawImage(
         offscreenCanvas,
         cameraX, cameraY, cameraWidth, cameraHeight, // 源区域
-        0, 0, cameraWidth, cameraHeight // 目标区域
+        0, 0, outputCameraWidth, outputCameraHeight // 目标区域
       );
     } catch (error) {
       console.error('复制预览内容出错:', error);
@@ -385,10 +394,25 @@ export function initCamera(app) {
   };
   
   // 重置摄像机位置到画布中心
-  const resetCamera = () => {
+  const resetCamera = (selectedCameraSize) => {
+    
     cameraX = (offscreenCanvas.width - cameraWidth) / 2;
     cameraY = (offscreenCanvas.height - cameraHeight) / 2;
-    console.log('resetCamera:', cameraX, cameraY);
+    console.log('resetCamera pos:', cameraX, cameraY);
+    
+    if(selectedCameraSize != null) {
+      outputCameraWidth = selectedCameraSize.width;
+      outputCameraHeight = selectedCameraSize.height;
+      console.log('resetCamera size:', selectedCameraSize,outputCameraWidth,outputCameraHeight);
+      if(previewCanvas !=null && previewCanvas.value != null){
+        console.log('resetCamera previewCanvas:', previewCanvas);
+        previewCanvas.value.width = outputCameraWidth;
+        previewCanvas.value.height = outputCameraHeight;
+        
+      }
+    }
+
+    
     renderFrame();
   };
   

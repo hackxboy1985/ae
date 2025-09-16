@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>动画编辑器</title>
+  <title></title>
   <!-- 引入外部资源 -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
@@ -83,7 +83,8 @@
   <div id="app" class="flex flex-col h-screen overflow-hidden">
     <!-- 顶部导航栏 -->
     <header class="bg-white shadow-md  flex justify-between items-center">
-      <h1 class="text-2xl font-bold text-primary">动画编辑器</h1>
+      <!-- 动画编辑器 -->
+      <h3 class="text-2xl font-bold text-primary"></h3>
       <div class="flex space-x-4">
         <div class="flex items-center space-x-1">
           <label for="cameraSizeSelect" class="text-sm text-gray-600">摄像机尺寸:</label>
@@ -107,6 +108,22 @@
             max="30"
             class="w-16 px-2 py-1 border border-gray-300 rounded text-center"
           >
+        </div>
+        <div class="flex items-center space-x-1 border border-gray-300 rounded overflow-hidden">
+          <button @click="canvasZoomOut" class="flex items-center space-x-1 px-2 py-1 hover:bg-gray-100 transition">
+            <i class="fa fa-search-minus"></i>
+            <span class="hidden sm:inline"></span>
+          </button>
+          <span class="border-l border-gray-300 h-4"></span>
+          <button @click="canvasResetZoom" class="flex items-center space-x-1 px-2 py-1 hover:bg-gray-100 transition">
+            <i class="fa fa-arrows-alt"></i>
+            <span class="hidden sm:inline"></span>
+          </button>
+          <span class="border-l border-gray-300 h-4"></span>
+          <button @click="canvasZoomIn" class="flex items-center space-x-1 px-2 py-1 hover:bg-gray-100 transition">
+            <i class="fa fa-search-plus"></i>
+            <span class="hidden sm:inline"></span>
+          </button>
         </div>
         <button @click="saveProject" class="flex items-center space-x-1 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition">
           <i class="fa fa-save"></i>
@@ -200,17 +217,6 @@
         
         <!-- 画布控制按钮 -->
         <div class="absolute top-4 right-4 bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-lg flex space-x-2">
-          
-          <button @click="zoomIn" class="p-2 hover:bg-gray-100 rounded" title="放大">
-            <i class="fa fa-search-plus"></i>
-          </button>
-          <button @click="zoomOut" class="p-2 hover:bg-gray-100 rounded" title="缩小">
-            <i class="fa fa-search-minus"></i>
-          </button>
-          <button @click="resetZoom" class="p-2 hover:bg-gray-100 rounded" title="重置缩放">
-            <i class="fa fa-home"></i>
-          </button>
-          <div class="w-px bg-gray-300 h-8"></div>
           <!-- 摄像机开关 -->
           <button @click="showCameraClick" class="p-2 hover:bg-gray-100 rounded"
                   :class="{ 'bg-red-100': showCamera }">
@@ -314,7 +320,7 @@
         <div id="timelineContent" class="h-64 bg-white border-t border-gray-300 flex flex-col">
         <!-- 播放控制 -->
         <div class="h-12 border-b border-gray-300 flex items-center justify-between px-4">
-          <div class="flex items-center mr-2">
+          <div class="flex items-center">
             <input 
               type="checkbox" 
               id="showAllExpressions" 
@@ -323,6 +329,20 @@
               class="mr-1" 
               checked />
             <label for="showAllExpressions" class="text-sm text-gray-700">角色表情</label>
+            <!-- 时间轴缩放控制按钮 -->
+            <div class="flex items-center ml-1 space-x-1 border border-gray-200 rounded overflow-hidden">
+              <button @click="timelineZoomIn" class="p-1 hover:bg-gray-100 rounded" title="放大时间轴">
+                <i class="fa fa-search-plus"></i>
+              </button>
+              <span class="border-l border-gray-200 h-5"></span>
+              <button @click="timelineResetZoom" class="p-1 hover:bg-gray-100 rounded" title="重置时间轴缩放">
+                <i class="fa fa-home"></i>
+              </button>
+              <span class="border-l border-gray-200 h-5"></span>
+              <button @click="timelineZoomOut" class="p-1 hover:bg-gray-100 rounded" title="缩小时间轴">
+                <i class="fa fa-search-minus"></i>
+              </button>
+            </div>
           </div>
           <button @click="goToStart" class="p-2 hover:text-primary transition">
             <i class="fa fa-step-backward"></i>
@@ -801,9 +821,11 @@
         
         // 摄像机尺寸选项
         const cameraSizes = ref([
-          { name: '640 × 480', width: 640, height: 480 },
+          { name: '854 × 480', width: 854, height: 480 },
           { name: '1280 × 720', width: 1280, height: 720 },
-          { name: '1920 × 1080', width: 1920, height: 1080 }
+          { name: '1920 × 1080', width: 1920, height: 1080 },
+          { name: '2560 × 1440', width: 2560, height: 1440 }
+          
         ]);
 
         // 摄像机相关状态
@@ -888,7 +910,11 @@
             cameraY = cameraModule.cameraY;
             cameraWidth = cameraModule.cameraWidth;
             cameraHeight = cameraModule.cameraHeight;
-            
+            let size = {
+              'width':cameraWidth,
+              'height':cameraHeight
+            }
+            cameraModule.resetCamera(size);
             // 在摄像机模块初始化后设置setupCameraEvents
             setupCameraEvents = cameraModule.setupCameraEvents;
             
@@ -1253,11 +1279,16 @@
           if (selectedCameraSize.value) {
             cameraWidth = selectedCameraSize.value.width;
             cameraHeight = selectedCameraSize.value.height;
+            
+            console.log('selectedCameraSize:',selectedCameraSize.value)
+            let tmp_cameraAspectRatio = cameraWidth/cameraHeight;
             if (cameraModule) {
-              cameraModule.resetCamera(); // 重置摄像机位置到画布中心
+              //tmp_cameraAspectRatio
+              let tmpSize = cameraSizes.value[0];
+              cameraModule.resetCamera(tmpSize);
+              //cameraModule.resetCamera(selectedCameraSize.value); // 重置摄像机位置到画布中心
             }
             renderFrame(); // 重新渲染
-            
           }
         });
         
@@ -1283,8 +1314,8 @@
         const showExpressionPanel = ref(false);
         const selectedExpressionId = ref(null);
         const sceneData = {
-            width: 1920,    // 全景宽度
-            height: 1080,   // 全景高度
+            width: 2560,    // 全景宽度
+            height: 1440,   // 全景高度
         }
         // 镜头设置
         const camera = {
@@ -1298,6 +1329,9 @@
             dragOffset: { x: 0, y: 0 },
             resizeHandle: null
         };
+        // 缩放比例状态（1表示100%，0.5表示50%，2表示200%）
+        const canvasZoom = ref(1);
+        
         // 初始化画布
         const initCanvas = () => {
           canvas.value = document.getElementById('animationCanvas');
@@ -1349,7 +1383,7 @@
               const parentWidth = container.parentElement.clientWidth;
               const parentHeight = container.parentElement.clientHeight;
               
-              // 设置Canvas实际像素大小与div相同
+              // 设置Canvas实际像素大小
               canvas.value.width = sceneData.width;
               canvas.value.height = sceneData.height;
               
@@ -1357,9 +1391,31 @@
               offscreenCanvas.width = canvas.value.width;
               offscreenCanvas.height = canvas.value.height;
               
-              // 设置Canvas显示尺寸与容器完全匹配
-              canvas.value.style.width = parentWidth + 'px';
-              canvas.value.style.height = parentHeight + 'px';
+              // 应用缩放比例，保持原始宽高比
+              const canvasRatio = canvas.value.width / canvas.value.height;
+              const containerRatio = parentWidth / parentHeight;
+              
+              let displayWidth, displayHeight;
+              
+              // 根据容器与画布的宽高比决定如何缩放
+              if (containerRatio > canvasRatio) {
+                // 容器更宽，按高度缩放
+                displayHeight = Math.min(parentHeight, canvas.value.height * canvasZoom.value);
+                displayWidth = displayHeight * canvasRatio;
+              } else {
+                // 容器更高或相等，按宽度缩放
+                displayWidth = Math.min(parentWidth, canvas.value.width * canvasZoom.value);
+                displayHeight = displayWidth / canvasRatio;
+              }
+              console.log('resizeCanvas displaySize:',displayWidth, displayHeight);
+
+              // 设置Canvas显示尺寸
+              canvas.value.style.width = displayWidth + 'px';
+              canvas.value.style.height = displayHeight + 'px';
+              
+              // 居中显示Canvas
+              canvas.value.style.marginLeft = (parentWidth - displayWidth) / 2 + 'px';
+              canvas.value.style.marginTop = (parentHeight - displayHeight) / 2 + 'px';
             }
             
             //if (cameraModule) { cameraModule.resetCamera(); } // 重置摄像机位置到画布中心
@@ -1368,15 +1424,36 @@
             ctx.value.fillStyle = '#f0f0f0';
             ctx.value.fillRect(0, 0, canvas.value.width, canvas.value.height);
             
-            console.info('resizeCanvas: ' + canvas.value.width + '×' + canvas.value.height);
+            console.info('resizeCanvas: ' + canvas.value.width + '×' + canvas.value.height + ', zoom: ' + (canvasZoom.value * 100) + '%');
             renderFrame();
           };
           
           // 监听窗口尺寸变化
           window.addEventListener('resize', resizeCanvas);
           
+          // 监听缩放比例变化
+          watch(canvasZoom, () => {
+            console.log('watch canvasZoom:',canvasZoom.value);
+            resizeCanvas();
+          });
+          
           // 初始化时调用一次，确保Canvas尺寸正确设置
           resizeCanvas();
+        };
+        
+        // Canvas缩放控制函数
+        const canvasZoomIn = () => {
+          console.log('canvasZoomIn:',canvasZoom.value);
+          canvasZoom.value = Math.min(canvasZoom.value * 1.2, 4); // 最大缩放4倍
+        };
+        
+        const canvasZoomOut = () => {
+          console.log('canvasZoomOut:',canvasZoom.value);
+          canvasZoom.value = Math.max(canvasZoom.value / 1.2, 0.25); // 最小缩放0.25倍
+        };
+        
+        const canvasResetZoom = () => {
+          canvasZoom.value = 1; // 重置为100%
         };
         
         // 绘制时间刻度
@@ -3325,17 +3402,17 @@
         };
         
         // 缩放控制
-        const zoomIn = () => {
+        const timelineZoomIn = () => {
           zoom.value = Math.min(zoom.value * 1.2, 5);
           updateTimelineDisplay();
         };
         
-        const zoomOut = () => {
+        const timelineZoomOut = () => {
           zoom.value = Math.max(zoom.value / 1.2, 0.1);
           updateTimelineDisplay();
         };
         
-        const resetZoom = () => {
+        const timelineResetZoom = () => {
           zoom.value = 1;
           updateTimelineDisplay();
         };
@@ -4328,9 +4405,12 @@
           goToStart,
           goToEnd,
           toggleLoop,
-          zoomIn,
-          zoomOut,
-          resetZoom,
+          timelineZoomIn,
+          timelineZoomOut,
+          timelineResetZoom,
+          canvasZoomIn,
+          canvasZoomOut,
+          canvasResetZoom,
           saveProject,
           exportAnimation,
           targetFps,
