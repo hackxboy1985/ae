@@ -666,7 +666,7 @@
             text: '你好',
             audio: 'audio1.mp3',
             audioDuration: 2000,
-            startTime: 0
+            startTime: 0,
           },
           {
             id: 'audio2',
@@ -674,9 +674,18 @@
             text: '你是哪位',
             audio: 'audio1.mp3',
             audioDuration: 3000,
-            startTime: 2000
+            startTime: 2000,
           }
-        ]
+        ],
+        cameraTracks: [{
+          cameraType:'全',
+          cameraMoveType: '1', //1硬切，2软切
+          x:0,
+          y:0,
+          x1:0,
+          y1:0,
+          duration: 5000,
+        }]
       },
       {
         id: 'shot2',
@@ -691,7 +700,7 @@
             text: '我路过这，请问这是哪？',
             audio: 'audio1.mp3',
             audioDuration: 2000,
-            startTime: 0
+            startTime: 0,
           },
           {
             id: 'audio4',
@@ -699,9 +708,18 @@
             text: '这是xxx楼，是集团总部，你有什么事',
             audio: 'audio1.mp3',
             audioDuration: 3000,
-            startTime: 2000
+            startTime: 2000,
           }
-        ]
+        ],
+        cameraTracks: [{
+          cameraType:'全',
+          cameraMoveType: '1', //1硬切，2软切
+          x:0,
+          y:0,
+          x1:0,
+          y1:0,
+          duration: 5000,
+        }]
       },
       {
         id: 'shot3',
@@ -709,7 +727,16 @@
         duration: 6000, // 6秒
         audioDuration: 6000,
         startTime: 9000,
-        audios: []
+        audios: [],
+        cameraTracks: [{
+          cameraType:'全',
+          cameraMoveType: '1', //1硬切，2软切
+          x:0,
+          y:0,
+          x1:0,
+          y1:0,
+          duration: 5000,
+        }]
       },
       {
         id: 'shot4',
@@ -717,7 +744,18 @@
         duration: 5000, // 6秒
         audioDuration: 5000,
         startTime: 15000,
-        audios: []
+        cameraType:'近',
+        cameraMoveType: '2', //1硬切，2软切
+        audios: [],
+        cameraTracks: [{
+          cameraType:'近',
+          cameraMoveType: '2', //1硬切，2软切
+          x:0,
+          y:0,
+          x1:0,
+          y1:0,
+          duration: 1000,
+        }]
       }
     ];
 
@@ -852,9 +890,10 @@
         let startCameraZoom = 1; // 过渡开始时的摄像机缩放级别
         let startCameraRotation = 0; // 过渡开始时的摄像机旋转角度
         const cameraPresets = ref([
-          { name: '默认视图', width: 640, height: 480, rotation: 0 },
-          { name: '特写', width: 320, height: 240, rotation: 0 },
-          { name: '全景', width: 960, height: 720, rotation: 0 }
+          { name: '默认视图', width: 1280, height: 720, rotation: 0 },
+          { name: '特写', width: 854, height: 480, rotation: 0 },
+          { name: '中景', width: 1080, height: 635, rotation: 0 },
+          { name: '全景', width: 1280, height: 720, rotation: 0 }
         ]); // 摄像机预设配置数组，包含初始预设
         
         // 用于预设命名的变量

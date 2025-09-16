@@ -62,6 +62,8 @@ export function initCamera(app) {
   const timeline = app.timeline;
   const isMaintainingAspectRatio = app.isMaintainingAspectRatio;
   
+
+
   // 显示/隐藏摄像机
   const showCameraClick = () => {
     showCamera.value = !showCamera.value;
@@ -398,14 +400,14 @@ export function initCamera(app) {
     
     cameraX = (offscreenCanvas.width - cameraWidth) / 2;
     cameraY = (offscreenCanvas.height - cameraHeight) / 2;
-    console.log('resetCamera pos:', cameraX, cameraY);
+    //console.log('resetCamera pos:', cameraX, cameraY);
     
     if(selectedCameraSize != null) {
       outputCameraWidth = selectedCameraSize.width;
       outputCameraHeight = selectedCameraSize.height;
-      console.log('resetCamera size:', selectedCameraSize,outputCameraWidth,outputCameraHeight);
+      //console.log('resetCamera size:', selectedCameraSize,outputCameraWidth,outputCameraHeight);
       if(previewCanvas !=null && previewCanvas.value != null){
-        console.log('resetCamera previewCanvas:', previewCanvas);
+        //console.log('resetCamera previewCanvas:', previewCanvas);
         previewCanvas.value.width = outputCameraWidth;
         previewCanvas.value.height = outputCameraHeight;
         
@@ -467,7 +469,19 @@ export function initCamera(app) {
   };
   
   const applyCameraPreset = (preset) => {
+    console.log('applyCameraPreset:', preset);
     if (preset) {
+      cameraPresets.value.forEach((item) => {
+        console.log('tt:', item.name ,preset);
+        if (item.name === preset) {
+          preset = item;
+          console.log('ee:', item);
+
+        }
+      })
+      console.log('cameraPresets:', cameraPresets);
+      console.log('applyCameraPreset:', preset,preset.x,preset.y,preset.width,preset.height);
+
       cameraX = preset.x || cameraX;
       cameraY = preset.y || cameraY;
       cameraWidth = preset.width || cameraWidth;
