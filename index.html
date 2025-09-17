@@ -414,11 +414,11 @@
             <!-- 分镜轨道 -->
             <div class="timeline-track" ref="shotTrack">
               <div class="absolute top-0 left-0 h-full" ref="shotContainer" style="width: 100%;"></div>
-            </div>
-            
-            <!-- 场景轨道 -->
-            <div class="timeline-track" ref="sceneTrack" style="height: 20px;">
-              <div class="absolute top-0 left-0 h-full" ref="sceneContainer" style="width: 100%;"></div>
+              
+              <!-- 场景轨道 - 移到分镜轨道内的最下面 -->
+              <div class="absolute bottom-0 left-0 right-0 h-5" ref="sceneTrack">
+                <div class="absolute top-0 left-0 h-full w-full" ref="sceneContainer"></div>
+              </div>
             </div>
             
             <!-- 镜头轨道 -->
