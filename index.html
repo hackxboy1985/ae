@@ -158,7 +158,7 @@
         
         <!-- Canvas容器，作为摄像机视图 -->
         <div id="canvasContainer" class="relative" :style="cameraStyle">
-          <canvas id="animationCanvas" @click="handleCanvasClick"></canvas>
+          <canvas id="animationCanvas" @click="handleCanvasClick" style="border: 2px dashed #e0e0e0; border-radius: 4px;"></canvas>
           <!-- 摄像机边框，仅在显示摄像机时显示 -->
           <!-- <div v-if="showCamera" class="absolute inset-0 border-2 border-red-500 pointer-events-none"></div> -->
         </div>
