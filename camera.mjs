@@ -6,7 +6,7 @@ export function initCamera(app) {
   const cameraSizes = app.cameraSizes;
   
   // 摄像机相关状态
-  let showCamera = app.showCamera;
+  let showCamera = ref(false);//app.showCamera;
   let showCameraPreview = app.showCameraPreview;
   let cameraX = 0; // 摄像机X位置
   let cameraY = 0; // 摄像机Y位置
@@ -63,6 +63,9 @@ export function initCamera(app) {
   const isMaintainingAspectRatio = app.isMaintainingAspectRatio;
   
 
+  const isShowCamera = computed(() => {
+    return showCamera.value;
+  });
 
   // 显示/隐藏摄像机
   const showCameraClick = () => {
