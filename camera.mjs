@@ -27,8 +27,12 @@ export function initCamera(app) {
     console.error('Camera module: Canvas reference not available');
   }
   
-  // 用于存储当前分镜选择的随机景别类型
-  let currentRandomShotScenery = null;
+  // 用于存储当前分镜选择的默认景别类型
+  let currentDefaultShotScenery = '全景'; // 默认设置为全景
+  // 如果传入了默认镜别设置，则使用它
+  if (app.defaultCameraScenery && app.defaultCameraScenery.value) {
+    currentDefaultShotScenery = app.defaultCameraScenery.value;
+  }
   let currentActiveShotId = null;
   
   // 摄像机调整大小相关变量
@@ -279,8 +283,8 @@ export function initCamera(app) {
     previewCanvas.value.height = outputCameraHeight;
     
     // 设置CSS样式使预览画布适应容器
-    previewCanvas.value.style.width = `${previewWidth}px`;
-    previewCanvas.value.style.height = `${previewHeight}px`;
+    // previewCanvas.value.style.width = `${previewWidth}px`;
+    // previewCanvas.value.style.height = `${previewHeight}px`;
     
     // 清除预览画布
     previewCtx.clearRect(0, 0, outputCameraWidth, outputCameraHeight);
@@ -904,12 +908,13 @@ export function initCamera(app) {
       
       // 查找对应的预设镜头
       for (const preset of cameraPresets.value) {
-        if ((cameraType === '远' && preset.name === '远景') ||
-            (cameraType === '全' && preset.name === '全景') ||
-            (cameraType === '全' && preset.name === '全景(默认视图)') ||
-            (cameraType === '中' && preset.name === '中景') ||
-            (cameraType === '近' && preset.name === '近景') ||
-            (cameraType === '特' && preset.name === '特写')) {
+        if (preset.name.includes(cameraType) ) {
+          // && (cameraType === '远' && preset.name === '远景') ||
+          //   (cameraType === '全' && preset.name === '全景') ||
+          //   (cameraType === '全' && preset.name === '全景(默认视图)') ||
+          //   (cameraType === '中' && preset.name === '中景') ||
+          //   (cameraType === '近' && preset.name === '近景') ||
+          //   (cameraType === '特' && preset.name === '特写')
           
           targetWidth = preset.width;
           targetHeight = preset.height;
@@ -935,14 +940,14 @@ export function initCamera(app) {
         if (currentShotId !== currentActiveShotId) {
           // 分镜切换，重新随机选择景别
           currentActiveShotId = currentShotId;
-          // 随机选择远景或全景/默认视图
-          currentRandomShotScenery = Math.random() > 0.5 ? '远景' : '全景';
+          // 使用默认镜别设置
+          currentDefaultShotScenery = app.defaultCameraScenery ? app.defaultCameraScenery.value : '全景';
         }
         
         // 使用存储的随机景别类型
         for (const preset of cameraPresets.value) {
-          if ((currentRandomShotScenery === '远景' && preset.name === '远景') ||
-              (currentRandomShotScenery === '全景' && (preset.name === '全景' || preset.name === '全景(默认视图)'))) {
+          if ((currentDefaultShotScenery === '远景' && preset.name === '远景') ||
+              (currentDefaultShotScenery === '全景' && (preset.name === '全景')))  {
             
             targetWidth = preset.width;
             targetHeight = preset.height;
@@ -980,10 +985,10 @@ export function initCamera(app) {
     }
     
     // 更新预览画布（如果存在）
-    if (previewCanvas && previewCanvas.value) {
-      previewCanvas.value.width = targetWidth;
-      previewCanvas.value.height = targetHeight;
-    }
+    // if (previewCanvas && previewCanvas.value) {
+    //   previewCanvas.value.width = targetWidth;
+    //   previewCanvas.value.height = targetHeight;
+    // }
   };
   
   // 返回摄像机模块的公共接口
