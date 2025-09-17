@@ -87,7 +87,19 @@
       <h3 class="text-2xl font-bold text-primary"></h3>
       <div class="flex space-x-4">
         <div class="flex items-center space-x-1">
-          <label for="cameraSizeSelect" class="text-sm text-gray-600">摄像机尺寸:</label>
+          <label for="canvasSizeSelect" class="text-sm text-gray-600">画布尺寸:</label>
+          <select
+            id="canvasSizeSelect"
+            v-model="selectedCanvasSize"
+            class="w-36 px-2 py-1 border border-gray-300 rounded"
+          >
+            <option v-for="size in canvasSizes" :key="size.name" :value="size">
+              {{ size.name }}
+            </option>
+          </select>
+        </div>
+        <div class="flex items-center space-x-1">
+          <label for="cameraSizeSelect" class="text-sm text-gray-600">导出尺寸:</label>
           <select
             id="cameraSizeSelect"
             v-model="selectedCameraSize"
@@ -276,7 +288,7 @@
       </div>
       
       <!-- 相机预览小页面 -->
-      <div v-if="showCameraPreview" id="cameraPreview" class="absolute top-1/4 left-1/4 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
+      <div v-if="showCameraPreview" id="cameraPreview" class="absolute top-0 left-0 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
         <div class="bg-gray-800 text-white p-2 rounded-t-lg flex justify-between items-center cursor-move">
           <span>相机预览</span>
           <!-- 关闭按钮 -->
@@ -446,7 +458,7 @@
       </div>
       
       <!-- 调试信息显示区域 -->
-      <div class="p-4 bg-gray-50 border-t border-gray-200 text-sm text-gray-600">
+      <div class="p-4 bg-gray-50 border-t border-gray-200 text-sm text-gray-600 hidden">
         <div class="mb-1"><strong>当前指针位置:</strong> {{ markerPosition }}px | <strong>当前时间:</strong> {{ formatTime(currentTime) }}</div>
         <div><strong>调试信息:</strong> {{ debugInfo }}</div>
       </div>
@@ -587,8 +599,6 @@
             expressionId: 'exp1-1',
             x: 150,
             y: 200,
-            width: 100,
-            height: 150,
             angle: 0,
             scale: 1
           },
@@ -604,8 +614,6 @@
             expressionId: 'exp1-2',
             x: 150,
             y: 200,
-            width: 100,
-            height: 150,
             angle: 0,
             scale: 1
           },
@@ -614,8 +622,6 @@
             expressionId: 'exp2-1',
             x: 350,
             y: 320,
-            width: 120,
-            height: 180,
             angle: 0,
             scale: 1
           }
@@ -630,8 +636,6 @@
             expressionId: 'exp1-2',
             x: 150,
             y: 200,
-            width: 100,
-            height: 150,
             angle: 0,
             scale: 1
           },
@@ -640,8 +644,6 @@
             expressionId: 'exp2-1',
             x: 350,
             y: 320,
-            width: 120,
-            height: 180,
             angle: 0,
             scale: 1
           },
@@ -650,8 +652,6 @@
             expressionId: 'exp3-1',
             x: 1000,
             y: 580,
-            width: 80,
-            height: 120,
             angle: 0,
             scale: 1
           }
@@ -685,15 +685,19 @@
             startTime: 2000,
           }
         ],
-        cameraTracks: [{
-          cameraType:'全',
-          cameraMoveType: '1', //1硬切，2软切
-          x:0,
-          y:0,
-          x1:0,
-          y1:0,
-          duration: 5000,
-        }]
+        cameraTracks: [
+          {
+            id: 'cameraTrack1-1',
+            cameraType:'全',
+            cameraMoveType: '1', //1硬切，2软切
+            x:0,
+            y:0,
+            x1:0,
+            y1:0,
+            startTime: 0,
+            duration: 500,
+          }
+        ]
       },
       {
         id: 'shot2',
@@ -720,56 +724,74 @@
           }
         ],
         cameraTracks: [{
-          cameraType:'全',
-          cameraMoveType: '1', //1硬切，2软切
-          x:0,
-          y:0,
-          x1:0,
-          y1:0,
-          duration: 5000,
-        }]
+            id: 'cameraTrack2-1',
+            cameraType:'全',
+            cameraMoveType: '1', //1硬切，2软切
+            x:0,
+            y:0,
+            x1:0,
+            y1:0,
+            startTime: 0,
+            duration: 1000,
+          },
+          {
+            id: 'cameraTrack2-2',
+            cameraType:'中',
+            cameraMoveType: '1', //1硬切，2软切
+            x:0,
+            y:0,
+            x1:0,
+            y1:0,
+            startTime: 2000,
+            duration: 1000,
+          }
+        ]
       },
       {
         id: 'shot3',
-        background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg3.webp',
+        background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg4.webp',
         duration: 6000, // 6秒
         audioDuration: 6000,
         startTime: 9000,
         audios: [],
         cameraTracks: [{
+          id: 'cameraTrack3-1',
           cameraType:'全',
           cameraMoveType: '1', //1硬切，2软切
           x:0,
           y:0,
           x1:0,
           y1:0,
+          startTime: 0,
           duration: 5000,
         }]
       },
       {
         id: 'shot4',
-        background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg3.webp',
+        background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg4.webp',
         duration: 5000, // 6秒
         audioDuration: 5000,
         startTime: 15000,
-        cameraType:'近',
-        cameraMoveType: '2', //1硬切，2软切
         audios: [],
-        cameraTracks: [{
-          cameraType:'近',
-          cameraMoveType: '2', //1硬切，2软切
-          x:0,
-          y:0,
-          x1:0,
-          y1:0,
-          duration: 1000,
-        }]
+        cameraTracks: [
+          {
+            id: 'cameraTrack4-1',
+            cameraType:'近',
+            cameraMoveType: '2', //1硬切，2软切
+            x:0,
+            y:0,
+            x1:0,
+            y1:0,
+            duration: 1000,
+          }
+        ]
       }
     ];
 
     // 模拟数据 - 角色表情轨道 (添加了角色3的轨道)
     const mockExpressionTracks = [
       {
+        id: 'expTrack1-1',
         roleId: 'role1',
         startTime: 0,
         endTime: 5000,
@@ -782,6 +804,7 @@
         scale: 1
       },
       {
+        id: 'expTrack1-2',
         roleId: 'role1',
         startTime: 7000,
         endTime: 9000,
@@ -794,6 +817,7 @@
         scale: 1
       },
       {
+        id: 'expTrack1-3',
         roleId: 'role1',
         startTime: 12000,
         endTime: 20000,
@@ -804,32 +828,35 @@
         scale: 1
       },
       {
-        "roleId": "role2",
-        "startTime": 5000,
-        "endTime": 9000,
-        "expressionId": "exp2-1",
-        "x": 350,
-        "y": 320,
+        id: 'expTrack2-1',
+        roleId: 'role2',
+        startTime: 5000,
+        endTime: 9000,
+        expressionId: 'exp2-1',
+        x: 350,
+        y: 320,
         angle: 0,
         scale: 1
       },
       {
-        "roleId": "role2",
-        "startTime": 15250,
-        "endTime": 20000,
-        "expressionId": "exp2-2",
-        "x": 40,
-        "y": 320,
+        id: 'expTrack2-2',
+        roleId: 'role2',
+        startTime: 15250,
+        endTime: 20000,
+        expressionId: 'exp2-2',
+        x: 40,
+        y: 320,
         angle: 0,
         scale: 1,
       },
       {
-        "roleId": "role3",
-        "startTime": 11000,
-        "endTime": 19050,
-        "expressionId": "exp3-1",
-        "x": 1000,
-        "y": 580,
+        id: 'expTrack3-1',
+        roleId: 'role3',
+        startTime: 11000,
+        endTime: 19050,
+        expressionId: 'exp3-1',
+        x: 1000,
+        y: 580,
         angle: 0,
         scale: 1,
       }
@@ -865,7 +892,14 @@
         // 背景图缓存对象，用于预加载
         const bgImagesCache = ref({});
         
-        // 摄像机尺寸选项
+        // 画布尺寸选项 - 添加1K、2K、4K分辨率
+        const canvasSizes = ref([
+          { name: '高清 (1920 × 1080)', width: 1920, height: 1080 },
+          { name: '2k (2560 × 1440)', width: 2560, height: 1440 },
+          { name: '4K (4096 × 2160)', width: 4096, height: 2160 }
+        ]);
+        
+        // 导出摄像机尺寸选项
         const cameraSizes = ref([
           { name: '854 × 480', width: 854, height: 480 },
           { name: '1280 × 720', width: 1280, height: 720 },
@@ -881,8 +915,8 @@
         const previewCanvas = ref(null); // 预览Canvas
         let cameraX = 0; // 摄像机X位置
         let cameraY = 0; // 摄像机Y位置
-        let cameraWidth = cameraSizes.value[1].width; // 摄像机宽度
-        let cameraHeight = cameraSizes.value[1].height; // 摄像机高度
+        let cameraWidth = cameraSizes.value[2].width; // 摄像机宽度
+        let cameraHeight = cameraSizes.value[2].height; // 摄像机高度
         
         // 虚拟镜头视口系统扩展状态
         const cameraZoom = ref(1); // 摄像机缩放级别，1为原始大小
@@ -899,10 +933,10 @@
         let startCameraZoom = 1; // 过渡开始时的摄像机缩放级别
         let startCameraRotation = 0; // 过渡开始时的摄像机旋转角度
         const cameraPresets = ref([
-          { name: '默认视图', width: 1280, height: 720, rotation: 0 },
           { name: '特写', width: 854, height: 480, rotation: 0 },
           { name: '中景', width: 1080, height: 635, rotation: 0 },
-          { name: '全景', width: 1280, height: 720, rotation: 0 }
+          { name: '全景(默认视图)', width: 1280, height: 720, rotation: 0 },
+          { name: '远景', width: 1920, height: 1080, rotation: 0 }
         ]); // 摄像机预设配置数组，包含初始预设
         
         // 用于预设命名的变量
@@ -915,7 +949,7 @@
         const isMaintainingAspectRatio = ref(true); // 是否保持宽高比
         
         // 选中的摄像机尺寸 - 设置为1280 × 720比例
-        const selectedCameraSize = ref(cameraSizes.value[1]);
+        const selectedCameraSize = ref(cameraSizes.value[2]);
         
         // 初始化摄像机模块
         let cameraModule;
@@ -1316,9 +1350,20 @@
         const showExpressionPanel = ref(false);
         const selectedExpressionId = ref(null);
         const sceneData = {
-            width: 2560,    // 全景宽度
-            height: 1440,   // 全景高度
+            width: 2560,    // 全景宽度 4096 2560
+            height: 1440,   // 全景高度 2160  1440
         }
+        
+        // 当前选中的画布尺寸
+        const selectedCanvasSize = ref(canvasSizes.value[1]); // 默认选择超高清选项
+        
+        // 监听画布尺寸变化
+        watch(selectedCanvasSize, (newSize) => {
+          console.log('selectedCanvasSize:',newSize)
+          sceneData.width = newSize.width;
+          sceneData.height = newSize.height;
+          resizeCanvas(); // 重新调整画布尺寸
+        });
         // 镜头设置
         const camera = {
             x: 0,           // 镜头X位置 (0-100百分比)
@@ -1334,49 +1379,7 @@
         // 缩放比例状态（1表示100%，0.5表示50%，2表示200%）
         const canvasZoom = ref(1);
         
-        // 初始化画布
-        const initCanvas = () => {
-          canvas.value = document.getElementById('animationCanvas');
-          
-          // 添加调试信息，检查canvas是否正确获取
-          if (!canvas.value) {
-            console.error('canvas err');
-            // debugInfo.value = 'canvas err';
-            return;
-          }
-          
-          ctx.value = canvas.value.getContext('2d');
-          
-          // 添加调试信息，检查上下文是否正确获取
-          if (!ctx.value) {
-            console.error('无法获取canvas上下文');
-            debugInfo.value = '无法获取canvas上下文';
-            return;
-          }
-          
-          // 定义组件级变量，确保所有函数都能访问
-          offscreenCanvas = document.createElement('canvas');
-          offscreenCtx = offscreenCanvas.getContext('2d');
-          
-          // 获取Canvas容器引用
-          canvasContainer = document.getElementById('canvasContainer');
-          if (!canvasContainer) {
-            console.error('未找到canvasContainer元素');
-            debugInfo.value = '未找到canvasContainer元素';
-            return;
-          }
-          
-          // 初始化预览Canvas
-          previewCanvas.value = document.getElementById('previewCanvas');
-          if (previewCanvas.value) {
-            previewCtx = previewCanvas.value.getContext('2d');
-            console.log('初始化previewCtx:',previewCtx);
-          }
-          
-          // 初始化摄像机位置在画布中心
-          //if (cameraModule) { cameraModule.resetCamera(); }
-          
-          
+                 
           // 设置画布尺寸并应用等比缩放
           const resizeCanvas = () => {
             const container = document.getElementById('canvasContainer');
@@ -1430,7 +1433,51 @@
             renderFrame();
           };
           
-          // 监听窗口尺寸变化
+
+
+        // 初始化画布
+        const initCanvas = () => {
+          canvas.value = document.getElementById('animationCanvas');
+          
+          // 添加调试信息，检查canvas是否正确获取
+          if (!canvas.value) {
+            console.error('canvas err');
+            // debugInfo.value = 'canvas err';
+            return;
+          }
+          
+          ctx.value = canvas.value.getContext('2d');
+          
+          // 添加调试信息，检查上下文是否正确获取
+          if (!ctx.value) {
+            console.error('无法获取canvas上下文');
+            debugInfo.value = '无法获取canvas上下文';
+            return;
+          }
+          
+          // 定义组件级变量，确保所有函数都能访问
+          offscreenCanvas = document.createElement('canvas');
+          offscreenCtx = offscreenCanvas.getContext('2d');
+          
+          // 获取Canvas容器引用
+          canvasContainer = document.getElementById('canvasContainer');
+          if (!canvasContainer) {
+            console.error('未找到canvasContainer元素');
+            debugInfo.value = '未找到canvasContainer元素';
+            return;
+          }
+          
+          // 初始化预览Canvas
+          previewCanvas.value = document.getElementById('previewCanvas');
+          if (previewCanvas.value) {
+            previewCtx = previewCanvas.value.getContext('2d');
+            console.log('初始化previewCtx:',previewCtx);
+          }
+          
+          // 初始化摄像机位置在画布中心
+          //if (cameraModule) { cameraModule.resetCamera(); }
+          
+           // 监听窗口尺寸变化
           window.addEventListener('resize', resizeCanvas);
           
           // 监听缩放比例变化
@@ -1734,11 +1781,18 @@
               }
               
               // 计算镜头轨道在时间轴上的位置和宽度
-              const startTime = shot.startTime;
+              const startTime = shot.startTime + (cameraTrack.startTime ||0);
               const endTime = startTime + (cameraTrack.duration || shot.duration);
               const startX = ((startTime - currentTime) / 1000) * MARGIN * zoom.value;
               const width = ((endTime - startTime) / 1000) * MARGIN * zoom.value;
+
               
+              // if(cameraTrack.id === 'cameraTrack4-1'){
+              //   console.log('shot:',shot,',cameraTrack:',cameraTrack);
+              //   console.log(`镜头轨道 ${cameraTrack.id}: startTime=${startTime}, endTime=${endTime}, startX=${startX}, width=${width}`);
+              // }
+              
+
               // 创建镜头轨道元素
               const cameraEl = document.createElement('div');
               cameraEl.className = 'camera-item';
@@ -1760,6 +1814,9 @@
               // 设置镜头轨道显示内容
               let cameraTypeText = '';
               switch(cameraTrack.cameraType) {
+                case '远':
+                  cameraTypeText = '远景';
+                  break;
                 case '全':
                   cameraTypeText = '全景';
                   break;
@@ -2167,6 +2224,12 @@
             
             // 更新显示
             updateTimelineDisplay();
+            
+            // 在播放时根据当前时间动态更新摄像机设置
+            if (isPlaying.value && cameraModule && cameraModule.updateCameraOnPlayback) {
+              cameraModule.updateCameraOnPlayback(currentTime, timeline.value);
+            }
+            
             renderFrame();
           };
           
@@ -2923,7 +2986,7 @@
             // 由于calculateCurrentPosition需要currentTime参数，但drawRoleSelection没有直接获取
             // 所以这里使用了全局的currentTime
             const currentPosition = this.calculateCurrentExpressPosition(track, currentTime);
-            console.log('drawRoleSelection the currentPosition :', currentPosition);
+            //console.log('drawRoleSelection the currentPosition :', currentPosition);
             const x = currentPosition.isValid ? currentPosition.x : track.x;
             const y = currentPosition.isValid ? currentPosition.y : track.y;
             const width = currentPosition.isValid ? currentPosition.width * track.scale : this.config.roleWidth;
@@ -3427,6 +3490,12 @@
             
             // 更新显示
             updateTimelineDisplay();
+            
+            // 在播放时根据当前时间动态更新摄像机设置
+            if (cameraModule && cameraModule.updateCameraOnPlayback) {
+              cameraModule.updateCameraOnPlayback(currentTime, timeline.value);
+            }
+            
             renderFrame();
           }
           
@@ -4476,6 +4545,8 @@
           shotTrack,
           shotContainer,
           sceneTrack,
+          canvasSizes,
+          selectedCanvasSize,
           sceneContainer,
           cameraContainer,
           expressionContainers,

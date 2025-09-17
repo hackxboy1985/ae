@@ -27,6 +27,10 @@ export function initCamera(app) {
     console.error('Camera module: Canvas reference not available');
   }
   
+  // 用于存储当前分镜选择的随机景别类型
+  let currentRandomShotScenery = null;
+  let currentActiveShotId = null;
+  
   // 摄像机调整大小相关变量
   let isResizingCamera = false; // 摄像机调整大小状态
   let resizeHandle = ''; // 正在调整的手柄
@@ -269,9 +273,9 @@ export function initCamera(app) {
     }
     
     // 设置预览画布尺寸为虚拟镜头还是实际尺寸
-    // previewCanvas.value.width = cameraWidth;
+    // previewCanvas.value.width = cameraWidth;   //为虚拟尺寸
     // previewCanvas.value.height = cameraHeight;
-    previewCanvas.value.width = outputCameraWidth;
+    previewCanvas.value.width = outputCameraWidth;  //为输出尺寸
     previewCanvas.value.height = outputCameraHeight;
     
     // 设置CSS样式使预览画布适应容器
@@ -356,15 +360,16 @@ export function initCamera(app) {
     } else {
       // 不旋转时直接绘制矩形边框
       ctx.value.strokeRect(cameraX, cameraY, cameraWidth, cameraHeight);
-      
+      console.log('drawCamera cameraX', cameraX, 'cameraY', cameraY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight);
+
       // 绘制边框内部的半透明区域
       ctx.value.fillStyle = 'rgba(255, 0, 0, 0.1)';
       ctx.value.fillRect(cameraX, cameraY, cameraWidth, cameraHeight);
       
       // 绘制摄像机角标记
-      const cornerSize = 10;
+      const cornerSize = 40;
       ctx.value.strokeStyle = '#FF0000';
-      ctx.value.lineWidth = 3;
+      ctx.value.lineWidth = 12;
       
       // 左上角
       ctx.value.beginPath();
@@ -413,6 +418,8 @@ export function initCamera(app) {
     if(selectedCameraSize != null) {
       outputCameraWidth = selectedCameraSize.width;
       outputCameraHeight = selectedCameraSize.height;
+      outputCameraWidth = 532;//写死固定
+      outputCameraHeight = 300;//写死固定
       //console.log('resetCamera size:', selectedCameraSize,outputCameraWidth,outputCameraHeight);
       if(previewCanvas !=null && previewCanvas.value != null){
         //console.log('resetCamera previewCanvas:', previewCanvas);
@@ -480,15 +487,14 @@ export function initCamera(app) {
     console.log('applyCameraPreset:', preset);
     if (preset) {
       cameraPresets.value.forEach((item) => {
-        console.log('tt:', item.name ,preset);
+        //console.log('tt:', item.name ,preset);
         if (item.name === preset) {
           preset = item;
-          console.log('ee:', item);
-
+          //console.log('ee:', item);
         }
       })
       console.log('cameraPresets:', cameraPresets);
-      console.log('applyCameraPreset:', preset,preset.x,preset.y,preset.width,preset.height);
+      console.log('applyCameraPreset:', preset,preset.width,preset.height);
 
       cameraX = preset.x || cameraX;
       cameraY = preset.y || cameraY;
@@ -851,6 +857,135 @@ export function initCamera(app) {
     });
   };
   
+  // 根据当前时间更新摄像机设置
+  const updateCameraOnPlayback = (currentTime, timeline) => {
+    if (!timeline || !timeline.shots || !canvas || !canvas.width || !canvas.height) {
+      return;
+    }
+    
+    // 查找当前时间点对应的镜头轨道和分镜
+    let currentCameraTrack = null;
+    let currentShot = null;
+    
+    for (const shot of timeline.shots) {
+      // 检查是否在当前分镜时间范围内
+      const shotStartTime = shot.startTime || 0;
+      const shotEndTime = shotStartTime + (shot.duration || 0);
+      
+      if (currentTime >= shotStartTime && currentTime <= shotEndTime) {
+        currentShot = shot;
+        
+        // 在当前分镜中查找对应的镜头轨道
+        if (shot.cameraTracks && Array.isArray(shot.cameraTracks)) {
+          for (const cameraTrack of shot.cameraTracks) {
+            const trackStartTime = shotStartTime + (cameraTrack.startTime || 0);
+            const trackDuration = cameraTrack.duration || shot.duration || 0;
+            const trackEndTime = trackStartTime + trackDuration;
+            
+            if (currentTime >= trackStartTime && currentTime <= trackEndTime) {
+              currentCameraTrack = cameraTrack;
+              break;
+            }
+          }
+        }
+        break;
+      }
+    }
+    
+    // 计算目标镜头设置
+    let targetWidth = cameraWidth;
+    let targetHeight = cameraHeight;
+    let targetCenterX = cameraX + cameraWidth / 2;
+    let targetCenterY = cameraY + cameraHeight / 2;
+    
+    if (currentCameraTrack) {
+      // 有设置镜头轨道，使用对应的预设
+      const cameraType = currentCameraTrack.cameraType;
+      
+      // 查找对应的预设镜头
+      for (const preset of cameraPresets.value) {
+        if ((cameraType === '远' && preset.name === '远景') ||
+            (cameraType === '全' && preset.name === '全景') ||
+            (cameraType === '全' && preset.name === '全景(默认视图)') ||
+            (cameraType === '中' && preset.name === '中景') ||
+            (cameraType === '近' && preset.name === '近景') ||
+            (cameraType === '特' && preset.name === '特写')) {
+          
+          targetWidth = preset.width;
+          targetHeight = preset.height;
+          
+          // 如果有目标中心点设置，则使用，否则居中
+          if (currentCameraTrack.targetX !== undefined && currentCameraTrack.targetY !== undefined) {
+            targetCenterX = currentCameraTrack.targetX;
+            targetCenterY = currentCameraTrack.targetY;
+          } else {
+            // 默认居中到画布
+            targetCenterX = canvas.width / 2;
+            targetCenterY = canvas.height / 2;
+          }
+          
+          break;
+        }
+      }
+    } else {
+        // 没有设置镜头轨道
+        // 检查当前分镜是否发生变化
+        const currentShotId = currentShot ? currentShot.id : null;
+        
+        if (currentShotId !== currentActiveShotId) {
+          // 分镜切换，重新随机选择景别
+          currentActiveShotId = currentShotId;
+          // 随机选择远景或全景/默认视图
+          currentRandomShotScenery = Math.random() > 0.5 ? '远景' : '全景';
+        }
+        
+        // 使用存储的随机景别类型
+        for (const preset of cameraPresets.value) {
+          if ((currentRandomShotScenery === '远景' && preset.name === '远景') ||
+              (currentRandomShotScenery === '全景' && (preset.name === '全景' || preset.name === '全景(默认视图)'))) {
+            
+            targetWidth = preset.width;
+            targetHeight = preset.height;
+            // 居中到画布
+            targetCenterX = canvas.width / 2;
+            targetCenterY = canvas.height / 2;
+            
+            break;
+          }
+        }
+      }
+    
+    // 计算目标位置
+    let targetX = targetCenterX - targetWidth / 2;
+    let targetY = targetCenterY - targetHeight / 2;
+    
+    // 平滑过渡 - 这里使用简单的线性插值，可以根据需要调整缓动函数
+    const easeFactor = 0.1; // 过渡速度因子
+    cameraX += (targetX - cameraX) * easeFactor;
+    cameraY += (targetY - cameraY) * easeFactor;
+    cameraWidth += (targetWidth - cameraWidth) * easeFactor;
+    cameraHeight += (targetHeight - cameraHeight) * easeFactor;
+    
+    // 确保镜头不超出画布范围
+    if (canvas.width && canvas.height) {
+      // 限制宽度和高度不超过画布
+      if (cameraWidth > canvas.width) cameraWidth = canvas.width;
+      if (cameraHeight > canvas.height) cameraHeight = canvas.height;
+      
+      // 限制位置
+      if (cameraX < 0) cameraX = 0;
+      if (cameraY < 0) cameraY = 0;
+      if (cameraX + cameraWidth > canvas.width) cameraX = canvas.width - cameraWidth;
+      if (cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
+    }
+    
+    // 更新预览画布（如果存在）
+    if (previewCanvas && previewCanvas.value) {
+      previewCanvas.value.width = targetWidth;
+      previewCanvas.value.height = targetHeight;
+    }
+  };
+  
   // 返回摄像机模块的公共接口
   return {
     cameraWidth,
@@ -874,6 +1009,7 @@ export function initCamera(app) {
     applyCameraPreset,
     saveCameraPreset,
     deleteCameraPreset,
-    watchCameraSize
+    watchCameraSize,
+    updateCameraOnPlayback
   };
 }
