@@ -36,7 +36,7 @@
       .content-auto {          content-visibility: auto;        }        
       .timeline-track {          @apply h-10 border-b border-gray-300 relative;        }        
       .timeline-marker {          @apply absolute w-1 bg-red-500 top-0 bottom-0 z-10;        }        
-      .timeline-marker::after {          content: '';          @apply absolute -top-3 -left-3 w-6 h-6 rounded-full bg-red-500;        }        
+      .timeline-marker::after {          content: '';          @apply absolute -top-3 -left-2 w-6 h-6 rounded-full bg-red-500 hidden;        }        
       .shot-item {          @apply absolute top-0 h-full border border-blue-400 bg-blue-50 opacity-70 flex flex-col items-center justify-center text-xs cursor-move transition-all;          min-width: 80px; /* 增加最小宽度确保时间信息可读 */        }        
       .shot-item:hover {          @apply opacity-100 shadow-md border-blue-600;        }        
       .expression-item {      @apply absolute h-8 border border-green-400 bg-green-50 opacity-70 flex items-center justify-center text-xs cursor-move transition-all;
@@ -241,6 +241,9 @@
           <button @click="resetCamera" class="p-2 hover:bg-gray-100 rounded" title="重置相机位置">
             <i class="fa fa-refresh" ></i>
           </button>
+          <button @click="testDrawAudio" class="p-2 bg-purple-500 text-white rounded" title="测试音频显示">
+            <i class="fa fa-volume-up"></i>
+          </button>
 
           <button @click="toggleAspectRatio" class="p-2 hover:bg-gray-100 rounded" :class="{ 'bg-blue-100': isMaintainingAspectRatio }" title="切换宽高比锁定">
             <i class="fa fa-arrows-alt"></i>
@@ -422,10 +425,13 @@
             </div>
             
             <!-- 镜头轨道 -->
-            <div class="timeline-track" style="height: 20px;">
-              <div class="absolute top-0 left-0 h-full" ref="cameraContainer" style="width: 100%;"></div>
+            <div class="timeline-track" style="height: 50px;">
+              <!-- 音频显示区域 -->
+              <div class="absolute top-0 left-0 h-1/2" ref="audioContainer" style="width: 100%;"></div>
+              <!-- 镜头显示区域 -->
+              <div class="absolute top-1/2 left-0 h-1/2" ref="cameraContainer" style="width: 100%;"></div>
               <div class="absolute top-0 left-0 h-full w-20 bg-gray-100 flex items-center justify-center text-xs">
-                <span>镜头</span>
+                <span>镜头/对白</span>
               </div>
             </div>
             
@@ -602,7 +608,14 @@
             angle: 0,
             scale: 1
           },
-          
+          {
+            roleId: 'role2',
+            expressionId: 'exp2-1',
+            x: 1750,
+            y: 200,
+            angle: 0,
+            scale: 1
+          },
         ]
       },
       {
@@ -719,7 +732,7 @@
             roleId: 'role2',
             text: '这是xxx楼，是集团总部，你有什么事',
             audio: 'audio1.mp3',
-            audioDuration: 3000,
+            audioDuration: 2000,
             startTime: 2000,
           }
         ],
@@ -1595,6 +1608,83 @@
         const sceneTrack = ref(null);
         const sceneContainer = ref(null);
         const cameraContainer = ref(null); // 镜头轨道容器引用
+        const audioContainer = ref(null); // 音频轨道容器引用
+        
+        // 测试音频显示函数
+        const testDrawAudio = () => {
+          console.log('Test audio draw triggered');
+          drawAudioTracks();
+        };
+        
+        // 绘制音频轨道
+        const drawAudioTracks = () => {
+          // 与镜头相同的检查方式
+          if (!audioContainer.value) {
+            console.warn('audioContainer not found!');
+            return;
+          }
+          
+          // 清空现有音频轨道
+          audioContainer.value.innerHTML = '';
+          
+          // 遍历所有分镜
+          timeline.value.shots.forEach(shot => {
+            // 检查分镜是否有音频数据，与镜头处理方式一致
+            if (!shot.audios || !Array.isArray(shot.audios)) {
+              console.warn(`分镜 ${shot.id} 没有音频数据`);
+              return;
+            }
+            
+            // 遍历分镜中的所有音频
+            shot.audios.forEach((audio, index) => {
+              // 确保音频有唯一ID
+              if (!audio.id) {
+                audio.id = `audio_${shot.id}_${Date.now()}_${index}`;
+              }
+              
+              // 计算音频在时间轴上的位置和宽度 - 与镜头相同的计算方式
+              const startTime = shot.startTime + (audio.startTime || 0);
+              const endTime = startTime + (audio.audioDuration || shot.duration);
+              const startX = ((startTime - currentTime) / 1000) * MARGIN * zoom.value;
+              const width = ((endTime - startTime) / 1000) * MARGIN * zoom.value;
+              
+              // 创建音频轨道元素，与镜头相同的元素创建方式
+              const audioEl = document.createElement('div');
+              audioEl.className = 'audio-item';
+              audioEl.style.left = `calc(50% + ${startX}px)`;
+              audioEl.style.top = '0';
+              audioEl.style.width = `${width}px`;
+              audioEl.style.maxWidth = `${width}px`;
+              audioEl.dataset.audioId = audio.id;
+              audioEl.dataset.shotId = shot.id;
+              audioEl.style.position = 'absolute';
+              audioEl.style.zIndex = '1'; // 提高z-index确保可见 1
+              audioEl.style.backgroundColor = 'rgba(16, 185, 129, 0.3)'; // 更明显的绿色 0.2 0.7
+              audioEl.style.border = '1px solid rgba(16, 185, 129, 1)';//0.5 1
+              audioEl.style.overflow = 'hidden';
+              audioEl.style.textOverflow = 'clip';//ellipsis clip
+              audioEl.style.whiteSpace = 'nowrap';              
+              // audioEl.style.fontSize = '12px';
+              // audioEl.style.color = 'white'; // 确保在绿色背景上可见 green white
+              // audioEl.style.height = '100%'; // 确保高度填充父容器
+              audioEl.style.fontSize = '10px';
+              audioEl.style.color = 'black';
+              audioEl.style.height = '100%';
+              audioEl.style.display = 'flex';
+              audioEl.style.alignItems = 'center';
+              audioEl.style.justifyContent = 'center';
+              audioEl.style.padding = '0 2px';
+              
+              // 设置音频显示内容
+              const role = timeline.value.roles.find(r => r.id === audio.roleId);
+              const roleName = role ? role.name : '未知角色';
+              audioEl.textContent = `${roleName}: ${audio.text || '音频'}`;
+              
+              // 添加到容器
+              audioContainer.value.appendChild(audioEl);
+            });
+          });
+        };
         
         // 绘制场景轨道
         const drawSceneTrack = () => {
@@ -2458,6 +2548,7 @@
           drawSceneTrack();
           drawExpressionTracks();
           drawCameraTracks();
+          drawAudioTracks();
           
           // 自动滚动到当前时间点，但添加边界检查避免滚动到不合理的位置
           const container = document.querySelector('.overflow-x-auto');
@@ -4534,7 +4625,7 @@
         });
         
         // 初始化时更新时间轴显示，确保镜头轨道正确绘制
-        updateTimelineDisplay();
+        //updateTimelineDisplay();
         
         return {
           debugInfo,
@@ -4549,6 +4640,7 @@
           selectedCanvasSize,
           sceneContainer,
           cameraContainer,
+          audioContainer,
           expressionContainers,
           expressionTracks,
           timeline,
