@@ -409,6 +409,14 @@
               <div class="absolute top-0 left-0 h-full" ref="sceneContainer" style="width: 100%;"></div>
             </div>
             
+            <!-- 镜头轨道 -->
+            <div class="timeline-track" style="height: 20px;">
+              <div class="absolute top-0 left-0 h-full" ref="cameraContainer" style="width: 100%;"></div>
+              <div class="absolute top-0 left-0 h-full w-20 bg-gray-100 flex items-center justify-center text-xs">
+                <span>镜头</span>
+              </div>
+            </div>
+            
             <!-- 角色表情轨道 -->
             <template v-if="showAllRoleExpressions || (selectedRoleId && !showAllRoleExpressions)">
               <!-- 展示所有角色表情 -->
@@ -865,7 +873,8 @@
           { name: '2560 × 1440', width: 2560, height: 1440 }
           
         ]);
-
+        //无效位置，如果x1,y1为此值，表明表情属于固定位置表情
+        const invalidPos = -999;
         // 摄像机相关状态
         const showCamera = ref(false); // 是否显示摄像机
         const showCameraPreview = ref(false); // 是否显示相机预览
@@ -1010,34 +1019,12 @@
 
 
         
-        // 在组件挂载后设置拖拽功能
-        onMounted(() => {
-        });
+        // 主要的初始化逻辑已在下方的onMounted钩子中实现
+        // onMounted(() => {
+        // });
         
 
-        // 监听showCameraPreview变化，当开启时立即更新预览
-        // const unwatchCameraPreview = watch(showCameraPreview, (newValue) => {
-        //   if (newValue) {
-        //     // 确保预览画布和上下文已正确初始化
-        //     if (!previewCanvas.value || !previewCtx) {
-        //       previewCanvas.value = document.getElementById('previewCanvas');
-        //       if (previewCanvas.value) {
-        //         previewCtx = previewCanvas.value.getContext('2d');
-        //         console.log('预览画布初始化完成:', {previewCtx: !!previewCtx, previewCanvas: !!previewCanvas.value});
-        //       } else {
-        //         console.warn('未找到previewCanvas元素');
-        //       }
-        //     }
-            
-        //     // 设置预览画布尺寸
-        //     if (previewCanvas.value && cameraModule) {
-        //       previewCanvas.value.width = cameraWidth;
-        //       previewCanvas.value.height = cameraHeight;
-        //       // 立即更新一次预览
-        //       cameraModule.updateCameraPreview();
-        //     }
-        //   }
-        // });
+        
 
         // 监听摄像机关键属性变化，实时更新预览
         const unwatchCameraProperties = watch(
@@ -1303,11 +1290,6 @@
           return '未知表情';
         };
         
-        // // 摄像机尺寸选项
-        // const cameraSizes = ref([
-        //   { name: '640 × 480', width: 640, height: 480 },
-        //   { name: '1280 × 720', width: 1280, height: 720 }
-        // ]);
         
         // 选中的摄像机尺寸定义已移到setup函数开始部分
         
@@ -1329,24 +1311,6 @@
             renderFrame(); // 重新渲染
           }
         });
-        
-        // 监听相机预览显示状态变化
-        // watch(showCameraPreview, (newValue) => {
-        //   if (newValue) {
-        //     // 确保previewCanvas和previewCtx初始化
-        //     if (!previewCanvas.value || !previewCtx) {
-        //       previewCanvas.value = document.getElementById('previewCanvas');
-        //       if (previewCanvas.value) {
-        //         previewCtx = previewCanvas.value.getContext('2d');
-        //         console.log('预览画布初始化完成');
-
-        //       } else {
-        //         console.warn('未找到previewCanvas元素');
-        //         return;
-        //       }
-        //     }
-        //   }
-        // });
         
         // 表情面板相关状态
         const showExpressionPanel = ref(false);
@@ -1583,6 +1547,7 @@
         // DOM引用 - 添加场景轨道引用
         const sceneTrack = ref(null);
         const sceneContainer = ref(null);
+        const cameraContainer = ref(null); // 镜头轨道容器引用
         
         // 绘制场景轨道
         const drawSceneTrack = () => {
@@ -1590,7 +1555,7 @@
           
           // 清空现有场景
           sceneContainer.value.innerHTML = '';
-          
+
           // 为每个场景创建一个横线
           timeline.value.scenes.forEach((scene, sceneIndex) => {
             // 获取场景包含的所有分镜
@@ -1746,6 +1711,81 @@
           });
         };
         
+        // 绘制镜头轨道
+        const drawCameraTracks = () => {
+          if (!cameraContainer.value) return;
+          
+          // 清空现有镜头轨道
+          cameraContainer.value.innerHTML = '';
+          
+          // 遍历所有分镜
+          timeline.value.shots.forEach(shot => {
+            // 检查分镜是否有镜头轨道数据
+            if (!shot.cameraTracks || !Array.isArray(shot.cameraTracks)) {
+              console.warn(`分镜 ${shot.id} 没有镜头轨道数据`);
+              return;
+            }
+            
+            // 遍历分镜中的所有镜头轨道
+            shot.cameraTracks.forEach((cameraTrack, index) => {
+              // 确保镜头轨道有唯一ID
+              if (!cameraTrack.id) {
+                cameraTrack.id = `camera_track_${shot.id}_${Date.now()}_${index}`;
+              }
+              
+              // 计算镜头轨道在时间轴上的位置和宽度
+              const startTime = shot.startTime;
+              const endTime = startTime + (cameraTrack.duration || shot.duration);
+              const startX = ((startTime - currentTime) / 1000) * MARGIN * zoom.value;
+              const width = ((endTime - startTime) / 1000) * MARGIN * zoom.value;
+              
+              // 创建镜头轨道元素
+              const cameraEl = document.createElement('div');
+              cameraEl.className = 'camera-item';
+              cameraEl.style.left = `calc(50% + ${startX}px)`;
+              cameraEl.style.top = '0';
+              cameraEl.style.width = `${width}px`;
+              cameraEl.style.maxWidth = `${width}px`;
+              cameraEl.dataset.trackId = cameraTrack.id;
+              cameraEl.dataset.shotId = shot.id;
+              cameraEl.style.position = 'absolute';
+              cameraEl.style.zIndex = '1';
+              cameraEl.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
+              cameraEl.style.border = '1px solid rgba(59, 130, 246, 0.5)';
+              cameraEl.style.overflow = 'hidden';
+              cameraEl.style.textOverflow = 'clip';
+              cameraEl.style.whiteSpace = 'nowrap';
+              cameraEl.style.fontSize = '10px';
+              
+              // 设置镜头轨道显示内容
+              let cameraTypeText = '';
+              switch(cameraTrack.cameraType) {
+                case '全':
+                  cameraTypeText = '全景';
+                  break;
+                case '中':
+                  cameraTypeText = '中景';
+                  break;
+                case '近':
+                  cameraTypeText = '近景';
+                  break;
+                case '特':
+                  cameraTypeText = '特写';
+                  break;
+                default:
+                  cameraTypeText = cameraTrack.cameraType;
+              }
+              
+              let moveTypeText = cameraTrack.cameraMoveType === '1' ? '硬切' : '软切';
+              cameraEl.textContent = `${cameraTypeText}-${moveTypeText}`;
+              
+              // 添加到容器
+              cameraContainer.value.appendChild(cameraEl);
+            });
+          });
+        };
+          
+
         // 表情片段拖拽状态变量
         let isDraggingExpEdge = false;
         let draggedExpTrack = null;
@@ -1868,9 +1908,10 @@
               
               expEl.appendChild(leftHandle);
               expEl.appendChild(rightHandle);
-              
+
               // 检查是否为带运动轨迹的表情（x,y与x1,y1不同）
-              if (exp.x1 !== undefined && exp.y1 !== undefined && 
+              if (exp.x1 !== undefined && exp.y1 !== undefined &&
+                  exp.x1 !== invalidPos && exp.y1 !== invalidPos && 
                   (exp.x !== exp.x1 || exp.y !== exp.y1)) {
                 // 创建运动轨迹标记元素
                 const trackMarker = document.createElement('div');
@@ -2074,7 +2115,9 @@
                 break;
               case 'fix-start':
                 // 固定开始位置（这里可以添加额外的逻辑，比如锁定开始位置防止拖动）
-                expTrack.endTime=expTrack.startTime;
+                // expTrack.endTime=expTrack.startTime;
+                expTrack.x1 = invalidPos;
+                expTrack.y1 = invalidPos;
                 renderFrame();
 
                 break;
@@ -2351,14 +2394,19 @@
           drawShotTrack();
           drawSceneTrack();
           drawExpressionTracks();
+          drawCameraTracks();
           
           // 自动滚动到当前时间点，但添加边界检查避免滚动到不合理的位置
           const container = document.querySelector('.overflow-x-auto');
-          const scrollPosition = Math.max(0, Math.min(
-            (currentTime / 1000) * zoom.value + 20 - markerPosition.value,
-            timelineWidth.value - container.clientWidth
-          ));
-          container.scrollLeft = scrollPosition;
+          if (container) { // 添加空值检查，避免访问null的clientWidth
+            const scrollPosition = Math.max(0, Math.min(
+              (currentTime / 1000) * zoom.value + 20 - markerPosition.value,
+              timelineWidth.value - container.clientWidth
+            ));
+            container.scrollLeft = scrollPosition;
+          } else {
+            console.warn('updateTimelineDisplay: timeline container not found yet');
+          }
         };
         
         // 渲染当前帧 - 重新定义完整的renderFrame函数实现
@@ -2702,10 +2750,10 @@
               // 获取结束位置，如果没有则使用开始位置
               let endX = currentExpressionTrack.x1;
               let endY = currentExpressionTrack.y1;
-              if (endX === undefined) {
+              if (endX === undefined || endX === invalidPos) {
                 endX = currentExpressionTrack.x;
               }
-              if (endY === undefined) {
+              if (endY === undefined || endY === invalidPos) {
                 endY = currentExpressionTrack.y;
               }
               // console.log('calculateCurrentPosition 2:',currentExpressionTrack,progress);
@@ -3156,7 +3204,7 @@
                 ctx.fillStyle = 'white';
                 ctx.strokeStyle = 'black';
                 ctx.lineWidth = 2;
-                ctx.font = 'bold 12px Arial';
+                ctx.font = 'bold 36px Arial';
                 ctx.textAlign = 'center';
                 ctx.strokeText(
                   role.name, 
@@ -4416,6 +4464,9 @@
           setTimeout(() => updateShotHighlights(), 0);
         });
         
+        // 初始化时更新时间轴显示，确保镜头轨道正确绘制
+        updateTimelineDisplay();
+        
         return {
           debugInfo,
           canvas,
@@ -4426,6 +4477,7 @@
           shotContainer,
           sceneTrack,
           sceneContainer,
+          cameraContainer,
           expressionContainers,
           expressionTracks,
           timeline,

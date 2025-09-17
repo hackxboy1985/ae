@@ -39,6 +39,11 @@ export function initCamera(app) {
   // 预览窗口相关
   let previewCanvas = app.previewCanvas;
   let previewCtx = null;
+  if (app && app.previewCanvas) {
+    previewCanvas = app.previewCanvas;
+  } else {
+    console.warn('Camera module: Preview canvas reference not available yet');
+  }
   let previewWindow = null;
   let dragHandle = null;
   let isDragging = false;
@@ -671,6 +676,8 @@ export function initCamera(app) {
       if (!canvas) return;
       
       const rect = canvas.getBoundingClientRect();
+      if (!rect || !canvas.width || !canvas.height) return; // 添加额外的空值检查
+      
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       const mouseX = (e.clientX - rect.left) * scaleX;
@@ -688,11 +695,11 @@ export function initCamera(app) {
         cameraX = dragStartCameraX + deltaX;
         cameraY = dragStartCameraY + deltaY;
         
-        // 限制摄像机在画布范围内
+        // 限制摄像机在画布范围内 - 添加额外的空值检查
         if (cameraX < 0) cameraX = 0;
         if (cameraY < 0) cameraY = 0;
-        if (cameraX + cameraWidth > canvas.width) cameraX = canvas.width - cameraWidth;
-        if (cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
+        if (canvas.width && cameraX + cameraWidth > canvas.width) cameraX = canvas.width - cameraWidth;
+        if (canvas.height && cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
         
         // 立即渲染更新后的位置
         renderFrame();
@@ -772,10 +779,11 @@ export function initCamera(app) {
           newHeight += newY;
           newY = 0;
         }
-        if (newX + newWidth > canvas.width) {
+        // 添加额外的空值检查
+        if (canvas.width && newX + newWidth > canvas.width) {
           newWidth = canvas.width - newX;
         }
-        if (newY + newHeight > canvas.height) {
+        if (canvas.height && newY + newHeight > canvas.height) {
           newHeight = canvas.height - newY;
         }
         
