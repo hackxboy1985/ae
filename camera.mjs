@@ -365,50 +365,52 @@ export function initCamera(app) {
       ctx.value.lineTo(-cameraWidth / 2, cameraHeight / 2 - cornerSize);
       ctx.value.stroke();
     } else {
-      //cameraY = canvas.height - cameraY; // 坐标转换，AE坐标系统Y轴向下为正，而Canvas坐标系统Y轴向上为正
+      // 应用左下角坐标系转换 - AE坐标系统Y轴向下为正，Canvas坐标系统Y轴向上为正
+      const bottomLeftY = offscreenCanvas.height - cameraY - cameraHeight;
+      
       // 不旋转时直接绘制矩形边框
-      ctx.value.strokeRect(cameraX, cameraY, cameraWidth, cameraHeight);
-      console.log('drawCamera cameraX', cameraX, 'cameraY', cameraY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight);
+      ctx.value.strokeRect(cameraX, bottomLeftY, cameraWidth, cameraHeight);
+      // console.log('drawCamera cameraX', cameraX, 'cameraY(左下角坐标系)', bottomLeftY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight);
 
       // 绘制边框内部的半透明区域
       ctx.value.fillStyle = 'rgba(255, 0, 0, 0.1)';
-      ctx.value.fillRect(cameraX, cameraY, cameraWidth, cameraHeight);
+      ctx.value.fillRect(cameraX, bottomLeftY, cameraWidth, cameraHeight);
       
       // 绘制摄像机角标记
       const cornerSize = 40;
       ctx.value.strokeStyle = '#FF0000';
       ctx.value.lineWidth = 12;
       
-      // 左上角
+      // 左上角（左下角坐标系）
       ctx.value.beginPath();
-      ctx.value.moveTo(cameraX, cameraY);
-      ctx.value.lineTo(cameraX + cornerSize, cameraY);
-      ctx.value.moveTo(cameraX, cameraY);
-      ctx.value.lineTo(cameraX, cameraY + cornerSize);
+      ctx.value.moveTo(cameraX, bottomLeftY);
+      ctx.value.lineTo(cameraX + cornerSize, bottomLeftY);
+      ctx.value.moveTo(cameraX, bottomLeftY);
+      ctx.value.lineTo(cameraX, bottomLeftY + cornerSize);
       ctx.value.stroke();
       
-      // 右上角
+      // 右上角（左下角坐标系）
       ctx.value.beginPath();
-      ctx.value.moveTo(cameraX + cameraWidth, cameraY);
-      ctx.value.lineTo(cameraX + cameraWidth - cornerSize, cameraY);
-      ctx.value.moveTo(cameraX + cameraWidth, cameraY);
-      ctx.value.lineTo(cameraX + cameraWidth, cameraY + cornerSize);
+      ctx.value.moveTo(cameraX + cameraWidth, bottomLeftY);
+      ctx.value.lineTo(cameraX + cameraWidth - cornerSize, bottomLeftY);
+      ctx.value.moveTo(cameraX + cameraWidth, bottomLeftY);
+      ctx.value.lineTo(cameraX + cameraWidth, bottomLeftY + cornerSize);
       ctx.value.stroke();
       
-      // 右下角
+      // 右下角（左下角坐标系）
       ctx.value.beginPath();
-      ctx.value.moveTo(cameraX + cameraWidth, cameraY + cameraHeight);
-      ctx.value.lineTo(cameraX + cameraWidth - cornerSize, cameraY + cameraHeight);
-      ctx.value.moveTo(cameraX + cameraWidth, cameraY + cameraHeight);
-      ctx.value.lineTo(cameraX + cameraWidth, cameraY + cameraHeight - cornerSize);
+      ctx.value.moveTo(cameraX + cameraWidth, bottomLeftY + cameraHeight);
+      ctx.value.lineTo(cameraX + cameraWidth - cornerSize, bottomLeftY + cameraHeight);
+      ctx.value.moveTo(cameraX + cameraWidth, bottomLeftY + cameraHeight);
+      ctx.value.lineTo(cameraX + cameraWidth, bottomLeftY + cameraHeight - cornerSize);
       ctx.value.stroke();
       
-      // 左下角
+      // 左下角（左下角坐标系）
       ctx.value.beginPath();
-      ctx.value.moveTo(cameraX, cameraY + cameraHeight);
-      ctx.value.lineTo(cameraX + cornerSize, cameraY + cameraHeight);
-      ctx.value.moveTo(cameraX, cameraY + cameraHeight);
-      ctx.value.lineTo(cameraX, cameraY + cameraHeight - cornerSize);
+      ctx.value.moveTo(cameraX, bottomLeftY + cameraHeight);
+      ctx.value.lineTo(cameraX + cornerSize, bottomLeftY + cameraHeight);
+      ctx.value.moveTo(cameraX, bottomLeftY + cameraHeight);
+      ctx.value.lineTo(cameraX, bottomLeftY + cameraHeight - cornerSize);
       ctx.value.stroke();
     }
     
