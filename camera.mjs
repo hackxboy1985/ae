@@ -365,9 +365,10 @@ export function initCamera(app) {
       ctx.value.lineTo(-cameraWidth / 2, cameraHeight / 2 - cornerSize);
       ctx.value.stroke();
     } else {
+      //cameraY = canvas.height - cameraY; // 坐标转换，AE坐标系统Y轴向下为正，而Canvas坐标系统Y轴向上为正
       // 不旋转时直接绘制矩形边框
       ctx.value.strokeRect(cameraX, cameraY, cameraWidth, cameraHeight);
-      //console.log('drawCamera cameraX', cameraX, 'cameraY', cameraY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight);
+      console.log('drawCamera cameraX', cameraX, 'cameraY', cameraY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight);
 
       // 绘制边框内部的半透明区域
       ctx.value.fillStyle = 'rgba(255, 0, 0, 0.1)';
@@ -911,12 +912,23 @@ export function initCamera(app) {
       
       targetCenterX = currentExpressionTrack.x + (roleWidth * scale) / 2;
       targetCenterY = currentExpressionTrack.y + (roleHeight * scale) / 2;
-      console.log(`找到说话角色 ${speakingRoleId} 的位置: (${targetCenterX}, ${targetCenterY})`);
+      console.log(`找到说话角色 ${speakingRoleId} 的位置: (${currentExpressionTrack.x}, ${currentExpressionTrack.y})`);
     }
     return {targetCenterX,targetCenterY};
   }
       
 
+  // 根据当前分镜找到对应的场景
+  const findSceneByShot = (shot, timeline) => {
+    if (!shot || !timeline || !timeline.scenes) return null;
+    return timeline.scenes.find(scene => scene.shots && scene.shots.includes(shot.id));
+  };
+
+  // 上一个场景ID
+  let previousSceneId = null;
+  let previousCameraType = null;
+  let previousSpeakingRoleId = null;
+  const FULL_CAMERA_TYPE = '全景';
   // 根据当前时间更新摄像机设置
   const updateCameraOnPlayback = (currentTime, timeline) => {
     if (!timeline || !timeline.shots || !canvas || !canvas.width || !canvas.height) {
@@ -951,12 +963,62 @@ export function initCamera(app) {
         break;
       }
     }
-    
+
     // 计算目标镜头设置
     let targetWidth = cameraWidth;
     let targetHeight = cameraHeight;
     let targetCenterX = cameraX + cameraWidth / 2;
     let targetCenterY = cameraY + cameraHeight / 2;
+    
+    //开场或切场景时，直接设置默认镜头
+    // const currentShotId = currentShot ? currentShot.id : null;
+    
+    // 找到当前分镜对应的场景
+    const currentScene = findSceneByShot(currentShot, timeline);
+    const currentSceneId = currentScene ? currentScene.id : null;
+    
+    // 检测是否是开场或切场景
+    const isStartOfAnimation = currentTime === 0;
+    const isSceneChange = currentSceneId !== previousSceneId;
+    console.info('scene change:', isSceneChange, currentSceneId, previousSceneId);
+    if (isStartOfAnimation || isSceneChange) {
+      // 更新当前活动分镜ID
+      // currentActiveShotId = currentShotId;
+      // 更新上一个场景ID
+      previousSceneId = currentSceneId;
+      
+      // 获取默认镜头设置
+      currentDefaultShotScenery = app.defaultCameraScenery ? app.defaultCameraScenery.value : '全景';
+      //更新上一个景别
+      previousCameraType = currentDefaultShotScenery;
+
+      // 获取默认镜头预设
+      let defaultPreset = getCameraPreset(currentDefaultShotScenery);
+      if (!defaultPreset) {
+        defaultPreset = getCameraPreset(FULL_CAMERA_TYPE);
+      }
+      if (defaultPreset) {
+        // 直接设置目标镜头宽高
+        targetWidth = defaultPreset.width;
+        targetHeight = defaultPreset.height;
+        // 焦点设置为画布的中间点
+        targetCenterX = canvas.width / 2;
+        targetCenterY = canvas.height / 2;
+        let targetX = targetCenterX - targetWidth / 2;
+        let targetY = targetCenterY - targetHeight / 2;
+        cameraX = targetX;
+        cameraY = targetY;
+        cameraWidth = targetWidth;
+        cameraHeight = targetHeight;
+        console.log('start or shift scene,set df camera type, focus to center:', currentDefaultShotScenery, targetWidth, targetHeight, cameraX, cameraY);
+      }else{
+        // 没有设置镜头轨道，使用默认镜头
+        console.error(`can't set default camera type ${currentDefaultShotScenery}`);
+      }
+      return;
+    }
+    
+    
     
     if (currentCameraTrack) {
       // 有设置镜头轨道，使用对应的预设
@@ -970,6 +1032,7 @@ export function initCamera(app) {
       }
       
       console.log('try find preset camera:', preset.name, preset.width, preset.height);
+      previousCameraType = cameraType;
       targetWidth = preset.width;
       targetHeight = preset.height;
 
@@ -982,31 +1045,40 @@ export function initCamera(app) {
         targetCenterY = currentCameraTrack.targetY;
         console.log('updateCameraOnPlayback targetCenterX:', targetCenterX, 'targetCenterY:', targetCenterY);
       } else {
-        // 尝试找到当前时间点正在说话的角色
 
-        let speakingRoleId = findCurrentSpeakerId(currentTime, currentShot);
-        console.log('camera focus on speakingRoleId:', speakingRoleId);
-        if (speakingRoleId) {
-          // 查找该角色在当前时间点的表情轨道
-          // 使用app传入的方法从轨道中查找当前时刻该角色ID对应的表情
-          let currentExpressionTrack = findCurrentSpeakerIdPosition(currentTime, speakingRoleId);
-          if (currentExpressionTrack.targetCenterX !== undefined && currentExpressionTrack.targetCenterY !== undefined) {
-            // 角色位置信息存在，更新目标中心点
-            targetCenterX = currentExpressionTrack.targetCenterX;
-            targetCenterY = currentExpressionTrack.targetCenterY;
-            console.log(`找到说话角色 ${speakingRoleId} 的位置: (${targetCenterX}, ${targetCenterY})`);
-          }
-          else {
-            // 如果找不到角色位置信息，默认居中到画布
-            targetCenterX = canvas.width / 2;
-            targetCenterY = canvas.height / 2;
-            console.error(`audio,current time ${currentTime} can't find role ${speakingRoleId} pos info!!!!!! use default centor (${targetCenterX}, ${targetCenterY})`);
-          }
-        } else {
-          // 如果没有正在说话的角色，默认居中到画布
+        if(preset.name === FULL_CAMERA_TYPE) {
+          // 全景镜头，默认居中
           targetCenterX = canvas.width / 2;
           targetCenterY = canvas.height / 2;
-          console.log('当前时间点没有正在说话的角色，默认居中');
+          console.log('全景镜头,默认居中,焦点:', targetCenterX, targetCenterY);
+        }else{
+
+          // 尝试找到当前时间点正在说话的角色
+          let speakingRoleId = findCurrentSpeakerId(currentTime, currentShot);
+          console.log('camera focus on speakingRoleId:', speakingRoleId);
+          if (speakingRoleId != previousSpeakingRoleId) {
+            previousSpeakingRoleId = speakingRoleId;
+            // 查找该角色在当前时间点的表情轨道
+            // 使用app传入的方法从轨道中查找当前时刻该角色ID对应的表情
+            let currentExpressionPosition = findCurrentSpeakerIdPosition(currentTime, speakingRoleId);
+            if (currentExpressionPosition.targetCenterX !== undefined && currentExpressionPosition.targetCenterY !== undefined) {
+              // 角色位置信息存在，更新目标中心点
+              targetCenterX = currentExpressionPosition.targetCenterX;
+              targetCenterY = currentExpressionPosition.targetCenterY;
+              console.log(`find ${speakingRoleId}  center: (${targetCenterX}, ${targetCenterY})`);
+            }
+            else {
+              // 如果找不到角色位置信息，默认居中到画布
+              targetCenterX = canvas.width / 2;
+              targetCenterY = canvas.height / 2;
+              console.error(`audio,current time ${currentTime} can't find role ${speakingRoleId} pos info!!!!!! use default centor (${targetCenterX}, ${targetCenterY})`);
+            }
+          } else {
+            // 如果没有正在说话的角色，默认居中到画布
+            targetCenterX = canvas.width / 2;
+            targetCenterY = canvas.height / 2;
+            console.log('当前时间点没有正在说话的角色，默认居中');
+          }
         }
       }
       console.log('find track cameraType:', cameraType,targetWidth,targetHeight);
@@ -1015,41 +1087,108 @@ export function initCamera(app) {
       // 没有设置镜头轨道
       // 检查当前分镜是否发生变化
       const currentShotId = currentShot ? currentShot.id : null;
-      
-      if (currentShotId !== currentActiveShotId) {
-        // 分镜切换，重新随机选择景别
+      console.log('no track camera type',currentShotId);
+      // if (currentShotId !== currentActiveShotId) 
+      {
+        // 不是开始，也不是切场景，分镜切换不用改变景别，除非连续N次，可以尝试拉远一级别，先使用上一个景别
         currentActiveShotId = currentShotId;
-        // 使用默认镜别设置
-        currentDefaultShotScenery = app.defaultCameraScenery ? app.defaultCameraScenery.value : '全景';
-      }
-      
-      // 使用存储的随机景别类型
-      for (const preset of cameraPresets.value) {
-        if (preset.name.includes(currentDefaultShotScenery))  {
-          
-          targetWidth = preset.width;
-          targetHeight = preset.height;
-          // 居中到画布
-          targetCenterX = canvas.width / 2;
-          targetCenterY = canvas.height / 2;
-          
-          break;
+        // 使用上一个景别，或默认
+        if(previousCameraType != null){
+          console.log('使用上一个景别:', previousCameraType);
+          currentDefaultShotScenery = previousCameraType;
+        }else{
+          currentDefaultShotScenery = app.defaultCameraScenery ? app.defaultCameraScenery.value : '全景';
+          console.log('使用默认景别:', currentDefaultShotScenery);
         }
       }
+      const preset = getCameraPreset(currentDefaultShotScenery);
+      // 使用存储的随机景别类型
+      if (!preset) {
+        console.error('currentDefaultShotScenery not find in defined cameraPresets:', currentDefaultShotScenery);
+        preset = cameraPresets['全景'];
+      }
+
+      targetWidth = preset.width;
+      targetHeight = preset.height;
+      // if (currentShotId !== currentActiveShotId) {
+      //   //分镜发生变化，要切换焦点, 人物变化，切换吧，分镜先不切换
+      // }
+      // 尝试找到当前时间点正在说话的角色
+      let speakingRoleId = findCurrentSpeakerId(currentTime, currentShot);
+      console.log('camera focus on speakingRoleId:', speakingRoleId,previousSpeakingRoleId);
+      // 如果当前说话人物与上个说话人物不同，则切换，否则使用相同，如果没有说话人物，保持上次相同坐标
+      if (speakingRoleId !== previousSpeakingRoleId) {
+        // 说话人物切换，使用当前说话人物的位置
+        previousSpeakingRoleId = speakingRoleId;
+        let currentExpressionPosition = findCurrentSpeakerIdPosition(currentTime, speakingRoleId);
+        if (currentExpressionPosition.targetCenterX !== undefined && currentExpressionPosition.targetCenterY !== undefined) {
+          // 角色位置信息存在，更新目标中心点
+          targetCenterX = currentExpressionPosition.targetCenterX;
+          targetCenterY = currentExpressionPosition.targetCenterY;
+          console.log(`find ${speakingRoleId}  center: (${targetCenterX}, ${targetCenterY})`);
+        }else{
+          //未找到新的说话人，保持上次位置
+          console.log('未找到新的说话人，保持上次位置:', previousSpeakingRoleId,targetCenterX,targetCenterY);
+        }
+        
+        // 居中到画布
+        // targetCenterX = canvas.width / 2;
+        // targetCenterY = canvas.height / 2;
+      } else {
+        // 说话人物未切换，保持上次位置
+        // targetCenterX = previousTargetCenterX;
+        // targetCenterY = previousTargetCenterY;
+      }
+
+      // 居中到画布
+      // targetCenterX = canvas.width / 2;
+      // targetCenterY = canvas.height / 2;
+
       //没有设置镜头轨道 处理完
     }
-    
+
     console.log('未处理前镜头 cameraX:', cameraX, 'cameraY:', cameraY, 'cameraWidth:', cameraWidth, 'cameraHeight:', cameraHeight);
+    console.log('未处理前镜头 targetCenterX:', targetCenterX, 'targetCenterY:', targetCenterY,'targetWidth:', targetWidth, 'targetHeight:', targetHeight);
     // 计算目标位置
     let targetX = targetCenterX - targetWidth / 2;
     let targetY = targetCenterY - targetHeight / 2;
+    //targetY = screen.height - targetY;// 坐标转换，AE坐标系统Y轴向下为正，而Canvas坐标系统Y轴向上为正
     console.log('目标位置 targetX:', targetX, 'targetY:', targetY, 'targetWidth:', targetWidth, 'targetHeight:', targetHeight);
-    // 平滑过渡 - 这里使用简单的线性插值，可以根据需要调整缓动函数
-    const easeFactor = 0.1; // 过渡速度因子
-    cameraX += (targetX - cameraX) * easeFactor;
-    cameraY += (targetY - cameraY) * easeFactor;
-    cameraWidth += (targetWidth - cameraWidth) * easeFactor;
-    cameraHeight += (targetHeight - cameraHeight) * easeFactor;
+    // 根据时间进行不同的过渡处理
+    if (currentTime === 0) {
+      // 如果当前是0s，直接设置目标镜头的宽高
+      cameraX = targetX;
+      cameraY = targetY;
+      cameraWidth = targetWidth;
+      cameraHeight = targetHeight;
+      console.log('直接设置镜头 cameraX:', cameraX, 'cameraY:', cameraY, 'cameraWidth:', cameraWidth, 'cameraHeight:', cameraHeight);
+    } else {
+      // 否则，根据当前时间与镜头轨道开始时间对比，进行0.3秒内线性过渡
+      const transitionDuration = 0.3; // 过渡持续时间
+      const cameraTrackStartTime = currentCameraTrack ? currentCameraTrack.startTime + currentShot.startTime : 0;
+      const timeSinceStart = (currentTime - cameraTrackStartTime)/1000;
+      console.log('currentCameraTrack',currentCameraTrack);
+      console.log('插值计算镜头 timeSinceStart:', timeSinceStart, 'cameraTrackStartTime:',cameraTrackStartTime,'transitionDuration:', transitionDuration);
+      
+      if (timeSinceStart <= transitionDuration && timeSinceStart >= 0) {
+        // 在过渡时间内，使用线性插值
+        const progress = timeSinceStart / transitionDuration;
+        cameraX = cameraX + (targetX - cameraX) * progress;
+        cameraY = cameraY + (targetY - cameraY) * progress;
+        cameraWidth = cameraWidth + (targetWidth - cameraWidth) * progress;
+        cameraHeight = cameraHeight + (targetHeight - cameraHeight) * progress;
+      } else if (timeSinceStart > transitionDuration) {
+        // 过渡完成，直接设置目标值
+        cameraX = targetX;
+        cameraY = targetY;
+        cameraWidth = targetWidth;
+        cameraHeight = targetHeight;
+      } else {
+        // 如果当前时间小于轨道开始时间，保持当前值不变
+        // 这种情况可能发生在时间回退时
+      }
+
+    }
     
     // 确保镜头不超出画布范围
     if (canvas.width && canvas.height) {
