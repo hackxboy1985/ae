@@ -349,8 +349,8 @@
         </div>
         <div id="timelineContent" class="h-64 bg-white border-t border-gray-300 flex flex-col">
         <!-- 播放控制 -->
-        <div class="h-12 border-b border-gray-300 flex items-center justify-between px-4">
-          <div class="flex items-center">
+        <div class="h-12 border-b border-gray-300 flex items-center px-4">
+          <div class="flex items-center space-x-2">
             <input 
               type="checkbox" 
               id="showAllExpressions" 
@@ -381,26 +381,29 @@
                 <i class="fa fa-search-minus"></i>
               </button>
             </div>
-          </div>
-          <button @click="goToStart" class="p-2 hover:text-primary transition">
-            <i class="fa fa-step-backward"></i>
-          </button>
-          <button @click="playPause" class="p-3 bg-primary text-white rounded-full hover:bg-primary/90 transition relative w-10 h-10 flex items-center justify-center">
-            <div v-if="!isPlaying" class="play-icon bg-white w-4 h-6 ml-0.5"></div>
-            <div v-else class="flex space-x-1">
-              <div class="bg-white w-2 h-6"></div>
-              <div class="bg-white w-2 h-6 ml-1"></div>
+            <!-- 固定在div后面的按钮 -->
+            <button @click="goToStart" class="p-2 hover:text-primary transition">
+              <i class="fa fa-step-backward"></i>
+            </button>
+            <button @click="playPause" class="p-3 bg-primary text-white rounded-full hover:bg-primary/90 transition relative w-10 h-10 flex items-center justify-center">
+              <div v-if="!isPlaying" class="play-icon bg-white w-4 h-6 ml-0.5"></div>
+              <div v-else class="flex space-x-1">
+                <div class="bg-white w-2 h-6"></div>
+                <div class="bg-white w-2 h-6 ml-1"></div>
+              </div>
+            </button>
+            <button @click="goToEnd" class="p-2 hover:text-primary transition">
+              <i class="fa fa-step-forward"></i>
+            </button>
+            <div class="text-sm text-gray-600">
+              {{ formatTime(currentTime) }} / {{ formatTime(totalDuration) }}
             </div>
-          </button>
-          <button @click="goToEnd" class="p-2 hover:text-primary transition">
-            <i class="fa fa-step-forward"></i>
-          </button>
-          <div class="text-sm text-gray-600">
-            {{ formatTime(currentTime) }} / {{ formatTime(totalDuration) }}
+            <button @click="toggleLoop" class="p-2 hover:text-primary transition" :class="loop ? 'text-primary' : ''">
+              <i class="fa fa-repeat"></i>
+            </button>
           </div>
-          <button @click="toggleLoop" class="p-2 hover:text-primary transition" :class="loop ? 'text-primary' : ''">
-            <i class="fa fa-repeat"></i>
-          </button>
+
+          
           
           <!-- 角色功能按钮区域 -->
           <div v-if="!isPlaying && selectedRoleId" class="ml-auto flex justify-end space-x-2">
@@ -2641,7 +2644,7 @@
         
         // 渲染当前帧 - 重新定义完整的renderFrame函数实现
         let renderFrame = (trace=-1) => {
-            console.log('renderFrame:', trace)
+            // console.log('renderFrame:', trace)
             // 1. 前置检查
             if (!canvas.value || !ctx.value || !offscreenCanvas || !offscreenCtx) {
               debugInfo.value = `Canvas or context invalid: canvas=${!!canvas.value}, ctx=${!!ctx.value}`;
@@ -4112,7 +4115,7 @@
                 scale: sceneRoleConfig.scale?.toFixed(2) || 1,
                 _isTemp: true
               };
-              console.log('使用默认表情:',currentExpressionTrack);
+              //console.log('使用默认表情:',currentExpressionTrack);
             }
           }
           
