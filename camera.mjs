@@ -18,6 +18,8 @@ export function initCamera(app) {
   let outputCameraWidth = cameraWidth; // 输出的摄像机宽度
   let outputCameraHeight = cameraHeight; // 输出的摄像机高度
 
+  // let expressionManager = app.expressionManager;
+
   // 从app对象获取canvas引用
   let canvas = null;
   if (app.canvas && app.canvas.value) {
@@ -364,7 +366,7 @@ export function initCamera(app) {
     } else {
       // 不旋转时直接绘制矩形边框
       ctx.value.strokeRect(cameraX, cameraY, cameraWidth, cameraHeight);
-      console.log('drawCamera cameraX', cameraX, 'cameraY', cameraY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight);
+      //console.log('drawCamera cameraX', cameraX, 'cameraY', cameraY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight);
 
       // 绘制边框内部的半透明区域
       ctx.value.fillStyle = 'rgba(255, 0, 0, 0.1)';
@@ -905,66 +907,121 @@ export function initCamera(app) {
     if (currentCameraTrack) {
       // 有设置镜头轨道，使用对应的预设
       const cameraType = currentCameraTrack.cameraType;
-      console.log('updateCameraOnPlayback cameraType:', cameraType);
+      console.log('镜头轨道 type:', cameraType);
       
       let findCameraPreset = false;
       // 查找对应的预设镜头
       for (const preset of cameraPresets.value) {
         if (preset.name.includes(cameraType) ) {
+          console.log('updateCameraOnPlayback preset:', preset);
           findCameraPreset = true;
           targetWidth = preset.width;
           targetHeight = preset.height;
           
-          
-          // 如果有目标中心点设置，则使用，否则居中
-          if (currentCameraTrack.targetX !== undefined && currentCameraTrack.targetY !== undefined) {
+
+          // 如果有目标中心点设置，则使用，否则尝试找到当前说话角色的位置
+          if (currentCameraTrack.targetX !== undefined && currentCameraTrack.targetY !== undefined 
+            && (currentCameraTrack.targetX !=0  && currentCameraTrack.targetY !=0)
+          ) {
             targetCenterX = currentCameraTrack.targetX;
             targetCenterY = currentCameraTrack.targetY;
+            console.log('updateCameraOnPlayback targetCenterX:', targetCenterX, 'targetCenterY:', targetCenterY);
           } else {
-            // 默认居中到画布
-            targetCenterX = canvas.width / 2;
-            targetCenterY = canvas.height / 2;
+            // 尝试找到当前时间点正在说话的角色
+            let speakingRoleId = null;
+            if (currentShot && currentShot.audios && Array.isArray(currentShot.audios)) {
+              // 在当前分镜的音频轨道中查找当前时间点正在播放的音频
+              const currentAudio = currentShot.audios.find(audio => {
+                const audioStartTime = currentShot.startTime + (audio.startTime || 0);
+                const audioEndTime = audioStartTime + (audio.audioDuration || 0);
+                return currentTime >= audioStartTime && currentTime <= audioEndTime;
+              });
+              
+              if (currentAudio && currentAudio.roleId) {
+                speakingRoleId = currentAudio.roleId;
+              }
+            }
+            console.log('camera focus on speakingRoleId:', speakingRoleId);
+            if (speakingRoleId) {
+              // 查找该角色在当前时间点的表情轨道
+              // 使用app传入的方法从轨道中查找当前时刻该角色ID对应的表情
+              let currentExpressionTrack = null;
+              if (app.getExpressionTrackByRoleId) {
+                currentExpressionTrack = app.getExpressionTrackByRoleId(speakingRoleId, currentTime);
+                console.log('camera focus on trace expression:', currentExpressionTrack);
+              } else {
+                console.warn('app.getExpressionTrackByRoleId方法未定义');
+              }
+              
+              // 如果无法通过app方法获取，尝试从expressionManager获取（作为备用方案）
+              if (!currentExpressionTrack && app.expressionManager && app.expressionManager.canvasCurrentExpTrack && 
+                  app.expressionManager.canvasCurrentExpTrack.roleId === speakingRoleId) {
+                currentExpressionTrack = app.expressionManager.canvasCurrentExpTrack;
+                console.log('通过app.expressionManager获取到的表情轨道:', currentExpressionTrack);
+              }
+              if (currentExpressionTrack && currentExpressionTrack.x !== undefined && currentExpressionTrack.y !== undefined) {
+                // 使用角色位置的中间点作为目标中心点
+                const roleWidth = currentExpressionTrack.width || 100;
+                const roleHeight = currentExpressionTrack.height || 100;
+                const scale = currentExpressionTrack.scale || 1;
+                
+                targetCenterX = currentExpressionTrack.x + (roleWidth * scale) / 2;
+                targetCenterY = currentExpressionTrack.y + (roleHeight * scale) / 2;
+                console.log(`设置中心点为说话角色 ${speakingRoleId} 的位置: (${targetCenterX}, ${targetCenterY})`);
+              } else {
+                // 如果找不到角色位置信息，默认居中到画布
+                targetCenterX = canvas.width / 2;
+                targetCenterY = canvas.height / 2;
+                console.log(`未找到角色 ${speakingRoleId} 的位置信息，默认居中`);
+              }
+            } else {
+              // 如果没有正在说话的角色，默认居中到画布
+              targetCenterX = canvas.width / 2;
+              targetCenterY = canvas.height / 2;
+              console.log('当前时间点没有正在说话的角色，默认居中');
+            }
           }
           console.log('find track cameraType:', cameraType,targetWidth,targetHeight);
           findCameraPreset = true;
           break;
         }
-        if(!findCameraPreset){
+        
+      }
+      if(!findCameraPreset){
           console.error('track cameraType not find in defined cameraPresets:', cameraType);
-        }
       }
     } else {
-        // 没有设置镜头轨道
-        // 检查当前分镜是否发生变化
-        const currentShotId = currentShot ? currentShot.id : null;
-        
-        if (currentShotId !== currentActiveShotId) {
-          // 分镜切换，重新随机选择景别
-          currentActiveShotId = currentShotId;
-          // 使用默认镜别设置
-          currentDefaultShotScenery = app.defaultCameraScenery ? app.defaultCameraScenery.value : '全景';
-        }
-        
-        // 使用存储的随机景别类型
-        for (const preset of cameraPresets.value) {
-          if ((currentDefaultShotScenery === '远景' && preset.name === '远景') ||
-              (currentDefaultShotScenery === '全景' && (preset.name === '全景')))  {
-            
-            targetWidth = preset.width;
-            targetHeight = preset.height;
-            // 居中到画布
-            targetCenterX = canvas.width / 2;
-            targetCenterY = canvas.height / 2;
-            
-            break;
-          }
+      // 没有设置镜头轨道
+      // 检查当前分镜是否发生变化
+      const currentShotId = currentShot ? currentShot.id : null;
+      
+      if (currentShotId !== currentActiveShotId) {
+        // 分镜切换，重新随机选择景别
+        currentActiveShotId = currentShotId;
+        // 使用默认镜别设置
+        currentDefaultShotScenery = app.defaultCameraScenery ? app.defaultCameraScenery.value : '全景';
+      }
+      
+      // 使用存储的随机景别类型
+      for (const preset of cameraPresets.value) {
+        if ((currentDefaultShotScenery === '远景' && preset.name === '远景') ||
+            (currentDefaultShotScenery === '全景' && (preset.name === '全景')))  {
+          
+          targetWidth = preset.width;
+          targetHeight = preset.height;
+          // 居中到画布
+          targetCenterX = canvas.width / 2;
+          targetCenterY = canvas.height / 2;
+          
+          break;
         }
       }
+    }
     
     // 计算目标位置
     let targetX = targetCenterX - targetWidth / 2;
     let targetY = targetCenterY - targetHeight / 2;
-    
+    console.log('updateCameraOnPlayback targetX:', targetX, 'targetY:', targetY);
     // 平滑过渡 - 这里使用简单的线性插值，可以根据需要调整缓动函数
     const easeFactor = 0.1; // 过渡速度因子
     cameraX += (targetX - cameraX) * easeFactor;
@@ -984,7 +1041,7 @@ export function initCamera(app) {
       if (cameraX + cameraWidth > canvas.width) cameraX = canvas.width - cameraWidth;
       if (cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
     }
-    console.log('updateCamera pos:', cameraX, cameraY);
+    //console.log('updateCamera pos:', cameraX, cameraY);
     // 更新预览画布（如果存在）
     // if (previewCanvas && previewCanvas.value) {
     //   previewCanvas.value.width = targetWidth;
