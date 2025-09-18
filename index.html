@@ -532,7 +532,7 @@
             id: 'exp1-4',
             name: '悲伤',
             frames: [
-              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-4.webp'
+              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/man1.webp'
             ],
             frameInterval: 250,
             width:100,
@@ -542,7 +542,7 @@
             id: 'exp1-5',
             name: '生气',
             frames: [
-              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r1-5.webp'
+              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/man1.webp'
             ],
             frameInterval: 200,
             width:100,
@@ -589,7 +589,7 @@
             id: 'exp3-1',
             name: '默认表情',
             frames: [
-              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/r3.webp'
+              'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/wman1.webp'
             ],
             frameInterval: 300,
             width:100,
@@ -2240,6 +2240,8 @@
               { id: 'set-start', text: '设置开始位置' },
               { id: 'set-end', text: '设置结束位置' },
               { id: 'fix-start', text: '固定开始位置' },
+              { id: 'syn-default-pos', text: '使用默认位置' },
+              { id: 'syn-pos-other', text: '同步位置到本场景所有分镜' },
               { id: 'scene-start', text: '开始时间同场景开始' },
               { id: 'scene-end', text: '结束时间同场景结束' }
             ];
@@ -2629,6 +2631,10 @@
             if (!canvas.value || !ctx.value || !offscreenCanvas || !offscreenCtx) {
               debugInfo.value = `Canvas or context invalid: canvas=${!!canvas.value}, ctx=${!!ctx.value}`;
               return;
+            }
+            // 在播放时根据当前时间动态更新摄像机设置
+            if (cameraModule && cameraModule.updateCameraOnPlayback) {
+              cameraModule.updateCameraOnPlayback(currentTime, timeline.value);
             }
             
             // 添加调试信息，显示当前渲染状态
@@ -3716,9 +3722,9 @@
             updateTimelineDisplay();
             
             // 在播放时根据当前时间动态更新摄像机设置
-            if (cameraModule && cameraModule.updateCameraOnPlayback) {
-              cameraModule.updateCameraOnPlayback(currentTime, timeline.value);
-            }
+            // if (cameraModule && cameraModule.updateCameraOnPlayback) {
+            //   cameraModule.updateCameraOnPlayback(currentTime, timeline.value);
+            // }
             
             renderFrame();
           }
