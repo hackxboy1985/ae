@@ -76,6 +76,7 @@ export function initCamera(app) {
   const selectedCameraSize = app.selectedCameraSize;
   const timeline = app.timeline;
   const isMaintainingAspectRatio = app.isMaintainingAspectRatio;
+  const enableCameraEdit = app.enableCameraEdit;
   
 
   const isShowCamera = computed(() => {
@@ -555,7 +556,7 @@ export function initCamera(app) {
     
     // 拖拽摄像机
     canvas.addEventListener('mousedown', (e) => {
-      if (!showCamera.value) return;
+      if (!showCamera.value || !enableCameraEdit.value) return;
       
       // 阻止默认行为，确保拖拽流畅
       e.preventDefault();
@@ -684,7 +685,7 @@ export function initCamera(app) {
       }
     });
     
-    window.addEventListener('mousemove', (e) => {
+    canvas.addEventListener('mousemove', (e) => {
       if (!canvas) return;
       
       const rect = canvas.getBoundingClientRect();
@@ -696,7 +697,7 @@ export function initCamera(app) {
       const mouseY = (e.clientY - rect.top) * scaleY;
       
       // 处理摄像机拖拽
-      if (isDraggingCamera) {
+      if (isDraggingCamera && enableCameraEdit.value) {
         // 阻止默认行为
         e.preventDefault();
         e.stopPropagation();
@@ -717,7 +718,7 @@ export function initCamera(app) {
         renderFrame(37);
       }
       // 处理摄像机调整大小
-      else if (isResizingCamera) {
+      else if (isResizingCamera && enableCameraEdit.value) {
         // 阻止默认行为
         e.preventDefault();
         e.stopPropagation();
@@ -808,7 +809,7 @@ export function initCamera(app) {
         renderFrame(40);
       }
       // 更新鼠标样式
-      else if (showCamera.value) {
+      else if (showCamera.value && enableCameraEdit.value) {
         const resizeRegionSize = 10;
         
         // 检查角落
@@ -849,7 +850,7 @@ export function initCamera(app) {
       
     });
     
-    window.addEventListener('mouseup', (e) => {
+    canvas.addEventListener('mouseup', (e) => {
       if (isDraggingCamera && canvas) {
         isDraggingCamera = false;
         canvas.style.cursor = 'default';

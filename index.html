@@ -459,8 +459,11 @@
                 <div class="absolute top-0 left-0 h-full w-20 bg-gray-100 flex items-center justify-center text-xs">
                   <span>镜头/对白</span>
                   <button @click="showCameraClick" class="ml-1 p-1 hover:bg-gray-200 rounded-full" title="显示/隐藏摄像机预览">
-                    <i :class="showCamera ? 'fa fa-eye' : 'fa fa-eye-slash '"></i>
-                  </button>
+              <i :class="showCamera ? 'fa fa-eye' : 'fa fa-eye-slash '"></i>
+            </button>
+            <button @click="enableCameraEdit = !enableCameraEdit" class="ml-1 p-1 hover:bg-gray-200 rounded-full" title="启用/禁用镜头编辑" :class="{ 'bg-yellow-100': enableCameraEdit, 'bg-gray-300': !enableCameraEdit, 'opacity-50': !enableCameraEdit }">
+              <i class="fa fa-pencil"></i>
+            </button>
                 </div>
               </div>
             </template>
@@ -956,6 +959,7 @@
         const showCameraPreview = ref(false); // 是否显示相机预览
         const showCameraTrack = ref(true); // 是否显示镜头轨道
         const previewCanvas = ref(null); // 预览Canvas
+        const enableCameraEdit = ref(false); // 是否启用摄像机编辑功能
         let cameraX = 0; // 摄像机X位置
         let cameraY = 0; // 摄像机Y位置
         let cameraWidth = cameraSizes.value[2].width; // 摄像机宽度
@@ -1061,7 +1065,7 @@
               timeline,
               expressionManager,
               getExpressionTrackByRoleId,
-
+              enableCameraEdit
             });
             
             // 更新引用
@@ -3834,7 +3838,8 @@
         // 处理Canvas点击
         const handleCanvasClick = (event) => {
           if (isPlaying.value) return;
-          
+          if (enableCameraEdit.value) return;
+
           // 获取Canvas元素
           const canvasElement = canvas.value;
           const rect = canvasElement.getBoundingClientRect();
@@ -4151,6 +4156,7 @@
           // 添加角色拖拽事件监听
           canvasElement.addEventListener('mousedown', (e) => {
             if (isPlaying.value) return;
+            if (enableCameraEdit.value) return;
             
             const rect = canvasElement.getBoundingClientRect();
             const scaleX = canvasElement.width / rect.width;
@@ -4258,6 +4264,8 @@
           
           // 鼠标移动事件（添加到document以确保拖拽过程中鼠标离开Canvas也能继续）
           canvasElement.addEventListener('mousemove', (e) => {
+            if (enableCameraEdit.value) return;
+
             const rect = canvasElement.getBoundingClientRect();
             const scaleX = canvasElement.width / rect.width;
             const scaleY = canvasElement.height / rect.height;
@@ -4434,6 +4442,7 @@
           
           // 鼠标释放事件
           canvasElement.addEventListener('mouseup', () => {
+            if (enableCameraEdit.value) return;
             if ((!isDraggingRole && !isDraggingResizeDot && !isDraggingAngleDot) || !draggedRoleId) return;
             
             isDraggingRole = false;
@@ -4811,6 +4820,7 @@
           showCamera,
           showCameraClick: () => { showCamera.value = !showCamera.value; if (cameraModule) cameraModule.showCameraClick(); },
           showCameraPreview,
+          enableCameraEdit,
           showCameraPreviewClick: () => { if (cameraModule) cameraModule.showCameraPreviewClick(); },
           closeCameraPreview: () => { if (cameraModule) cameraModule.closeCameraPreview(); },
           // 虚拟镜头系统扩展功能
@@ -4826,8 +4836,8 @@
           toggleAspectRatio: () => { if (cameraModule) cameraModule.toggleAspectRatio(); },
           toggleCameraRotation: () => { if (cameraModule) cameraModule.toggleCameraRotation(); },
           toggleCameraInfo: () => { if (cameraModule) cameraModule.toggleCameraInfo(); },
-          zoomCamera: (factor) => { if (cameraModule) cameraModule.zoomCamera(factor); },
-          rotateCamera: (degrees) => { if (cameraModule) cameraModule.rotateCamera(degrees); },
+          zoomCamera: (factor) => { if (cameraModule && enableCameraEdit.value) cameraModule.zoomCamera(factor); },
+          rotateCamera: (degrees) => { if (cameraModule && enableCameraEdit.value) cameraModule.rotateCamera(degrees); },
           applyCameraPreset: (presetIndex) => { if (cameraModule) cameraModule.applyCameraPreset(presetIndex); },
           saveCameraPreset: (presetName) => { if (cameraModule) cameraModule.saveCameraPreset(presetName); },
           deleteCameraPreset: (presetIndex) => { if (cameraModule) cameraModule.deleteCameraPreset(presetIndex); },
