@@ -865,6 +865,57 @@ export function initCamera(app) {
     });
   };
   
+  const getCameraPreset = (cameraType) => {
+    for (const preset of cameraPresets.value) {
+      if (preset.name.includes(cameraType) ) {
+        return preset;
+      }
+    }
+    return null;
+  }
+
+  const findCurrentSpeakerId = (currentTime, currentShot) => {
+    let speakingRoleId = null;
+    if (currentShot && currentShot.audios && Array.isArray(currentShot.audios)) {
+      // 在当前分镜的音频轨道中查找当前时间点正在播放的音频
+      const currentAudio = currentShot.audios.find(audio => {
+        const audioStartTime = currentShot.startTime + (audio.startTime || 0);
+        const audioEndTime = audioStartTime + (audio.audioDuration || 0);
+        return currentTime >= audioStartTime && currentTime <= audioEndTime;
+      });
+      
+      if (currentAudio && currentAudio.roleId) {
+        speakingRoleId = currentAudio.roleId;
+      }
+    }
+    return speakingRoleId;
+  }
+
+  const findCurrentSpeakerIdPosition = (currentTime, speakingRoleId) => {
+    let currentExpressionTrack = null;
+    let targetCenterX = null;
+    let targetCenterY = null;
+    if (app.getExpressionTrackByRoleId) {
+      currentExpressionTrack = app.getExpressionTrackByRoleId(speakingRoleId, currentTime, false);
+      console.log('camera focus on trace expression:', currentExpressionTrack);
+    } else {
+      console.warn('app.getExpressionTrackByRoleId方法未定义');
+    }
+          
+    if (currentExpressionTrack && currentExpressionTrack.x !== undefined && currentExpressionTrack.y !== undefined) {
+      // 使用角色位置及当前帧宽高计算出角色中间点作为目标中心点
+      const roleWidth = currentExpressionTrack.width || 0;
+      const roleHeight = currentExpressionTrack.height || 0;
+      const scale = currentExpressionTrack.scale || 1;
+      
+      targetCenterX = currentExpressionTrack.x + (roleWidth * scale) / 2;
+      targetCenterY = currentExpressionTrack.y + (roleHeight * scale) / 2;
+      console.log(`找到说话角色 ${speakingRoleId} 的位置: (${targetCenterX}, ${targetCenterY})`);
+    }
+    return {targetCenterX,targetCenterY};
+  }
+      
+
   // 根据当前时间更新摄像机设置
   const updateCameraOnPlayback = (currentTime, timeline) => {
     if (!timeline || !timeline.shots || !canvas || !canvas.width || !canvas.height) {
@@ -911,87 +962,54 @@ export function initCamera(app) {
       const cameraType = currentCameraTrack.cameraType;
       console.log('镜头轨道 type:', cameraType);
       
-      let findCameraPreset = false;
-      // 查找对应的预设镜头
-      for (const preset of cameraPresets.value) {
-        if (preset.name.includes(cameraType) ) {
-          console.log('updateCameraOnPlayback preset:', preset);
-          findCameraPreset = true;
-          targetWidth = preset.width;
-          targetHeight = preset.height;
-          
+      const preset = getCameraPreset(cameraType);
+      if (!preset) {
+        console.error('track cameraType not find in defined cameraPresets:', cameraType);
+        return;
+      }
+      
+      console.log('try find preset camera:', preset.name, preset.width, preset.height);
+      targetWidth = preset.width;
+      targetHeight = preset.height;
 
-          // 如果有目标中心点设置，则使用，否则尝试找到当前说话角色的位置
-          if (currentCameraTrack.targetX !== undefined && currentCameraTrack.targetY !== undefined 
-            && (currentCameraTrack.targetX !=0  && currentCameraTrack.targetY !=0)
-          ) {
-            targetCenterX = currentCameraTrack.targetX;
-            targetCenterY = currentCameraTrack.targetY;
-            console.log('updateCameraOnPlayback targetCenterX:', targetCenterX, 'targetCenterY:', targetCenterY);
-          } else {
-            // 尝试找到当前时间点正在说话的角色
-            let speakingRoleId = null;
-            if (currentShot && currentShot.audios && Array.isArray(currentShot.audios)) {
-              // 在当前分镜的音频轨道中查找当前时间点正在播放的音频
-              const currentAudio = currentShot.audios.find(audio => {
-                const audioStartTime = currentShot.startTime + (audio.startTime || 0);
-                const audioEndTime = audioStartTime + (audio.audioDuration || 0);
-                return currentTime >= audioStartTime && currentTime <= audioEndTime;
-              });
-              
-              if (currentAudio && currentAudio.roleId) {
-                speakingRoleId = currentAudio.roleId;
-              }
-            }
-            console.log('camera focus on speakingRoleId:', speakingRoleId);
-            if (speakingRoleId) {
-              // 查找该角色在当前时间点的表情轨道
-              // 使用app传入的方法从轨道中查找当前时刻该角色ID对应的表情
-              let currentExpressionTrack = null;
-              if (app.getExpressionTrackByRoleId) {
-                currentExpressionTrack = app.getExpressionTrackByRoleId(speakingRoleId, currentTime);
-                console.log('camera focus on trace expression:', currentExpressionTrack);
-              } else {
-                console.warn('app.getExpressionTrackByRoleId方法未定义');
-              }
-              
-              // 如果无法通过app方法获取，尝试从expressionManager获取（作为备用方案）
-              if (!currentExpressionTrack && app.expressionManager && app.expressionManager.canvasCurrentExpTrack && 
-                  app.expressionManager.canvasCurrentExpTrack.roleId === speakingRoleId) {
-                currentExpressionTrack = app.expressionManager.canvasCurrentExpTrack;
-                console.log('通过app.expressionManager获取到的表情轨道:', currentExpressionTrack);
-              }
-              if (currentExpressionTrack && currentExpressionTrack.x !== undefined && currentExpressionTrack.y !== undefined) {
-                // 使用角色位置的中间点作为目标中心点
-                const roleWidth = currentExpressionTrack.width || 100;
-                const roleHeight = currentExpressionTrack.height || 100;
-                const scale = currentExpressionTrack.scale || 1;
-                
-                targetCenterX = currentExpressionTrack.x + (roleWidth * scale) / 2;
-                targetCenterY = currentExpressionTrack.y + (roleHeight * scale) / 2;
-                console.log(`设置中心点为说话角色 ${speakingRoleId} 的位置: (${targetCenterX}, ${targetCenterY})`);
-              } else {
-                // 如果找不到角色位置信息，默认居中到画布
-                targetCenterX = canvas.width / 2;
-                targetCenterY = canvas.height / 2;
-                console.log(`未找到角色 ${speakingRoleId} 的位置信息，默认居中`);
-              }
-            } else {
-              // 如果没有正在说话的角色，默认居中到画布
-              targetCenterX = canvas.width / 2;
-              targetCenterY = canvas.height / 2;
-              console.log('当前时间点没有正在说话的角色，默认居中');
-            }
+      // 如果有目标中心点设置，则使用，否则尝试找到当前说话角色的位置
+      if (currentCameraTrack.targetX !== undefined && currentCameraTrack.targetY !== undefined 
+        && (currentCameraTrack.targetX !=0  && currentCameraTrack.targetY !=0)
+      ) {
+        //TODO: 此处为复杂运镜逻辑，需要后续补充,需要根据targetX,y,width,height,计算目标中心点
+        targetCenterX = currentCameraTrack.targetX;
+        targetCenterY = currentCameraTrack.targetY;
+        console.log('updateCameraOnPlayback targetCenterX:', targetCenterX, 'targetCenterY:', targetCenterY);
+      } else {
+        // 尝试找到当前时间点正在说话的角色
+
+        let speakingRoleId = findCurrentSpeakerId(currentTime, currentShot);
+        console.log('camera focus on speakingRoleId:', speakingRoleId);
+        if (speakingRoleId) {
+          // 查找该角色在当前时间点的表情轨道
+          // 使用app传入的方法从轨道中查找当前时刻该角色ID对应的表情
+          let currentExpressionTrack = findCurrentSpeakerIdPosition(currentTime, speakingRoleId);
+          if (currentExpressionTrack.targetCenterX !== undefined && currentExpressionTrack.targetCenterY !== undefined) {
+            // 角色位置信息存在，更新目标中心点
+            targetCenterX = currentExpressionTrack.targetCenterX;
+            targetCenterY = currentExpressionTrack.targetCenterY;
+            console.log(`找到说话角色 ${speakingRoleId} 的位置: (${targetCenterX}, ${targetCenterY})`);
           }
-          console.log('find track cameraType:', cameraType,targetWidth,targetHeight);
-          findCameraPreset = true;
-          break;
+          else {
+            // 如果找不到角色位置信息，默认居中到画布
+            targetCenterX = canvas.width / 2;
+            targetCenterY = canvas.height / 2;
+            console.error(`audio,current time ${currentTime} can't find role ${speakingRoleId} pos info!!!!!! use default centor (${targetCenterX}, ${targetCenterY})`);
+          }
+        } else {
+          // 如果没有正在说话的角色，默认居中到画布
+          targetCenterX = canvas.width / 2;
+          targetCenterY = canvas.height / 2;
+          console.log('当前时间点没有正在说话的角色，默认居中');
         }
-        
       }
-      if(!findCameraPreset){
-          console.error('track cameraType not find in defined cameraPresets:', cameraType);
-      }
+      console.log('find track cameraType:', cameraType,targetWidth,targetHeight);
+
     } else {
       // 没有设置镜头轨道
       // 检查当前分镜是否发生变化
@@ -1006,8 +1024,7 @@ export function initCamera(app) {
       
       // 使用存储的随机景别类型
       for (const preset of cameraPresets.value) {
-        if ((currentDefaultShotScenery === '远景' && preset.name === '远景') ||
-            (currentDefaultShotScenery === '全景' && (preset.name === '全景')))  {
+        if (preset.name.includes(currentDefaultShotScenery))  {
           
           targetWidth = preset.width;
           targetHeight = preset.height;
@@ -1018,12 +1035,14 @@ export function initCamera(app) {
           break;
         }
       }
+      //没有设置镜头轨道 处理完
     }
     
+    console.log('未处理前镜头 cameraX:', cameraX, 'cameraY:', cameraY, 'cameraWidth:', cameraWidth, 'cameraHeight:', cameraHeight);
     // 计算目标位置
     let targetX = targetCenterX - targetWidth / 2;
     let targetY = targetCenterY - targetHeight / 2;
-    console.log('updateCameraOnPlayback targetX:', targetX, 'targetY:', targetY);
+    console.log('目标位置 targetX:', targetX, 'targetY:', targetY, 'targetWidth:', targetWidth, 'targetHeight:', targetHeight);
     // 平滑过渡 - 这里使用简单的线性插值，可以根据需要调整缓动函数
     const easeFactor = 0.1; // 过渡速度因子
     cameraX += (targetX - cameraX) * easeFactor;
@@ -1043,6 +1062,8 @@ export function initCamera(app) {
       if (cameraX + cameraWidth > canvas.width) cameraX = canvas.width - cameraWidth;
       if (cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
     }
+    console.log('处理后镜头 cameraX:', cameraX, 'cameraY:', cameraY, 'cameraWidth:', cameraWidth, 'cameraHeight:', cameraHeight);
+
     //console.log('updateCamera pos:', cameraX, cameraY);
     // 更新预览画布（如果存在）
     // if (previewCanvas && previewCanvas.value) {

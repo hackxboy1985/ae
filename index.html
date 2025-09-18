@@ -294,7 +294,6 @@
               <option value="全景">全景 (1920x1080)</option>
             </select>
             
-            <!-- 初始化逻辑已移至Vue组件的onMounted钩子中 -->
           </div>
         </div>
         
@@ -1129,15 +1128,6 @@
         const closeCameraPreview = () => {
           showCameraPreview.value = false;
         };
-
-
-        
-        // 主要的初始化逻辑已在下方的onMounted钩子中实现
-        // onMounted(() => {
-        // });
-        
-
-        
 
         // 监听摄像机关键属性变化，实时更新预览
         const unwatchCameraProperties = watch(
@@ -4083,7 +4073,7 @@
           if(onlyTrack)
             return currentExpressionTrack;
 
-          //console.log('getExpressionTrackByRoleId', roleId, time, currentExpressionTrack);
+          //console.log('getExpresTrackByRoleId', roleId, time, currentExpressionTrack);
           // 如果没有找到，检查是否在最后一帧
           if (!currentExpressionTrack && time >= totalDuration.value) {
             // 找到最后一个结束的轨道
@@ -4136,7 +4126,7 @@
           
           // 初始渲染
           updateTimelineDisplay();
-          //renderFrame(24);
+          // renderFrame(24);//无用
           
           // 角色拖拽相关状态
           let isDraggingRole = false; // 角色拖拽状态
