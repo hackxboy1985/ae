@@ -417,7 +417,7 @@ export function initCamera(app) {
     
     cameraX = (offscreenCanvas.width - cameraWidth) / 2;
     cameraY = (offscreenCanvas.height - cameraHeight) / 2;
-    //console.log('resetCamera pos:', cameraX, cameraY);
+    console.log('resetCamera pos:', cameraX, cameraY);
     
     if(selectedCameraSize != null) {
       outputCameraWidth = selectedCameraSize.width;
@@ -457,27 +457,27 @@ export function initCamera(app) {
   };
   
   const zoomCamera = (factor) => {
-    const newWidth = cameraWidth * factor;
-    const newHeight = isMaintainingAspectRatio && isMaintainingAspectRatio.value !== undefined ? 
-                      (isMaintainingAspectRatio.value ? cameraHeight * factor : cameraHeight) : 
-                      cameraHeight;
+    // const newWidth = cameraWidth * factor;
+    // const newHeight = isMaintainingAspectRatio && isMaintainingAspectRatio.value !== undefined ? 
+    //                   (isMaintainingAspectRatio.value ? cameraHeight * factor : cameraHeight) : 
+    //                   cameraHeight;
     
-    // 确保摄像机尺寸不会太小
-    if (newWidth >= 100 && newHeight >= 100) {
-      // 计算中心位置
-      const centerX = cameraX + cameraWidth / 2;
-      const centerY = cameraY + cameraHeight / 2;
+    // // 确保摄像机尺寸不会太小
+    // if (newWidth >= 100 && newHeight >= 100) {
+    //   // 计算中心位置
+    //   const centerX = cameraX + cameraWidth / 2;
+    //   const centerY = cameraY + cameraHeight / 2;
       
-      // 更新尺寸
-      cameraWidth = newWidth;
-      cameraHeight = newHeight;
+    //   // 更新尺寸
+    //   cameraWidth = newWidth;
+    //   cameraHeight = newHeight;
       
-      // 重新定位摄像机，保持中心点不变
-      cameraX = centerX - cameraWidth / 2;
-      cameraY = centerY - cameraHeight / 2;
+    //   // 重新定位摄像机，保持中心点不变
+    //   cameraX = centerX - cameraWidth / 2;
+    //   cameraY = centerY - cameraHeight / 2;
       
-      renderFrame();
-    }
+    //   renderFrame();
+    // }
   };
   
   const rotateCamera = (degrees) => {
@@ -710,7 +710,7 @@ export function initCamera(app) {
         if (cameraY < 0) cameraY = 0;
         if (canvas.width && cameraX + cameraWidth > canvas.width) cameraX = canvas.width - cameraWidth;
         if (canvas.height && cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
-        
+        console.log('dragCamera pos:', cameraX, cameraY);
         // 立即渲染更新后的位置
         renderFrame();
       }
@@ -905,19 +905,16 @@ export function initCamera(app) {
     if (currentCameraTrack) {
       // 有设置镜头轨道，使用对应的预设
       const cameraType = currentCameraTrack.cameraType;
+      console.log('updateCameraOnPlayback cameraType:', cameraType);
       
+      let findCameraPreset = false;
       // 查找对应的预设镜头
       for (const preset of cameraPresets.value) {
         if (preset.name.includes(cameraType) ) {
-          // && (cameraType === '远' && preset.name === '远景') ||
-          //   (cameraType === '全' && preset.name === '全景') ||
-          //   (cameraType === '全' && preset.name === '全景(默认视图)') ||
-          //   (cameraType === '中' && preset.name === '中景') ||
-          //   (cameraType === '近' && preset.name === '近景') ||
-          //   (cameraType === '特' && preset.name === '特写')
-          
+          findCameraPreset = true;
           targetWidth = preset.width;
           targetHeight = preset.height;
+          
           
           // 如果有目标中心点设置，则使用，否则居中
           if (currentCameraTrack.targetX !== undefined && currentCameraTrack.targetY !== undefined) {
@@ -928,8 +925,12 @@ export function initCamera(app) {
             targetCenterX = canvas.width / 2;
             targetCenterY = canvas.height / 2;
           }
-          
+          console.log('find track cameraType:', cameraType,targetWidth,targetHeight);
+          findCameraPreset = true;
           break;
+        }
+        if(!findCameraPreset){
+          console.error('track cameraType not find in defined cameraPresets:', cameraType);
         }
       }
     } else {
@@ -983,7 +984,7 @@ export function initCamera(app) {
       if (cameraX + cameraWidth > canvas.width) cameraX = canvas.width - cameraWidth;
       if (cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
     }
-    
+    console.log('updateCamera pos:', cameraX, cameraY);
     // 更新预览画布（如果存在）
     // if (previewCanvas && previewCanvas.value) {
     //   previewCanvas.value.width = targetWidth;

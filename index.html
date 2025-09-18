@@ -281,6 +281,21 @@
               保存
             </button>
           </div>
+          
+          <!-- 默认镜别设置 - 终极解决方案 -->
+          <div class="mt-3">
+            <div class="text-sm font-medium mb-1">默认镜头</div>
+            <!-- 带有默认值的select元素 -->
+            <select id="defaultCameraScenerySelect" v-model="defaultCameraScenery" class="text-sm border border-gray-300 rounded px-2 py-1 w-full">
+              <!-- 静态添加所有选项，确保页面加载时就有完整选项 -->
+              <option value="特写">特写 (854x480)</option>
+              <option value="近景">近景 (1080x635)</option>
+              <option value="中景">中景 (1280x720)</option>
+              <option value="全景">全景 (1920x1080)</option>
+            </select>
+            
+            <!-- 初始化逻辑已移至Vue组件的onMounted钩子中 -->
+          </div>
         </div>
         
         <!-- 相机状态显示 -->
@@ -703,10 +718,9 @@
             id: 'cameraTrack1-1',
             cameraType:'全',
             cameraMoveType: '1', //1硬切，2软切
-            x:0,
-            y:0,
-            x1:0,
-            y1:0,
+            targetRoleId:'role1',
+            targetX:0,
+            targetY:0,
             startTime: 0,
             duration: 500,
           }
@@ -947,10 +961,41 @@
         let startCameraRotation = 0; // 过渡开始时的摄像机旋转角度
         const cameraPresets = ref([
           { name: '特写', width: 854, height: 480, rotation: 0 },
-          { name: '中景', width: 1080, height: 635, rotation: 0 },
-          { name: '全景(默认视图)', width: 1280, height: 720, rotation: 0 },
-          { name: '远景', width: 1920, height: 1080, rotation: 0 }
+          { name: '近景', width: 1080, height: 635, rotation: 0 },
+          { name: '中景', width: 1280, height: 720, rotation: 0 },
+          { name: '全景', width: 1920, height: 1080, rotation: 0 }
         ]); // 摄像机预设配置数组，包含初始预设
+        
+        // 默认镜别设置
+        const defaultCameraScenery = ref('全景');
+        
+        // 当默认镜别改变时，将其存储到localStorage
+        watch(defaultCameraScenery, (newValue) => {
+          console.log('步骤2: 已在localStorage中设置defaultCameraScenery为', newValue);
+          localStorage.setItem('defaultCameraScenery', newValue);
+        });
+        
+        // 在组件挂载后
+        onMounted(() => {
+          // 从localStorage加载保存的值，如果没有则使用默认值'全景'
+          const savedValue = localStorage.getItem('defaultCameraScenery');
+          if (savedValue) {
+            console.log('步骤1: 从localStorage加载defaultCameraScenery值:', savedValue);
+            defaultCameraScenery.value = savedValue;
+          }
+          
+          Vue.nextTick(() => {
+            const selectElement = document.querySelector('select[v-model="defaultCameraScenery"]');
+            if (selectElement) {
+              // 确保select值与defaultCameraScenery保持一致
+              selectElement.value = defaultCameraScenery.value || '全景';
+              // 触发change事件，确保Vue实例能够感知到这个变化
+              const event = new Event('change', { bubbles: true });
+              selectElement.dispatchEvent(event);
+            }
+          });
+        });
+        
         
         // 用于预设命名的变量
         const presetName = ref('');
@@ -990,6 +1035,7 @@
               showCameraInfo,
               useSmoothTransition,
               cameraPresets,
+              defaultCameraScenery,
               canvas,
               ctx,
               offscreenCanvas,
@@ -1610,11 +1656,6 @@
         const cameraContainer = ref(null); // 镜头轨道容器引用
         const audioContainer = ref(null); // 音频轨道容器引用
         
-        // 测试音频显示函数
-        const testDrawAudio = () => {
-          console.log('Test audio draw triggered');
-          drawAudioTracks();
-        };
         
         // 绘制音频轨道
         const drawAudioTracks = () => {
@@ -1631,7 +1672,7 @@
           timeline.value.shots.forEach(shot => {
             // 检查分镜是否有音频数据，与镜头处理方式一致
             if (!shot.audios || !Array.isArray(shot.audios)) {
-              console.warn(`分镜 ${shot.id} 没有音频数据`);
+              console.warn(`shot ${shot.id} no audios`);
               return;
             }
             
@@ -1646,8 +1687,10 @@
               const startTime = shot.startTime + (audio.startTime || 0);
               const endTime = startTime + (audio.audioDuration || shot.duration);
               const startX = ((startTime - currentTime) / 1000) * MARGIN * zoom.value;
-              const width = ((endTime - startTime) / 1000) * MARGIN * zoom.value;
-              
+              const width = ((endTime - startTime) / 1000) * MARGIN * zoom.value;              
+              const audioDuration = audio.audioDuration / 1000;
+
+
               // 创建音频轨道元素，与镜头相同的元素创建方式
               const audioEl = document.createElement('div');
               audioEl.className = 'audio-item';
@@ -1664,22 +1707,39 @@
               audioEl.style.overflow = 'hidden';
               audioEl.style.textOverflow = 'clip';//ellipsis clip
               audioEl.style.whiteSpace = 'nowrap';              
+              audioEl.style.textAlign = 'left';    // 文本左对齐（确保左边内容优先显示）
+              audioEl.style.direction = 'ltr';     // 文本方向从左到右（默认值，可省略）
               // audioEl.style.fontSize = '12px';
               // audioEl.style.color = 'white'; // 确保在绿色背景上可见 green white
               // audioEl.style.height = '100%'; // 确保高度填充父容器
-              audioEl.style.fontSize = '10px';
+              audioEl.style.fontSize = '12px';
               audioEl.style.color = 'black';
               audioEl.style.height = '100%';
               audioEl.style.display = 'flex';
               audioEl.style.alignItems = 'center';
-              audioEl.style.justifyContent = 'center';
+              audioEl.style.justifyContent = 'flex-start';
               audioEl.style.padding = '0 2px';
               
               // 设置音频显示内容
               const role = timeline.value.roles.find(r => r.id === audio.roleId);
               const roleName = role ? role.name : '未知角色';
-              audioEl.textContent = `${roleName}: ${audio.text || '音频'}`;
+              //audioEl.textContent = `${roleName}: ${audio.text || '音频'}`;
+              audioEl.textContent = `${roleName}`;
               
+              // 在最右侧添加时间点显示，设置更小的字体
+              const timeLabel = document.createElement('span');
+              timeLabel.className = 'text-xs -mt-1 bg-black/20 px-1 rounded';
+              timeLabel.style.position = 'absolute';
+              timeLabel.style.right = '2px';
+              timeLabel.style.top = '0px';
+              timeLabel.style.color = 'white';
+              timeLabel.style.fontSize = '10px'; // 比text-xs更小的字体
+              timeLabel.textContent = `${audioDuration}s`;
+              audioEl.appendChild(timeLabel);
+              
+
+
+
               // 添加到容器
               audioContainer.value.appendChild(audioEl);
             });
@@ -2316,9 +2376,9 @@
             updateTimelineDisplay();
             
             // 在播放时根据当前时间动态更新摄像机设置
-            if (isPlaying.value && cameraModule && cameraModule.updateCameraOnPlayback) {
-              cameraModule.updateCameraOnPlayback(currentTime, timeline.value);
-            }
+            // if (isPlaying.value && cameraModule && cameraModule.updateCameraOnPlayback) {
+            //   cameraModule.updateCameraOnPlayback(currentTime, timeline.value);
+            // }
             
             renderFrame();
           };
@@ -4336,72 +4396,7 @@
               // 更新表情轨道显示
               drawExpressionTracks();
             } 
-            // else {
-            //   // 点击寻找时，而不是拖拽时走这，如果没有找到表情轨道，尝试从当前场景中获取角色配置
-            //   console.log('寻找缺省角色')
-
-            //   const sceneRoles = getSceneRolesByTime(currentTime);
-            //   if (sceneRoles) {
-            //     const roleConfigIndex = sceneRoles.findIndex(r => r.roleId === draggedRoleId);
-            //     if (roleConfigIndex !== -1) {
-            //       // 获取场景对象
-            //       const currentScene = timeline.value.scenes.find(scene => {
-            //         const sceneShots = timeline.value.shots.filter(shot => scene.shots.includes(shot.id));
-            //         return sceneShots.some(shot => 
-            //           currentTime >= shot.startTime && 
-            //           currentTime < shot.startTime + shot.duration
-            //         );
-            //       });
-                  
-            //       if (currentScene) {
-            //         // 找到场景中对应的角色配置
-            //         const sceneRoleIndex = currentScene.roles.findIndex(r => r.roleId === draggedRoleId);
-            //         if (sceneRoleIndex !== -1) {
-
-            //           // 从临时对象获取更新后的位置、宽高和角度
-            //           const tempTrack = { _tempX: undefined, _tempY: undefined, _tempWidth: undefined, _tempHeight: undefined, _tempAngle: undefined };
-            //           console.log('修改缺省位置：tempTrack',tempTrack)
-
-            //           // 查找可能存在的临时轨道对象（用于存储拖拽中的位置信息）
-            //           for (let track of timeline.value.expressionTracks) {
-            //             if (track.roleId === draggedRoleId && track._tempX !== undefined) {
-            //               tempTrack._tempX = track._tempX;
-            //               tempTrack._tempY = track._tempY;
-            //               tempTrack._tempWidth = track._tempWidth;
-            //               tempTrack._tempHeight = track._tempHeight;
-            //               tempTrack._tempAngle = track._tempAngle;
-                          
-            //               // 清除临时值
-            //               delete track._tempX;
-            //               delete track._tempY;
-            //               delete track._tempWidth;
-            //               delete track._tempHeight;
-            //               delete track._tempAngle;
-            //               break;
-            //             }
-            //           }
-            //           // 更新场景中的角色配置
-            //           if (tempTrack._tempX !== undefined && tempTrack._tempY !== undefined) {
-            //             currentScene.roles[sceneRoleIndex].x = tempTrack._tempX;
-            //             currentScene.roles[sceneRoleIndex].y = tempTrack._tempY;
-            //           }
-                      
-            //           if (tempTrack._tempWidth !== undefined && tempTrack._tempHeight !== undefined) {
-            //             currentScene.roles[sceneRoleIndex].width = tempTrack._tempWidth;
-            //             currentScene.roles[sceneRoleIndex].height = tempTrack._tempHeight;
-            //           }
-                      
-            //           if (tempTrack._tempAngle !== undefined) {
-            //             currentScene.roles[sceneRoleIndex].angle = tempTrack._tempAngle;
-            //           }
-            //         }
-            //       }
-            //     }
-            //   }
-              
-            //   // 重新渲染
-            //   renderFrame();
-            // }
+            
 
             expressionManager.canvasCurrentExpTrack = null;
             draggedRoleId = null;
@@ -4521,55 +4516,55 @@
           });
           
           // 添加CSS样式使拖拽更直观
-            const style = document.createElement('style');
-            style.textContent = `
-              .time-tick {
-                cursor: grab;
-                transition: all 0.2s ease;
-              }
-              
-              .time-tick:hover {
-                background-color: #3B82F6;
-                opacity: 0.8;
-                transform: scaleY(1.2);
-              }
-              
-              .time-tick-dragging {
-                cursor: grabbing;
-                background-color: #EBF5FF ;
-                opacity: 1;
-                // transform: scaleY(1.5);
-                z-index: 100;
-              }
-              
-              .time-tick-major {
-                background-color: #6B7280;
-                height: 20px;
-              }
-              
-              .time-tick-medium {
-                background-color: #9CA3AF;
-                height: 15px;
-              }
-              
-              .time-tick-minor {
-                background-color: #D1D5DB;
-                height: 10px;
-              }
-              
-              #animationCanvas {
-                cursor: default;
-              }
-              
-              #animationCanvas:hover {
-                cursor: pointer;
-              }
-              
-              .role-dragging {
-                cursor: grabbing !important;
-              }
-            `;
-            document.head.appendChild(style);
+          const style = document.createElement('style');
+          style.textContent = `
+            .time-tick {
+              cursor: grab;
+              transition: all 0.2s ease;
+            }
+            
+            .time-tick:hover {
+              background-color: #3B82F6;
+              opacity: 0.8;
+              transform: scaleY(1.2);
+            }
+            
+            .time-tick-dragging {
+              cursor: grabbing;
+              background-color: #EBF5FF ;
+              opacity: 1;
+              // transform: scaleY(1.5);
+              z-index: 100;
+            }
+            
+            .time-tick-major {
+              background-color: #6B7280;
+              height: 20px;
+            }
+            
+            .time-tick-medium {
+              background-color: #9CA3AF;
+              height: 15px;
+            }
+            
+            .time-tick-minor {
+              background-color: #D1D5DB;
+              height: 10px;
+            }
+            
+            #animationCanvas {
+              cursor: default;
+            }
+            
+            #animationCanvas:hover {
+              cursor: pointer;
+            }
+            
+            .role-dragging {
+              cursor: grabbing !important;
+            }
+          `;
+          document.head.appendChild(style);
         });
         
         // 监听currentTime变化，更新显示
@@ -4699,6 +4694,7 @@
           showCameraInfo,
           useSmoothTransition,
           cameraPresets,
+          defaultCameraScenery,
           // 虚拟镜头控制方法
           toggleAspectRatio: () => { if (cameraModule) cameraModule.toggleAspectRatio(); },
           toggleCameraRotation: () => { if (cameraModule) cameraModule.toggleCameraRotation(); },
