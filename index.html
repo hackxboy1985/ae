@@ -359,6 +359,14 @@
               class="mr-1" 
               checked />
             <label for="showAllExpressions" class="text-sm text-gray-700">角色表情</label>
+            <input 
+              type="checkbox" 
+              id="showCameraTrack" 
+              v-model="showCameraTrack" 
+              @change="updateTimelineDisplay"
+              class="ml-4 mr-1" 
+              checked />
+            <label for="showCameraTrack" class="text-sm text-gray-700">镜头轨道</label>
             <!-- 时间轴缩放控制按钮 -->
             <div class="flex items-center ml-1 space-x-1 border border-gray-200 rounded overflow-hidden">
               <button @click="timelineZoomIn" class="p-1 hover:bg-gray-100 rounded" title="放大时间轴">
@@ -440,15 +448,20 @@
             </div>
             
             <!-- 镜头轨道 -->
-            <div class="timeline-track" style="height: 50px;">
-              <!-- 音频显示区域 -->
-              <div class="absolute top-0 left-0 h-1/2" ref="audioContainer" style="width: 100%;"></div>
-              <!-- 镜头显示区域 -->
-              <div class="absolute top-1/2 left-0 h-1/2" ref="cameraContainer" style="width: 100%;"></div>
-              <div class="absolute top-0 left-0 h-full w-20 bg-gray-100 flex items-center justify-center text-xs">
-                <span>镜头/对白</span>
+            <template v-if="showCameraTrack">
+              <div class="timeline-track" style="height: 50px;">
+                <!-- 音频显示区域 -->
+                <div class="absolute top-0 left-0 h-1/2" ref="audioContainer" style="width: 100%;"></div>
+                <!-- 镜头显示区域 -->
+                <div class="absolute top-1/2 left-0 h-1/2" ref="cameraContainer" style="width: 100%;"></div>
+                <div class="absolute top-0 left-0 h-full w-20 bg-gray-100 flex items-center justify-center text-xs">
+                  <span>镜头/对白</span>
+                  <button @click="showCameraClick" class="ml-1 p-1 hover:bg-gray-200 rounded-full" title="显示/隐藏摄像机预览">
+                    <i :class="showCamera ? 'fa fa-eye' : 'fa fa-eye-slash '"></i>
+                  </button>
+                </div>
               </div>
-            </div>
+            </template>
             
             <!-- 角色表情轨道 -->
             <template v-if="showAllRoleExpressions || (selectedRoleId && !showAllRoleExpressions)">
@@ -937,8 +950,9 @@
         //无效位置，如果x1,y1为此值，表明表情属于固定位置表情
         const invalidPos = -999;
         // 摄像机相关状态
-        const showCamera = ref(false); // 是否显示摄像机
+        let showCamera = ref(false); // 是否显示摄像机
         const showCameraPreview = ref(false); // 是否显示相机预览
+        const showCameraTrack = ref(true); // 是否显示镜头轨道
         const previewCanvas = ref(null); // 预览Canvas
         let cameraX = 0; // 摄像机X位置
         let cameraY = 0; // 摄像机Y位置
@@ -1401,7 +1415,7 @@
               cameraModule.resetCamera(tmpSize);
               //cameraModule.resetCamera(selectedCameraSize.value); // 重置摄像机位置到画布中心
             }
-            renderFrame(); // 重新渲染
+            renderFrame(1); // 重新渲染
           }
         });
         
@@ -1489,7 +1503,7 @@
             ctx.value.fillRect(0, 0, canvas.value.width, canvas.value.height);
             
             console.info('resizeCanvas: ' + canvas.value.width + '×' + canvas.value.height + ', zoom: ' + (canvasZoom.value * 100) + '%');
-            renderFrame();
+            renderFrame(2);
           };
           
 
@@ -2314,20 +2328,20 @@
                 // 设置开始位置为当前时间
                 currentTime = expTrack.startTime;
                 //console.log(`设置表情开始位置: ${trackId}, 时间: ${currentTime}`);
-                renderFrame();
+                renderFrame(3);
                 break;
               case 'set-end':
                 // 设置结束位置为当前时间
                 currentTime = expTrack.endTime-1;
                 console.log(`设置表情结束位置: ${trackId}, 时间: ${currentTime}`);
-                renderFrame();
+                renderFrame(4);
                 break;
               case 'fix-start':
                 // 固定开始位置（这里可以添加额外的逻辑，比如锁定开始位置防止拖动）
                 // expTrack.endTime=expTrack.startTime;
                 expTrack.x1 = invalidPos;
                 expTrack.y1 = invalidPos;
-                renderFrame();
+                renderFrame(5);
 
                 break;
               case 'scene-start':
@@ -2348,7 +2362,7 @@
                   const sceneStartTime = sortedShots[0].startTime;
                   expTrack.startTime = sceneStartTime;
                   console.log(`设置表情开始时间为场景开始: ${trackId}, 时间: ${sceneStartTime}`);
-                  renderFrame();
+                  renderFrame(6);
                 }
                 break;
               case 'scene-end':
@@ -2369,7 +2383,7 @@
                   const sceneEndTime = Math.max(...sortedShots.map(shot => shot.startTime + shot.duration));
                   expTrack.endTime = sceneEndTime;
                   console.log(`设置表情结束时间为场景结束: ${trackId}, 时间: ${sceneEndTime}`);
-                  renderFrame();
+                  renderFrame(7);
                 }
                 break;
             }
@@ -2382,7 +2396,7 @@
             //   cameraModule.updateCameraOnPlayback(currentTime, timeline.value);
             // }
             
-            renderFrame();
+            renderFrame(8);
           };
           
           // 为所有现有的表情元素添加右键菜单事件
@@ -2575,7 +2589,7 @@
             }
             
             updateTimelineDisplay();
-            renderFrame();
+            renderFrame(9);
           }
         });
 
@@ -2626,7 +2640,8 @@
         };
         
         // 渲染当前帧 - 重新定义完整的renderFrame函数实现
-        let renderFrame = () => {
+        let renderFrame = (trace=-1) => {
+            console.log('renderFrame:', trace)
             // 1. 前置检查
             if (!canvas.value || !ctx.value || !offscreenCanvas || !offscreenCtx) {
               debugInfo.value = `Canvas or context invalid: canvas=${!!canvas.value}, ctx=${!!ctx.value}`;
@@ -2792,14 +2807,14 @@
             (bgImg) => {
               console.log('async load bg-success: ' + shot.background);
               // 直接调用renderFrame函数进行完整重绘
-              renderFrame();
+              renderFrame(10);
             },
             () => {
               console.error('async load bg-error: ' + shot.background);
               debugInfo.value = 'load bg error: ' + shot.background;
               bgImagesCache.value[shot.background] = null; // 标记为加载失败
               // 直接调用renderFrame函数进行完整重绘
-              renderFrame();
+              renderFrame(11);
             }
           );
           
@@ -3726,7 +3741,7 @@
             //   cameraModule.updateCameraOnPlayback(currentTime, timeline.value);
             // }
             
-            renderFrame();
+            renderFrame(12);
           }
           
           // 继续动画
@@ -3749,7 +3764,7 @@
           // 重置角色表情管理器，确保从当前时间点开始正确播放表情
           expressionManager.reset();
           // 立即渲染一帧
-          renderFrame();
+          renderFrame(13);
           animationFrameId.value = requestAnimationFrame(animate);
         };
         
@@ -3760,7 +3775,7 @@
             cancelAnimationFrame(animationFrameId.value);
           }
           // 暂停时重新渲染，确保显示正确的画面
-          renderFrame();
+          //renderFrame(14);
         };
         
         // 跳转到开始
@@ -3769,21 +3784,21 @@
           // 重置角色表情管理器，确保从开始位置重新播放表情
           expressionManager.reset();
           updateTimelineDisplay();
-          renderFrame();
+          renderFrame(15);
         };
         
         // 跳转到结束
         const goToEnd = () => {
           currentTime = totalDuration.value;
           updateTimelineDisplay();
-          renderFrame();
+          renderFrame(16);
         };
         
         // 切换循环模式
         const toggleLoop = () => {
           loop.value = !loop.value;
           // console.log('rednder')
-          renderFrame();
+          renderFrame(17);
         };
         
         // 缩放控制
@@ -3859,13 +3874,13 @@
             // 关闭表情面板，下次点击表情按钮再打开
             showExpressionPanel.value = false;
             // 调用renderFrame更新选中状态显示
-            renderFrame();
+            renderFrame(18);
           } else {
             // 点击空白处取消选择
             selectRole(null);
             showExpressionPanel.value = false;
             // 调用renderFrame更新取消选中状态显示
-            renderFrame();
+            renderFrame(19);
           }
         };
         
@@ -3956,7 +3971,7 @@
             // }
             
             timeline.value.expressionTracks.push(newTrack);
-            renderFrame();
+            renderFrame(20);
           }else{
             showAlert('当前时间点已存在该角色的表情，无法重复添加');
           }
@@ -3976,7 +3991,7 @@
           if (currentTrackIndex !== -1) {
             // 替换现有轨道的表情
             timeline.value.expressionTracks[currentTrackIndex].expressionId = selectedExpressionId.value;
-            renderFrame();
+            renderFrame(21);
           } else {
             // 如果没有现有轨道，则添加新轨道
             addExpression();
@@ -3997,7 +4012,7 @@
           if (currentTrackIndex !== -1) {
             // 删除当前轨道
             timeline.value.expressionTracks.splice(currentTrackIndex, 1);
-            renderFrame();
+            renderFrame(22);
           }
         };
         
@@ -4038,7 +4053,7 @@
                   bgImagesCache.value[url] = img; // 缓存已加载的图片
                   console.log('成功加载背景图:', url);
                   //预加载成功后，刷新下，否则背景是未渲染状态
-                  renderFrame();
+                  renderFrame(23);
                 },
                 () => {
                   console.error('无法预加载背景图:', url);
@@ -4118,7 +4133,7 @@
           
           // 初始渲染
           updateTimelineDisplay();
-          renderFrame();
+          //renderFrame(24);
           
           // 角色拖拽相关状态
           let isDraggingRole = false; // 角色拖拽状态
@@ -4330,7 +4345,7 @@
                   console.log('modify expTrack size-scale：', newScaleFactor);
                 }
                 
-                renderFrame();
+                renderFrame(25);
               }
             } else if (isDraggingAngleDot) {
               // 角度调整点 - 只处理角度调整
@@ -4382,7 +4397,7 @@
                   console.log('修改角色角度：tempTrack', currentExpTrack);
                 }
                 
-                renderFrame();
+                renderFrame(26);
               }
             } else if (isDraggingRole) {
               // 只有在拖拽角色时才打印日志
@@ -4419,7 +4434,7 @@
                   currentExpTrack._tempX = x;
                   currentExpTrack._tempY = y;
                 }
-                renderFrame();
+                renderFrame(27);
               }
             }
           });
@@ -4508,7 +4523,7 @@
 
               
               // 重新渲染
-              renderFrame();
+              renderFrame(28);
               // 更新表情轨道显示
               drawExpressionTracks();
             } 
@@ -4561,7 +4576,7 @@
               const time = parseInt(timeStr) * 1000; // 转换为毫秒
               //currentTime = Math.max(0, Math.min(time, totalDuration.value));
               updateTimelineDisplay();
-              renderFrame();
+              //renderFrame(29);
               
             } 
             // 分镜轨道拖拽 - 支持直接点击分镜轨道进行拖拽
@@ -4609,7 +4624,7 @@
               currentTime = Math.max(0, Math.min(currentTime - timeDelta, totalDuration.value));
               
               updateTimelineDisplay();
-              renderFrame();
+              renderFrame(30);
             }
           });
           
@@ -4684,10 +4699,10 @@
         });
         
         // 监听currentTime变化，更新显示
-        watch(currentTime, () => {
-          updateTimelineDisplay();
-          renderFrame();
-        });
+        // watch(currentTime, () => {
+        //   updateTimelineDisplay();
+        //   renderFrame(30);
+        // });
         
         // 监听选中的分镜变化，更新显示
         watch(selectedShotId, () => {
@@ -4797,10 +4812,11 @@
           replaceExpression,
           deleteExpression,
           showAllRoleExpressions,
+          showCameraTrack,
           updateTimelineDisplay,
           // 摄像机相关状态和方法
           showCamera,
-          showCameraClick: () => { if (cameraModule) cameraModule.showCameraClick(); },
+          showCameraClick: () => { showCamera.value = !showCamera.value; if (cameraModule) cameraModule.showCameraClick(); },
           showCameraPreview,
           showCameraPreviewClick: () => { if (cameraModule) cameraModule.showCameraPreviewClick(); },
           closeCameraPreview: () => { if (cameraModule) cameraModule.closeCameraPreview(); },

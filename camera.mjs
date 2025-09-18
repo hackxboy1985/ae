@@ -85,7 +85,7 @@ export function initCamera(app) {
   // 显示/隐藏摄像机
   const showCameraClick = () => {
     showCamera.value = !showCamera.value;
-    renderFrame();
+    renderFrame(31);
   };
   
   // 显示/隐藏摄像机预览
@@ -436,7 +436,7 @@ export function initCamera(app) {
     }
 
     
-    renderFrame();
+    renderFrame(32);
   };
   
   // 虚拟镜头控制方法
@@ -451,7 +451,7 @@ export function initCamera(app) {
     if (!enableCameraRotation.value) {
       cameraRotation.value = 0;
     }
-    renderFrame();
+    renderFrame(33);
   };
   
   const toggleCameraInfo = () => {
@@ -486,7 +486,7 @@ export function initCamera(app) {
     if (!enableCameraRotation.value) return;
     
     cameraRotation.value = (cameraRotation.value + degrees + 360) % 360;
-    renderFrame();
+    renderFrame(34);
   };
   
   const applyCameraPreset = (preset) => {
@@ -507,7 +507,7 @@ export function initCamera(app) {
       cameraWidth = preset.width || cameraWidth;
       cameraHeight = preset.height || cameraHeight;
       cameraRotation.value = preset.rotation || cameraRotation.value;
-      renderFrame();
+      renderFrame(35);
     }
   };
   
@@ -544,7 +544,7 @@ export function initCamera(app) {
         cameraWidth = newValue.width;
         cameraHeight = newValue.height;
         resetCamera(); // 重置摄像机位置到画布中心
-        renderFrame(); // 重新渲染
+        renderFrame(36); // 重新渲染
       }
     };
   };
@@ -714,7 +714,7 @@ export function initCamera(app) {
         if (canvas.height && cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
         console.log('dragCamera pos:', cameraX, cameraY);
         // 立即渲染更新后的位置
-        renderFrame();
+        renderFrame(37);
       }
       // 处理摄像机调整大小
       else if (isResizingCamera) {
@@ -804,6 +804,8 @@ export function initCamera(app) {
         cameraY = newY;
         cameraWidth = newWidth;
         cameraHeight = newHeight;
+        // 立即渲染更新后的位置
+        renderFrame(40);
       }
       // 更新鼠标样式
       else if (showCamera.value) {
@@ -844,7 +846,7 @@ export function initCamera(app) {
         }
       }
 
-      renderFrame();
+      
     });
     
     window.addEventListener('mouseup', (e) => {
@@ -852,13 +854,13 @@ export function initCamera(app) {
         isDraggingCamera = false;
         canvas.style.cursor = 'default';
         // 确保释放后立即更新视图
-        renderFrame();
+        renderFrame(39);
       }
       if (isResizingCamera && canvas) {
         isResizingCamera = false;
         canvas.style.cursor = 'default';
         // 确保释放后立即更新视图
-        renderFrame();
+        renderFrame(40);
       }
     });
   };
