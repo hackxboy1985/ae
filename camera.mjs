@@ -153,7 +153,7 @@ export function initCamera(app) {
       e.stopPropagation();
       
       isDragging = true;
-      console.log('drag move preview');
+      //console.log('drag move preview');
       
       // 获取鼠标相对于窗口左上角的偏移量
       const rect = previewWindow.getBoundingClientRect();
@@ -1119,7 +1119,10 @@ export function initCamera(app) {
       let speakingRoleId = findCurrentSpeakerId(currentTime, currentShot);
       console.log('camera focus on speakingRoleId:', speakingRoleId,previousSpeakingRoleId);
       // 如果当前说话人物与上个说话人物不同，则切换，否则使用相同，如果没有说话人物，保持上次相同坐标
-      if (speakingRoleId !== previousSpeakingRoleId) {
+      if (speakingRoleId == null){
+          //无说话人，不改变焦点
+      }
+      else if (speakingRoleId !== previousSpeakingRoleId) {
         // 说话人物切换，使用当前说话人物的位置
         previousSpeakingRoleId = speakingRoleId;
         let currentExpressionPosition = findCurrentSpeakerIdPosition(currentTime, speakingRoleId);
