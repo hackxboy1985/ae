@@ -932,7 +932,7 @@ export function initCamera(app) {
   let previousSpeakingRoleId = null;
   const FULL_CAMERA_TYPE = '全景';
   // 根据当前时间更新摄像机设置
-  const updateCameraOnPlayback = (currentTime, timeline) => {
+  const updateCameraOnPlayback = (_currentTimeInt, timeline) => {
     if (!timeline || !timeline.shots || !canvas || !canvas.width || !canvas.height) {
       return;
     }
@@ -946,7 +946,7 @@ export function initCamera(app) {
       const shotStartTime = shot.startTime || 0;
       const shotEndTime = shotStartTime + (shot.duration || 0);
       
-      if (currentTime >= shotStartTime && currentTime <= shotEndTime) {
+      if (_currentTimeInt >= shotStartTime && _currentTimeInt <= shotEndTime) {
         currentShot = shot;
         
         // 在当前分镜中查找对应的镜头轨道
@@ -956,7 +956,7 @@ export function initCamera(app) {
             const trackDuration = cameraTrack.duration || shot.duration || 0;
             const trackEndTime = trackStartTime + trackDuration;
             
-            if (currentTime >= trackStartTime && currentTime <= trackEndTime) {
+            if (_currentTimeInt >= trackStartTime && _currentTimeInt <= trackEndTime) {
               currentCameraTrack = cameraTrack;
               break;
             }
@@ -980,7 +980,7 @@ export function initCamera(app) {
     const currentSceneId = currentScene ? currentScene.id : null;
     
     // 检测是否是开场或切场景
-    const isStartOfAnimation = currentTime === 0;
+    const isStartOfAnimation = _currentTimeInt === 0;
     const isSceneChange = currentSceneId !== previousSceneId;
     console.info('scene change:', isSceneChange, currentSceneId, previousSceneId);
     if (isStartOfAnimation || isSceneChange) {
@@ -1056,13 +1056,13 @@ export function initCamera(app) {
         }else{
 
           // 尝试找到当前时间点正在说话的角色
-          let speakingRoleId = findCurrentSpeakerId(currentTime, currentShot);
+          let speakingRoleId = findCurrentSpeakerId(_currentTimeInt, currentShot);
           console.log('camera focus on speakingRoleId:', speakingRoleId);
           if (speakingRoleId != previousSpeakingRoleId) {
             previousSpeakingRoleId = speakingRoleId;
             // 查找该角色在当前时间点的表情轨道
             // 使用app传入的方法从轨道中查找当前时刻该角色ID对应的表情
-            let currentExpressionPosition = findCurrentSpeakerIdPosition(currentTime, speakingRoleId);
+            let currentExpressionPosition = findCurrentSpeakerIdPosition(_currentTimeInt, speakingRoleId);
             if (currentExpressionPosition.targetCenterX !== undefined && currentExpressionPosition.targetCenterY !== undefined) {
               // 角色位置信息存在，更新目标中心点
               targetCenterX = currentExpressionPosition.targetCenterX;
@@ -1073,7 +1073,7 @@ export function initCamera(app) {
               // 如果找不到角色位置信息，默认居中到画布
               targetCenterX = canvas.width / 2;
               targetCenterY = canvas.height / 2;
-              console.error(`audio,current time ${currentTime} can't find role ${speakingRoleId} pos info!!!!!! use default centor (${targetCenterX}, ${targetCenterY})`);
+              console.error(`audio,current time ${_currentTimeInt} can't find role ${speakingRoleId} pos info!!!!!! use default centor (${targetCenterX}, ${targetCenterY})`);
             }
           } else {
             // 如果没有正在说话的角色，默认居中到画布
@@ -1116,7 +1116,7 @@ export function initCamera(app) {
       //   //分镜发生变化，要切换焦点, 人物变化，切换吧，分镜先不切换
       // }
       // 尝试找到当前时间点正在说话的角色
-      let speakingRoleId = findCurrentSpeakerId(currentTime, currentShot);
+      let speakingRoleId = findCurrentSpeakerId(_currentTimeInt, currentShot);
       console.log('camera focus on speakingRoleId:', speakingRoleId,previousSpeakingRoleId);
       // 如果当前说话人物与上个说话人物不同，则切换，否则使用相同，如果没有说话人物，保持上次相同坐标
       if (speakingRoleId == null){
@@ -1125,7 +1125,7 @@ export function initCamera(app) {
       else if (speakingRoleId !== previousSpeakingRoleId) {
         // 说话人物切换，使用当前说话人物的位置
         previousSpeakingRoleId = speakingRoleId;
-        let currentExpressionPosition = findCurrentSpeakerIdPosition(currentTime, speakingRoleId);
+        let currentExpressionPosition = findCurrentSpeakerIdPosition(_currentTimeInt, speakingRoleId);
         if (currentExpressionPosition.targetCenterX !== undefined && currentExpressionPosition.targetCenterY !== undefined) {
           // 角色位置信息存在，更新目标中心点
           targetCenterX = currentExpressionPosition.targetCenterX;
@@ -1160,7 +1160,7 @@ export function initCamera(app) {
     //targetY = screen.height - targetY;// 坐标转换，AE坐标系统Y轴向下为正，而Canvas坐标系统Y轴向上为正
     console.log('目标位置 targetX:', targetX, 'targetY:', targetY, 'targetWidth:', targetWidth, 'targetHeight:', targetHeight);
     // 根据时间进行不同的过渡处理
-    if (currentTime === 0) {
+    if (_currentTimeInt === 0) {
       // 如果当前是0s，直接设置目标镜头的宽高
       cameraX = targetX;
       cameraY = targetY;
@@ -1171,7 +1171,7 @@ export function initCamera(app) {
       // 否则，根据当前时间与镜头轨道开始时间对比，进行0.3秒内线性过渡
       const transitionDuration = 0.3; // 过渡持续时间
       const cameraTrackStartTime = currentCameraTrack ? currentCameraTrack.startTime + currentShot.startTime : 0;
-      const timeSinceStart = (currentTime - cameraTrackStartTime)/1000;
+      const timeSinceStart = (_currentTimeInt - cameraTrackStartTime)/1000;
       console.log('currentCameraTrack',currentCameraTrack);
       console.log('插值计算镜头 timeSinceStart:', timeSinceStart, 'cameraTrackStartTime:',cameraTrackStartTime,'transitionDuration:', transitionDuration);
       
