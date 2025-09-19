@@ -267,7 +267,8 @@
         <div v-if="enableCameraEdit" class="absolute bottom-4 right-4 bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-lg">
           <div class="text-sm font-medium mb-2">虚拟镜头预设</div>
           <div class="flex space-x-2 items-center mb-2">
-            <select @change="applyCameraPreset($event.target.value)" class="text-sm border border-gray-300 rounded px-2 py-1">
+            <!-- <select @change="applyCameraPreset($event.target.value)" class="text-sm border border-gray-300 rounded px-2 py-1"> -->
+            <select v-model="selectedCameraPreset" @change="applyCameraPreset($event.target.value)" class="text-sm border border-gray-300 rounded px-2 py-1">
               <option value="">选择预设</option>
               <option v-for="preset in cameraPresets" :key="preset.name" :value="preset.name">
                 {{ preset.name }} ({{ preset.width }}x{{ preset.height }})
@@ -930,9 +931,9 @@
         
         // 动态导入工具类 - 优化版本
         let utilsModuleLoaded = false;
-        let loadingImages = {};
         let loadImageWithCORS = null;
         let getCacheImage = null;
+        let CUSTOM_CAMERA_TYPE = null;
 
 
         // 添加重试机制
@@ -941,6 +942,7 @@
             console.log('✅ import utils module success');
             loadImageWithCORS = utilsModule.loadImageWithCORS;
             getCacheImage = utilsModule.getCacheImage;
+            CUSTOM_CAMERA_TYPE = utilsModule.CUSTOM_CAMERA_TYPE;
             utilsModuleLoaded = true;
             console.log('✅ loadImageWithCORS loaded:');
             // 预加载所有背景图
@@ -1031,14 +1033,15 @@
         const showCameraTrack = ref(true); // 是否显示镜头轨道
         const previewCanvas = ref(null); // 预览Canvas
         const enableCameraEdit = ref(false); // 是否启用摄像机编辑功能
-        let cameraX = 0; // 摄像机X位置
-        let cameraY = 0; // 摄像机Y位置
+        // let cameraX = 0; // 摄像机X位置
+        // let cameraY = 0; // 摄像机Y位置
         let cameraWidth = cameraSizes.value[2].width; // 摄像机宽度
         let cameraHeight = cameraSizes.value[2].height; // 摄像机高度
         
         // 虚拟镜头视口系统扩展状态
         const cameraZoom = ref(1); // 摄像机缩放级别，1为原始大小
         const cameraRotation = ref(0); // 摄像机旋转角度，单位为度
+        const selectedCameraPreset = ref(''); // 当前选择的镜头预设
         let isTransitioning = false; // 是否正在进行平滑过渡
         let transitionStartTime = 0; // 过渡开始时间
         let transitionDuration = 500; // 过渡持续时间（毫秒）
@@ -1159,8 +1162,8 @@
             });
             
             // 更新引用
-            cameraX = cameraModule.cameraX;
-            cameraY = cameraModule.cameraY;
+            // cameraX = cameraModule.cameraX;
+            // cameraY = cameraModule.cameraY;
             cameraWidth = cameraModule.cameraWidth;
             cameraHeight = cameraModule.cameraHeight;
             let size = {
@@ -1215,7 +1218,8 @@
 
         // 监听摄像机关键属性变化，实时更新预览
         const unwatchCameraProperties = watch(
-          [cameraX, cameraY, cameraWidth, cameraHeight, cameraZoom, cameraRotation],
+          [//cameraX, cameraY, cameraModule.cameraX, cameraModule.cameraY,????
+          cameraWidth, cameraHeight, cameraZoom, cameraRotation],
           () => {
             if (showCameraPreview.value && cameraModule) {
               cameraModule.updateCameraPreview();
@@ -3309,22 +3313,28 @@
             currentShot.cameraTracks = [];
           }
           
+          console.log('selectedCameraPreset:',selectedCameraPreset.value)
+          console.log('cameraWidth:',cameraModule.cameraWidth,cameraModule.cameraHeight);
+          console.log('cameraModule:',cameraModule);
+          // 获取当前选择的镜头预设
+          let cameraType = selectedCameraPreset.value || CUSTOM_CAMERA_TYPE;
           //创建新的镜头轨道
           const newCameraTrack = {
             id: 'camera_' + Date.now(), // 生成唯一ID
             startTime: currentTimeValue - currentShot.startTime, // 相对于分镜的开始时间
+            cameraType: cameraType,
             duration: 1000, // 默认时长1秒（1000毫秒）
-            x: cameraX,
-            y: cameraY,
-            width: cameraWidth,
-            height: cameraHeight,
+            x: cameraModule.cameraX,
+            y: cameraModule.cameraY,
+            width: cameraModule.cameraWidth,
+            height: cameraModule.cameraHeight,
             // zoom: cameraZoom.value,
             // rotation: cameraRotation.value
           };
           
           // 添加到分镜的cameraTracks数组
           currentShot.cameraTracks.push(newCameraTrack);
-          
+          console.log('saveCameraScenery newCameraTrack:', newCameraTrack);
           // 重新渲染帧
           renderFrame(36);
           
@@ -4137,6 +4147,7 @@
           showCameraInfo,
           useSmoothTransition,
           cameraPresets,
+          saveCameraScenery,
           defaultCameraScenery,
           // 虚拟镜头控制方法
           toggleAspectRatio: () => { if (cameraModule) cameraModule.toggleAspectRatio(); },

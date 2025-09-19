@@ -1,5 +1,5 @@
 // 公共工具类
-
+const CUSTOM_CAMERA_TYPE = '指定';
 // 图片加载状态管理对象
 const loadingImages = {};
 // 图像缓存，提高播放时的渲染性能
@@ -104,4 +104,4 @@ export function round(num) {
 
 
 // 导出loadingImages对象和round函数，以便在其他地方使用
-export { loadingImages, imageCache };
+export { loadingImages, imageCache, CUSTOM_CAMERA_TYPE };
