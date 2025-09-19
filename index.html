@@ -1441,6 +1441,8 @@
           sceneData.height = newSize.height;
           resizeCanvas(); // 重新调整画布尺寸
         });
+
+
         // 镜头设置
         const camera = {
             x: 0,           // 镜头X位置 (0-100百分比)
@@ -1457,60 +1459,59 @@
         const canvasZoom = ref(1);
         
                  
-          // 设置画布尺寸并应用等比缩放
-          const resizeCanvas = () => {
-            const container = document.getElementById('canvasContainer');
-            if (container) {
-              // 获取父容器的可用尺寸
-              const parentWidth = container.parentElement.clientWidth;
-              const parentHeight = container.parentElement.clientHeight;
-              
-              // 设置Canvas实际像素大小
-              canvas.value.width = sceneData.width;
-              canvas.value.height = sceneData.height;
-              
-              // 同步调整离屏Canvas尺寸
-              offscreenCanvas.width = canvas.value.width;
-              offscreenCanvas.height = canvas.value.height;
-              
-              // 应用缩放比例，保持原始宽高比
-              const canvasRatio = canvas.value.width / canvas.value.height;
-              const containerRatio = parentWidth / parentHeight;
-              
-              let displayWidth, displayHeight;
-              
-              // 根据容器与画布的宽高比决定如何缩放
-              if (containerRatio > canvasRatio) {
-                // 容器更宽，按高度缩放
-                displayHeight = Math.min(parentHeight, canvas.value.height * canvasZoom.value);
-                displayWidth = displayHeight * canvasRatio;
-              } else {
-                // 容器更高或相等，按宽度缩放
-                displayWidth = Math.min(parentWidth, canvas.value.width * canvasZoom.value);
-                displayHeight = displayWidth / canvasRatio;
-              }
-              console.log('resizeCanvas displaySize:',displayWidth, displayHeight);
-
-              // 设置Canvas显示尺寸
-              canvas.value.style.width = displayWidth + 'px';
-              canvas.value.style.height = displayHeight + 'px';
-              
-              // 居中显示Canvas
-              canvas.value.style.marginLeft = (parentWidth - displayWidth) / 2 + 'px';
-              canvas.value.style.marginTop = (parentHeight - displayHeight) / 2 + 'px';
+        // 设置画布尺寸并应用等比缩放
+        const resizeCanvas = () => {
+          const container = document.getElementById('canvasContainer');
+          if (container) {
+            // 获取父容器的可用尺寸
+            const parentWidth = container.parentElement.clientWidth;
+            const parentHeight = container.parentElement.clientHeight;
+            
+            // 设置Canvas实际像素大小
+            canvas.value.width = sceneData.width;
+            canvas.value.height = sceneData.height;
+            
+            // 同步调整离屏Canvas尺寸
+            offscreenCanvas.width = canvas.value.width;
+            offscreenCanvas.height = canvas.value.height;
+            
+            // 应用缩放比例，保持原始宽高比
+            const canvasRatio = canvas.value.width / canvas.value.height;
+            const containerRatio = parentWidth / parentHeight;
+            
+            let displayWidth, displayHeight;
+            
+            // 根据容器与画布的宽高比决定如何缩放
+            if (containerRatio > canvasRatio) {
+              // 容器更宽，按高度缩放
+              displayHeight = Math.min(parentHeight, canvas.value.height * canvasZoom.value);
+              displayWidth = displayHeight * canvasRatio;
+            } else {
+              // 容器更高或相等，按宽度缩放
+              displayWidth = Math.min(parentWidth, canvas.value.width * canvasZoom.value);
+              displayHeight = displayWidth / canvasRatio;
             }
-            
-            //if (cameraModule) { cameraModule.resetCamera(); } // 重置摄像机位置到画布中心
-            
-            // 立即绘制一个简单的背景，测试canvas是否正常工作
-            ctx.value.fillStyle = '#f0f0f0';
-            ctx.value.fillRect(0, 0, canvas.value.width, canvas.value.height);
-            
-            console.info('resizeCanvas: ' + canvas.value.width + '×' + canvas.value.height + ', zoom: ' + (canvasZoom.value * 100) + '%');
-            renderFrame(2);
-          };
-          
+            console.log('resizeCanvas displaySize:',displayWidth, displayHeight);
 
+            // 设置Canvas显示尺寸
+            canvas.value.style.width = displayWidth + 'px';
+            canvas.value.style.height = displayHeight + 'px';
+            
+            // 居中显示Canvas
+            canvas.value.style.marginLeft = (parentWidth - displayWidth) / 2 + 'px';
+            canvas.value.style.marginTop = (parentHeight - displayHeight) / 2 + 'px';
+          }
+          
+          //if (cameraModule) { cameraModule.resetCamera(); } // 重置摄像机位置到画布中心
+          
+          // 立即绘制一个简单的背景，测试canvas是否正常工作
+          ctx.value.fillStyle = '#f0f0f0';
+          ctx.value.fillRect(0, 0, canvas.value.width, canvas.value.height);
+          
+          console.info('resizeCanvas: ' + canvas.value.width + '×' + canvas.value.height + ', zoom: ' + (canvasZoom.value * 100) + '%');
+          renderFrame(2);
+        };
+          
 
         // 初始化画布
         const initCanvas = () => {
