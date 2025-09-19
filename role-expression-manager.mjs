@@ -100,7 +100,9 @@ export class RoleExpressionManager {
     // 计算应该显示的帧索引，确保与时间轴指针同步
     // 使用 Math.floor 确保整数帧索引
     const expectedFrameIndex = Math.floor(elapsed / frameInterval) % currentExpression.frames.length;
-
+    if(expectedFrameIndex == -1){
+      console.log('updateRoleState expectedFrameIndex:',expectedFrameIndex,elapsed,frameInterval,currentExpression.frames.length, startTime,_currentTimeInt,state.startTime);
+    }
     state.currentFrameIndex = expectedFrameIndex;
     
     return state.currentFrameIndex;
@@ -461,7 +463,8 @@ export class RoleExpressionManager {
       
       // 检查是否有有效的表情帧
       if (!expression.frames || !expression.frames[frameIndex]) {
-        console.log(`角色 ${role.name} 在时间点 ${_currentTimeInt} 没有有效的表情帧`);
+        console.log(`角色 ${role.name} 在时间点 ${_currentTimeInt} 没有有效的表情帧${frameIndex} , ${expression.expressionName}`);
+        console.log(expression);
         return false;
       }
       

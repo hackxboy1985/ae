@@ -702,7 +702,7 @@ export function initCamera(app) {
       const mouseX = (e.clientX - rect.left) * scaleX;
       const mouseY = canvas.height- (e.clientY - rect.top) * scaleY;
       //console.log('mousemove:', e.clientX, e.clientY, mouseX, mouseY,rect.top,rect);
-      console.log('isDraggingCamera:',isDraggingCamera);
+      // console.log('isDraggingCamera:',isDraggingCamera);
       // 处理摄像机拖拽
       if (isDraggingCamera && enableCameraEdit.value) {
         // 阻止默认行为
@@ -720,7 +720,7 @@ export function initCamera(app) {
         if (cameraY < 0) cameraY = 0;
         if (canvas.width && cameraX + cameraWidth > canvas.width) cameraX = canvas.width - cameraWidth;
         if (canvas.height && cameraY + cameraHeight > canvas.height) cameraY = canvas.height - cameraHeight;
-        console.log('dragCamera pos:', cameraX, cameraY);
+        //console.log('dragCamera pos:', cameraX, cameraY);
         // 立即渲染更新后的位置
         renderFrame(37);
       }

@@ -273,14 +273,14 @@
                 {{ preset.name }} ({{ preset.width }}x{{ preset.height }})
               </option>
             </select>
-            <button @click="deleteCameraPreset($event.target.previousElementSibling.value)" class="text-sm px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+            <button hidden @click="deleteCameraPreset($event.target.previousElementSibling.value)" class="text-sm px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
             :disabled="cameraPresets.length === 0">
               删除预设
             </button>
           </div>
           <div class="flex space-x-2 items-center">
-            <input type="text" v-model="presetName" placeholder="预设名称" class="text-sm border border-gray-300 rounded px-2 py-1 flex-1" />
-            <button @click="saveCameraPreset(presetName); presetName = ''" class="text-sm px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
+            <input hidden type="text" v-model="presetName" placeholder="预设名称" class="text-sm border border-gray-300 rounded px-2 py-1 flex-1" />
+            <button hidden @click="saveCameraPreset(presetName); presetName = ''" class="text-sm px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
                     :disabled="!presetName">
               保存
             </button>
@@ -466,11 +466,11 @@
                 <div class="absolute top-0 left-0 h-full w-20 bg-gray-100 flex items-center justify-center text-xs">
                   <span>镜头/对白</span>
                   <button @click="showCameraClick" class="ml-1 p-1 hover:bg-gray-200 rounded-full" title="显示/隐藏摄像机预览">
-              <i :class="showCamera ? 'fa fa-eye' : 'fa fa-eye-slash '"></i>
-            </button>
-            <button @click="enableCameraEdit = !enableCameraEdit" class="ml-1 p-1 hover:bg-gray-200 rounded-full" title="启用/禁用镜头编辑" :class="{ 'bg-yellow-100': enableCameraEdit, 'bg-gray-300': !enableCameraEdit, 'opacity-50': !enableCameraEdit }">
-              <i class="fa fa-pencil"></i>
-            </button>
+                    <i :class="showCamera ? 'fa fa-eye' : 'fa fa-eye-slash '"></i>
+                  </button>
+                  <button @click="enableCameraEdit = !enableCameraEdit" class="ml-1 p-1 hover:bg-gray-200 rounded-full" title="启用/禁用镜头编辑" :class="{ 'bg-yellow-100': enableCameraEdit, 'bg-gray-300': !enableCameraEdit, 'opacity-50': !enableCameraEdit }">
+                    <i class="fa fa-pencil"></i>
+                  </button> 
                 </div>
               </div>
             </template>
@@ -1059,6 +1059,13 @@
           console.log('步骤2: 已在localStorage中设置defaultCameraScenery为', newValue);
           localStorage.setItem('defaultCameraScenery', newValue);
         });
+        watch(enableCameraEdit, (newValue) => {
+          console.log('enableCameraEdit 变化:', newValue);
+          if(newValue){
+            showCamera.value = true;
+            if (cameraModule) cameraModule.showCameraClick();
+          }
+        })
         
         // 在组件挂载后
         onMounted(() => {
@@ -3472,10 +3479,10 @@
                   dragOffsetX = x - currentPressPosition.x;
                   dragOffsetY = flippedY - currentPressPosition.y;
                   
-                  console.log(`拖拽偏移量: X=${dragOffsetX.toFixed(2)}, Y=${dragOffsetY.toFixed(2)}`);
+                  //console.log(`拖拽偏移量: X=${dragOffsetX.toFixed(2)}, Y=${dragOffsetY.toFixed(2)}`);
                   canvasElement.style.cursor = 'grabbing';
                 }
-                console.log('click initialWidth:',initialWidth,initialHeight);
+                //console.log('click initialWidth:',initialWidth,initialHeight);
 
               }
             }
@@ -4038,7 +4045,11 @@
           updateTimelineDisplay,
           // 摄像机相关状态和方法
           showCamera,
-          showCameraClick: () => { showCamera.value = !showCamera.value; if (cameraModule) cameraModule.showCameraClick(); },
+          showCameraClick: () => { 
+            showCamera.value = !showCamera.value; 
+            if(!showCamera.value) enableCameraEdit.value = false; 
+            if(cameraModule) cameraModule.showCameraClick(); 
+          },
           showCameraPreview,
           enableCameraEdit,
           showCameraPreviewClick: () => { if (cameraModule) cameraModule.showCameraPreviewClick(); },
