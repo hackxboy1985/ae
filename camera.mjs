@@ -84,8 +84,13 @@ export function initCamera(app) {
   });
 
   // 显示/隐藏摄像机
-  const showCameraClick = () => {
-    showCamera.value = !showCamera.value;
+  const showCameraClick = (value) => {
+    //console.log('showCameraClick:',value)
+    if(value != undefined){
+      showCamera.value = value;
+    }else
+      showCamera.value = !showCamera.value;
+
     renderFrame(31);
   };
   

@@ -278,6 +278,12 @@
               删除预设
             </button>
           </div>
+          <!-- 保存景别按钮 -->
+          <div class="flex items-center mb-2">
+            <button @click="saveCameraScenery" class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition w-full">
+              保存景别
+            </button>
+          </div>
           <div class="flex space-x-2 items-center">
             <input hidden type="text" v-model="presetName" placeholder="预设名称" class="text-sm border border-gray-300 rounded px-2 py-1 flex-1" />
             <button hidden @click="saveCameraPreset(presetName); presetName = ''" class="text-sm px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
@@ -781,8 +787,8 @@
             cameraMoveType: '1', //1硬切，2软切
             x:0,
             y:0,
-            x1:0,
-            y1:0,
+            width:0,
+            height:0,
             startTime: 0,
             duration: 1000,
           },
@@ -1063,7 +1069,7 @@
           console.log('enableCameraEdit 变化:', newValue);
           if(newValue){
             showCamera.value = true;
-            if (cameraModule) cameraModule.showCameraClick();
+            if (cameraModule) cameraModule.showCameraClick(true);
           }
         })
         
@@ -1248,6 +1254,32 @@
                 
         // 控制是否显示所有角色表情轨道的响应式变量
         const showAllRoleExpressions = ref(true);
+        
+        // 显示提示信息
+        const showAlert = (message) => {
+          // 创建提示框元素
+          const alertElement = document.createElement('div');
+          alertElement.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300 opacity-0 transform translate-y-[-20px]';
+          alertElement.textContent = message;
+          
+          // 添加到文档
+          document.body.appendChild(alertElement);
+          
+          // 显示提示框
+          setTimeout(() => {
+            alertElement.style.opacity = '1';
+            alertElement.style.transform = 'translateY(0)';
+          }, 10);
+          
+          // 3秒后隐藏并移除提示框
+          setTimeout(() => {
+            alertElement.style.opacity = '0';
+            alertElement.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+              document.body.removeChild(alertElement);
+            }, 300);
+          }, 3000);
+        };
 
 
 
@@ -3255,6 +3287,49 @@
           linkElement.setAttribute('href', dataUri);
           linkElement.setAttribute('download', exportFileDefaultName);
           linkElement.click();
+        };
+        
+        // 保存景别到当前镜头轨道
+        const saveCameraScenery = () => {
+          // 获取当前时间
+          const currentTimeValue = currentTime.value;
+          
+          // 查找当前时间点所在的分镜
+          const currentShot = timeline.value.shots.find(shot => 
+            currentTimeValue >= shot.startTime && currentTimeValue < shot.startTime + shot.duration
+          );
+          
+          if (!currentShot) {
+            showAlert('未找到当前分镜，请确保时间线指针位于有效分镜内');
+            return;
+          }
+          
+          // 如果分镜没有cameraTracks数组，创建一个
+          if (!currentShot.cameraTracks) {
+            currentShot.cameraTracks = [];
+          }
+          
+          //创建新的镜头轨道
+          const newCameraTrack = {
+            id: 'camera_' + Date.now(), // 生成唯一ID
+            startTime: currentTimeValue - currentShot.startTime, // 相对于分镜的开始时间
+            duration: 1000, // 默认时长1秒（1000毫秒）
+            x: cameraX,
+            y: cameraY,
+            width: cameraWidth,
+            height: cameraHeight,
+            // zoom: cameraZoom.value,
+            // rotation: cameraRotation.value
+          };
+          
+          // 添加到分镜的cameraTracks数组
+          currentShot.cameraTracks.push(newCameraTrack);
+          
+          // 重新渲染帧
+          renderFrame(36);
+          
+          // 显示成功提示
+          showAlert('景别已保存到当前时间点');
         };
         
         // 导出动画
