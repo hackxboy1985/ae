@@ -263,8 +263,8 @@
           </button>
         </div>
         
-        <!-- 虚拟镜头预设控制 -->
-        <div class="absolute bottom-4 right-4 bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-lg">
+        <!-- 虚拟镜头预设控制 - 只有启用镜头编辑时才显示 -->
+        <div v-if="enableCameraEdit" class="absolute bottom-4 right-4 bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-lg">
           <div class="text-sm font-medium mb-2">虚拟镜头预设</div>
           <div class="flex space-x-2 items-center mb-2">
             <select @change="applyCameraPreset($event.target.value)" class="text-sm border border-gray-300 rounded px-2 py-1">
@@ -398,8 +398,11 @@
             <button @click="goToEnd" class="p-2 hover:text-primary transition">
               <i class="fa fa-step-forward"></i>
             </button>
-            <div class="text-sm text-gray-600">
-              {{ formatTimess(currentTime) }} / {{ formatTime(totalDuration) }}
+            <div class="text-sm text-gray-600 w-12 min-w-12 text-center">
+              {{ formatTimess(currentTime) }}
+            </div>
+            <div class="text-sm text-gray-600 w-16 min-w-16 text-center">
+              / {{ formatTime(totalDuration) }}
             </div>
             <button @click="toggleLoop" class="p-2 hover:text-primary transition" :class="loop ? 'text-primary' : ''">
               <i class="fa fa-repeat"></i>

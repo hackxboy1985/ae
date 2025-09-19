@@ -131,11 +131,11 @@ export function initCamera(app) {
     dragHandle = previewWindow ? previewWindow.querySelector('.cursor-move') : null;
     
     if (!dragHandle || !previewWindow) {
-      console.log('未找到相机预览窗口或标题栏', previewWindow, dragHandle);
+      console.log('can not find camera preview window or drag handle:', previewWindow, dragHandle);
       return;
     }
     
-    console.log('打开预览:previewWindow', previewWindow);
+    //console.log('打开预览:previewWindow', previewWindow);
     // if(previewCanvas !=null){
     //     console.log('open camera preview set size:', outputCameraWidth,outputCameraHeight);
     //     previewCanvas.value.width = outputCameraWidth;
@@ -569,7 +569,7 @@ export function initCamera(app) {
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       const mouseX = (e.clientX - rect.left) * scaleX;
-      const mouseY = (e.clientY - rect.top) * scaleY;
+      const mouseY = canvas.height - (e.clientY - rect.top) * scaleY;
       
       // 检查是否点击了调整大小的手柄
       const resizeRegionSize = 10; // 调整区域大小
@@ -676,9 +676,12 @@ export function initCamera(app) {
         return;
       }
       
+      console.log('click camera:', cameraX, cameraY, cameraWidth, cameraHeight);
+
       // 检查是否点击了摄像机区域用于拖拽
       if (mouseX >= cameraX && mouseX <= cameraX + cameraWidth && 
           mouseY >= cameraY && mouseY <= cameraY + cameraHeight) {
+        console.log('click camera:', cameraX, cameraY, cameraWidth, cameraHeight);
         isDraggingCamera = true;
         dragStartX = mouseX;
         dragStartY = mouseY;
@@ -697,8 +700,9 @@ export function initCamera(app) {
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       const mouseX = (e.clientX - rect.left) * scaleX;
-      const mouseY = (e.clientY - rect.top) * scaleY;
-      
+      const mouseY = canvas.height- (e.clientY - rect.top) * scaleY;
+      //console.log('mousemove:', e.clientX, e.clientY, mouseX, mouseY,rect.top,rect);
+      console.log('isDraggingCamera:',isDraggingCamera);
       // 处理摄像机拖拽
       if (isDraggingCamera && enableCameraEdit.value) {
         // 阻止默认行为
@@ -937,6 +941,11 @@ export function initCamera(app) {
       return;
     }
     
+    if(app.enableCameraEdit)
+      return;
+    
+    console.log('app.enableCameraEdit:',app.enableCameraEdit);
+
     // 查找当前时间点对应的镜头轨道和分镜
     let currentCameraTrack = null;
     let currentShot = null;
@@ -982,7 +991,7 @@ export function initCamera(app) {
     // 检测是否是开场或切场景
     const isStartOfAnimation = _currentTimeInt === 0;
     const isSceneChange = currentSceneId !== previousSceneId;
-    console.info('scene change:', isSceneChange, currentSceneId, previousSceneId);
+    //console.info('scene change:', isSceneChange, currentSceneId, previousSceneId);
     if (isStartOfAnimation || isSceneChange) {
       // 更新当前活动分镜ID
       // currentActiveShotId = currentShotId;
