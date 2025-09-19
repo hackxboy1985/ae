@@ -13,7 +13,8 @@
   <!-- 引入角色表情管理器模块 -->
   <script type="module" src="./role-expression-manager.mjs"></script>
   <!-- 注意：utils.mjs会在Vue应用的setup函数中动态导入 -->
-  
+   <script type="module" src="./utils.mjs"></script>
+
   <!-- Tailwind 配置 -->
   <script>
     tailwind.config = {
@@ -912,13 +913,12 @@
 
     // 创建Vue应用
     const { createApp, ref, onMounted, computed, watch } = Vue;
-    
-    
 
 
     createApp({
+      
       setup() {
-
+        
         // 动态导入工具类 - 优化版本
         let utilsModuleLoaded = false;
         let loadingImages = {};
@@ -929,6 +929,7 @@
         // 添加重试机制
         const importUtilsModule = () => {
           import('./utils.mjs').then(utilsModule => {
+            console.log('✅ import utils module success');
             loadImageWithCORS = utilsModule.loadImageWithCORS;
             getCacheImage = utilsModule.getCacheImage;
             utilsModuleLoaded = true;
@@ -947,7 +948,6 @@
             setTimeout(importUtilsModule, 1000);
           });
         };
-        
         // 立即开始导入
         importUtilsModule();
         
@@ -959,19 +959,21 @@
           console.warn('⚠️ loadImageWithCORS尚未加载完成，正在使用占位函数');
           return (url, onSuccess, onError) => {
             // 如果模块未加载完成，使用延时重试策略
-            if (!utilsModuleLoaded) {
-              setTimeout(() => {
-                if (loadImageWithCORS) {
-                  loadImageWithCORS(url, onSuccess, onError);
-                } else {
-                  if (onError) onError('模块加载超时');
-                }
-              }, 100);
-            }
+            // if (!utilsModuleLoaded) {
+            //   setTimeout(() => {
+            //     if (loadImageWithCORS) {
+            //       loadImageWithCORS(url, onSuccess, onError);
+            //     } else {
+            //       if (onError) onError('模块加载超时');
+            //     }
+            //   }, 100);
+            // }
           };
         };
         
+            
         console.log('⚙️ Vue组件setup中，loadImageWithCORS初始状态:', typeof loadImageWithCORS);
+
 
         // 状态
         const canvas = ref(null);
@@ -1113,7 +1115,7 @@
 
           // 使用ES模块导入摄像机模块
         import('./camera.mjs').then(module => {
-          console.log('import camera');
+
           try {
             // 传入必要的应用对象给摄像机模块
             cameraModule = module.initCamera({
@@ -1158,13 +1160,13 @@
               setupCameraEvents();
               //console.log('摄像机事件监听已在模块加载完成后设置');
             }else{
-              console.error('摄像机事件监听已在模块加载完成后设置失败！！！！！');
+              console.error('camera event listener setup failed ！！！！！');
             }
           } catch (error) {
-            console.error('初始化摄像机模块失败:', error);
+            console.error('init camera module err:', error);
           }
         }).catch(error => {
-          console.error('导入摄像机模块失败:', error);
+          console.error('import camera module err:', error);
         });
 
 
@@ -2896,28 +2898,6 @@
             
             // 如果没有找到表情轨道，则使用场景中该角色的缺省表情及位置、宽高角度等信息进行绘制
             if(!currentExpressionTrack) {
-              // const sceneRoleConfig = sceneRoles.find(r => r.roleId === roleId);
-              
-              // if (sceneRoleConfig) {
-              //   // 创建临时表情轨道，使用场景中的默认信息
-              //   currentExpressionTrack = {
-              //     roleId: roleId,
-              //     expressionId: sceneRoleConfig.expressionId,
-              //     x: sceneRoleConfig.x,
-              //     y: sceneRoleConfig.y,
-              //     width: sceneRoleConfig.width,
-              //     height: sceneRoleConfig.height,
-              //     angle: sceneRoleConfig.angle,
-              //     scale: round(sceneRoleConfig.scale) || 1,
-              //     // 设置默认的开始和结束时间以确保计算位置时不会出错
-              //     startTime: 0,
-              //     endTime: Infinity
-              //   };
-              // } else {
-              //   //没有任何表情
-              //   return;
-              // }
-
               return;
             }
             //console.log('draw currentExpressionTrack:',roleId,currentExpressionTrack);
@@ -2931,7 +2911,7 @@
             if (!expression || !expression.frames || expression.frames.length === 0) return;
             
 
-            expressionManager.drawRoleExpression(offscreenCtx, role, currentExpressionTrack, expression, currentTime.value, isPlaying.value ? selectedRoleId.value : null);
+            expressionManager.drawRoleExpression(offscreenCtx, role, currentExpressionTrack, expression, currentTime.value, !isPlaying.value ? selectedRoleId.value : null);
             return;
 
           });
@@ -3283,7 +3263,7 @@
           console.info('开始预加载背景图:', uniqueUrls.length, '张');
           // 预加载每张图片
           uniqueUrls.forEach(url => {
-            if (!getCacheImage(url) && loadImageWithCORS ) {
+            if (getCacheImage && loadImageWithCORS && !getCacheImage(url)) {
               loadImageWithCORS(
                 url,
                 (img) => {

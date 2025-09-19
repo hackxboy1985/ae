@@ -973,303 +973,6 @@ export class RoleExpressionManager {
     return position;
   }
 
-
-
-  // // 检测角色点击
-  // checkRoleClick(x, y, roles, expressionTracks, _currentTimeInt) {
-  //   // 遍历所有角色，检查点击位置是否在角色范围内
-  //   const clickedRole = roles.find(role => {
-  //     // 找到当前时间点该角色的表情轨道
-  //     let currentExpressionTrack = getExpressionTrackByRoleId(role.id,_currentTimeInt);
-  //     // let currentExpressionTrack = expressionTracks.find(track => 
-  //     //   track.roleId === role.id && 
-  //     //   _currentTime.value >= track.startTime && 
-  //     //   _currentTime.value < track.endTime
-  //     // );
-  //     console.log('checkRoleClick:',role.id,_currentTimeInt,currentExpressionTrack);
-  //     // 如果没有找到，检查是否在最后一帧
-  //     if (!currentExpressionTrack && _currentTimeInt >= totalDuration.value) {
-  //       // 找到最后一个结束的轨道
-  //       const lastTracks = expressionTracks  
-  //         .filter(track => track.roleId === role.id && track.endTime <= _currentTimeInt && track.endTime > _currentTimeInt-1)
-  //         .sort((a, b) => b.endTime - a.endTime);
-        
-  //       currentExpressionTrack = lastTracks.length > 0 ? lastTracks[0] : null;
-  //     }
-        
-  //     // 如果没有找到表情轨道，尝试从当前场景中获取角色配置
-  //     if (!currentExpressionTrack) {
-  //       // 获取当前时间点的场景角色配置
-  //       const sceneRoles = getSceneRolesByTime(_currentTimeInt);
-  //       const sceneRoleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === role.id) : null;
-        
-  //       // 如果场景中找到了角色配置，创建一个临时的表达式轨道用于位置计算
-  //       if (sceneRoleConfig) {invalidPos
-  //         currentExpressionTrack = {
-  //           roleId: role.id,
-  //           expressionId: sceneRoleConfig.expressionId,
-  //           x: sceneRoleConfig.x,
-  //           y: sceneRoleConfig.y,
-  //           x1: sceneRoleConfig.x1 || sceneRoleConfig.x,
-  //           y1: sceneRoleConfig.y1 || sceneRoleConfig.y,
-  //           startTime: _currentTimeInt,
-  //           endTime: _currentTimeInt + 1,
-  //           scale: sceneRoleConfig.scale?.toFixed(2) || 1,
-  //           _isTemp: true
-  //         };
-  //         this.canvasCurrentExpTrack = currentExpressionTrack
-  //         console.log('check the default role :', currentExpressionTrack);
-  //       } else {
-  //         //console.error('check the expression role :', currentExpressionTrack);
-  //         return false;
-  //       }
-  //     }
-
-
-        
-  //     // 使用calculateCurrentPosition方法获取当前实际位置
-  //     const currentPosition = this.calculateCurrentExpressPosition(currentExpressionTrack, _currentTimeInt);
-  //     //console.log('点击表情的 Position:', currentPosition);
-  //     currentExpressionTrack.width = currentPosition.width;
-  //     currentExpressionTrack.height = currentPosition.height;
-  //     currentExpressionTrack.angle = currentPosition.angle;
-  //     currentExpressionTrack.scale = currentPosition.scale;
-  //     this.canvasCurrentExpTrack = currentExpressionTrack
-  //     // console.log('点击表情:', currentExpressionTrack);
-
-  //     // 如果坐标计算无效，返回false
-  //     if (!currentPosition.isValid) {
-  //       // console.log(`角色 ${role.name} 在时间点 ${currentTime} 位置计算无效`);
-  //       return false;
-  //     }
-      
-  //     const { currentX, currentY } = { currentX: currentPosition.x, currentY: currentPosition.y };
-  //     // console.log(`点击:${x},${y} 角色 ${role.name} in [${currentX}, ${currentX + currentPosition.width*currentPosition.scale},${currentY},${currentY +currentPosition.height*currentPosition.scale}]`);
-  //     // 检查点击是否在角色当前位置的区域内
-  //     return x >= currentX && 
-  //             x <= currentX + currentPosition.width*currentPosition.scale && 
-  //             y >= currentY && 
-  //             y <= currentY +currentPosition.height*currentPosition.scale;
-  //   });
-    
-  //   //console.log('checkRoleClick :', clickedRole);
-  //   return clickedRole;
-  // }
-          
-  // // 绘制角色表情-- 暂未使用
-  // drawRoleExpression(ctx, role, currentExpressionTrack, expression, _currentTimeInt) {
-  //   if (!ctx || !role || !currentExpressionTrack || !expression) {
-  //     return false;
-  //   }
-    
-  //   try {
-  //     // 获取当前帧索引
-  //     const frameIndex = this.updateRoleState(role.id, expression, expression.frameInterval, currentExpressionTrack.startTime,_currentTimeInt);
-      
-  //     // 检查是否有有效的表情帧
-  //     if (!expression.frames || !expression.frames[frameIndex]) {
-  //       console.log(`角色 ${role.name} 在时间点 ${_currentTimeInt} 没有有效的表情帧`);
-  //       return false;
-  //     }
-      
-  //     // 获取图片URL
-  //     const imageUrl = expression.frames[frameIndex];
-  //     this.drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, img, _currentTimeInt, selectedRoleId.value, isPlaying.value);
-
-  //   } catch (error) {
-  //     console.error(`draw role expression error: ${error}`);
-  //     return false;
-  //   }
-  // }
-          
-  // // 绘制角色选中状态
-  // drawRoleSelection(ctx, track, role,_currentTimeInt) {
-  //   if (!ctx || !track || !role) return;
-    
-  //   // 使用calculateCurrentPosition方法获取当前实际位置和尺寸
-  //   // 注意：这里需要currentTime，但该方法没有传入，我们假设使用当前时间
-  //   // 由于calculateCurrentPosition需要currentTime参数
-  //   // 所以这里使用了全局的currentTime
-  //   const currentPosition = this.calculateCurrentExpressPosition(track, _currentTimeInt);
-  //   //console.log('drawRolSelection the currentPosition :', currentPosition);
-  //   const x = currentPosition.isValid ? currentPosition.x : track.x;
-  //   const y = currentPosition.isValid ? currentPosition.y : track.y;
-  //   const width = currentPosition.isValid ? currentPosition.width * track.scale : this.config.roleWidth;
-  //   const height = currentPosition.isValid ? currentPosition.height * track.scale : this.config.roleHeight;
-    
-  //   // 绘制闪烁的黄色边框
-  //   ctx.strokeStyle = '#EAB308';
-  //   ctx.lineWidth = 8;
-    
-  //   // 绘制圆角矩形边框
-  //   const radius = 10;
-  //   ctx.beginPath();
-  //   ctx.moveTo(x + radius, y);
-  //   ctx.lineTo(x + width - radius, y);
-  //   ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  //   ctx.lineTo(x + width, y + height - radius);
-  //   ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  //   ctx.lineTo(x + radius, y + height);
-  //   ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  //   ctx.lineTo(x, y + radius);
-  //   ctx.quadraticCurveTo(x, y, x + radius, y);
-  //   ctx.closePath();
-  //   ctx.stroke();
-    
-  //   // 重置线条样式
-  //   ctx.setLineDash([]);
-    
-  //   // 绘制右上角宽高调整圆点
-  //   const cornerDotSize = 10;
-  //   const cornerDotX = x + width;
-  //   const cornerDotY = y;
-    
-  //   // 保存当前状态以绘制调整圆点
-  //   ctx.save();
-    
-  //   // 绘制圆点背景（黑色外圈）
-  //   ctx.beginPath();
-  //   ctx.arc(cornerDotX, cornerDotY, cornerDotSize, 0, Math.PI * 2);
-  //   ctx.fillStyle = '#0000FF';
-  //   ctx.fill();
-    
-  //   // 绘制圆点内芯（白色）
-  //   ctx.beginPath();
-  //   ctx.arc(cornerDotX, cornerDotY, cornerDotSize - 3, 0, Math.PI * 2);
-  //   ctx.fillStyle = '#FFFFFF';
-  //   ctx.fill();
-    
-  //   // 恢复状态
-  //   ctx.restore();
-    
-  //   // 绘制右下角角度调整圆点
-  //   const angleDotX = x + width;
-  //   const angleDotY = y + height;
-    
-  //   // 保存当前状态以绘制角度调整圆点
-  //   ctx.save();
-    
-  //   // 绘制圆点背景（蓝色外圈）
-  //   ctx.beginPath();
-  //   ctx.arc(angleDotX, angleDotY, cornerDotSize, 0, Math.PI * 2);
-  //   ctx.fillStyle = '#0000FF';
-  //   ctx.fill();
-    
-  //   // 绘制圆点内芯（红色 - 用于区分角度调整点）
-  //   ctx.beginPath();
-  //   ctx.arc(angleDotX, angleDotY, cornerDotSize - 3, 0, Math.PI * 2);
-  //   ctx.fillStyle = '#FF0000';
-  //   ctx.fill();
-    
-  //   // 恢复状态以继续绘制表情名称标签
-  //   ctx.restore();
-  //   ctx.save();
-    
-  //   // 绘制表情名称标签
-  //   const expression = role.expressions.find(exp => exp && exp.id === track.expressionId);
-  //   const expressionName = expression ? expression.name : '未知表情';
-    
-  //   // 计算文本宽度以正确设置背景
-  //   ctx.font = '12px Arial';
-  //   const textWidth = ctx.measureText(expressionName).width + 20;
-  //   const textHeight = 20;
-  //   const labelX = x + width / 2 - textWidth / 2;
-    
-  //   // 由于全局坐标系已经翻转，需要将Y坐标调整为在角色下方
-  //   const labelY = y + height + 15;
-    
-  //   // 应用反向缩放，确保标签在翻转的坐标系中是正立的
-  //   const centerX = labelX + textWidth / 2;
-  //   const centerY = labelY + textHeight / 2;
-  //   ctx.translate(centerX, centerY);
-  //   ctx.scale(1, -1);
-  //   ctx.translate(-centerX, -centerY);
-    
-  //   // 绘制标签背景
-  //   ctx.fillStyle = '#10B981';
-  //   ctx.beginPath();
-  //   ctx.moveTo(labelX + 5, labelY);
-  //   ctx.lineTo(labelX + textWidth - 5, labelY);
-  //   ctx.quadraticCurveTo(labelX + textWidth, labelY, labelX + textWidth, labelY + 5);
-  //   ctx.lineTo(labelX + textWidth, labelY + textHeight - 5);
-  //   ctx.quadraticCurveTo(labelX + textWidth, labelY + textHeight, labelX + textWidth - 5, labelY + textHeight);
-  //   ctx.lineTo(labelX + 5, labelY + textHeight);
-  //   ctx.quadraticCurveTo(labelX, labelY + textHeight, labelX, labelY + textHeight - 5);
-  //   ctx.lineTo(labelX, labelY + 5);
-  //   ctx.quadraticCurveTo(labelX, labelY, labelX + 5, labelY);
-  //   ctx.closePath();
-  //   ctx.fill();
-    
-  //   // 绘制标签文本
-  //   ctx.fillStyle = 'white';
-  //   ctx.font = '12px Arial';
-  //   ctx.textAlign = 'center';
-  //   ctx.textBaseline = 'middle';
-  //   ctx.fillText(expressionName, labelX + textWidth / 2, labelY + textHeight / 2);
-    
-  //   // 恢复原始状态
-  //   ctx.restore();
-  // }
-  
-  // // 绘制角色备用图形
-  // drawRolePlaceholder(ctx, track, role, _currentTimeInt,highlight = false) {
-  //   if (!ctx || !track || !role) return;
-    
-  //   // 保存当前状态，准备临时应用反向缩放以抵消全局翻转
-  //   ctx.save();
-    
-  //   // 选择角色专属颜色
-  //   const color = this.config.roleColors[role.id] || this.config.defaultColor;
-    
-  //   // 绘制一个更美观的备用图形
-  //   ctx.fillStyle = highlight ? color : `${color}80`; // 透明度
-  //   ctx.strokeStyle = color;
-  //   ctx.lineWidth = 2;
-    
-  //   // 尝试获取场景级角色配置
-  //   const currentPosition = this.calculateCurrentExpressPosition(track, _currentTimeInt);
-    
-  //   // 绘制圆角矩形
-  //   const x = currentPosition.isValid ? currentPosition.x : track.x;
-  //   const y = currentPosition.isValid ? currentPosition.y : track.y;
-  //   const width = currentPosition.isValid ? currentPosition.width : this.config.roleWidth;
-  //   const height = currentPosition.isValid ? currentPosition.height : this.config.roleHeight;
-  //   const radius = 10;
-    
-  //   // 应用反向缩放，确保备用图形在翻转的坐标系中是正立的
-  //   ctx.translate(x + width / 2, y + height / 2);
-  //   ctx.scale(1, -1);
-  //   ctx.translate(-(x + width / 2), -(y + height / 2));
-    
-  //   ctx.beginPath();
-  //   ctx.moveTo(x + radius, y);
-  //   ctx.lineTo(x + width - radius, y);
-  //   ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  //   ctx.lineTo(x + width, y + height - radius);
-  //   ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  //   ctx.lineTo(x + radius, y + height);
-  //   ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  //   ctx.lineTo(x, y + radius);
-  //   ctx.quadraticCurveTo(x, y, x + radius, y);
-  //   ctx.closePath();
-    
-  //   ctx.fill();
-  //   ctx.stroke();
-    
-  //   // 绘制角色图标
-  //   ctx.fillStyle = 'white';
-  //   ctx.font = 'bold 48px FontAwesome';
-  //   ctx.textAlign = 'center';
-  //   ctx.fillText(
-  //     '\uf007', // 用户图标
-  //     x + width/2, 
-  //     y + height/2 + 15
-  //   );
-    
-  //   // 恢复原始状态
-  //   ctx.restore();
-  // }
-
   // 重置所有状态
   reset() {
     this.roleStates = {};
@@ -1386,7 +1089,7 @@ export class RoleExpressionManager {
           // 恢复原始状态
           ctx.restore();
       } catch (error) {
-        console.error('绘制缓存图片时出错: ' + error);
+        console.error('draw role img err: ' + error);
         this.drawRolePlaceholder(ctx, currentExpressionTrack, role, true);
       }
     } else {
@@ -1399,19 +1102,19 @@ export class RoleExpressionManager {
             imageUrl,
             (loadedImg) => {
               // 添加到缓存
-              console.log('加载角色图片成功: ' , imageUrl,loadedImg);
+              // console.log('加载角色图片成功: ' , imageUrl,loadedImg);
               self.drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, loadedImg, _currentTimeInt, selectedRoleId, isPlaying);
             },
             () => {
-              console.error('无法加载角色图片: ' + imageUrl);
-              debugInfo.value = '角色图片加载失败: ' + role.name;
+              console.error('load img err: ', imageUrl);
+              // debugInfo.value = '角色图片加载失败: ' + role.name;
               // 最终失败时，确保备用图形清晰可见
               self.drawRolePlaceholder(ctx, currentExpressionTrack, role, true);
             }
           );
         }
       } catch (error) {
-        console.error('设置图片源时出错: ' + error);
+        console.error('load img err: ' + error);
         this.drawRolePlaceholder(ctx, currentExpressionTrack, role, true);
       }
     }
