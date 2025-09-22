@@ -279,10 +279,16 @@
               删除预设
             </button>
           </div>
-          <!-- 保存景别按钮 -->
-          <div class="flex items-center mb-2">
+          <!-- 保存景别按钮组 -->
+          <div class="flex flex-col space-y-1 mb-2">
             <button @click="saveCameraScenery" class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition w-full">
               保存景别
+            </button>
+            <button @click="saveCameraSceneryToShotStart" class="text-sm px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition w-full">
+              保存至当前分镜开始
+            </button>
+            <button @click="saveCameraSceneryToDialogStart" class="text-sm px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 transition w-full">
+              保存至当前对话开始
             </button>
           </div>
           <div class="flex space-x-2 items-center">
@@ -3294,7 +3300,8 @@
         };
         
         // 保存景别到当前镜头轨道
-        const saveCameraScenery = () => {
+        const saveCameraScenery = (startTimeOffset = null) => {
+          
           // 获取当前时间
           const currentTimeValue = currentTime.value;
           
@@ -3313,23 +3320,22 @@
             currentShot.cameraTracks = [];
           }
           
-          console.log('selectedCameraPreset:',selectedCameraPreset.value)
-          console.log('cameraWidth:',cameraModule.cameraWidth,cameraModule.cameraHeight);
-          console.log('cameraModule:',cameraModule);
           // 获取当前选择的镜头预设
           let cameraType = selectedCameraPreset.value || CUSTOM_CAMERA_TYPE;
+          
+          // 确定startTime
+          const finalStartTime = startTimeOffset !== null ? startTimeOffset : (currentTimeValue - currentShot.startTime);
+          
           //创建新的镜头轨道
           const newCameraTrack = {
             id: 'camera_' + Date.now(), // 生成唯一ID
-            startTime: currentTimeValue - currentShot.startTime, // 相对于分镜的开始时间
+            startTime: finalStartTime, // 相对于分镜的开始时间
             cameraType: cameraType,
             duration: 1000, // 默认时长1秒（1000毫秒）
             x: cameraModule.cameraX,
             y: cameraModule.cameraY,
             width: cameraModule.cameraWidth,
             height: cameraModule.cameraHeight,
-            // zoom: cameraZoom.value,
-            // rotation: cameraRotation.value
           };
           
           // 添加到分镜的cameraTracks数组
@@ -3339,7 +3345,51 @@
           renderFrame(36);
           
           // 显示成功提示
-          showAlert('景别已保存到当前时间点');
+          showAlert(startTimeOffset === null ? '景别已保存到当前时间点' : 
+                   startTimeOffset === 0 ? '景别已保存到分镜开始时间' : '景别已保存到对话开始时间');
+        };
+        
+        // 保存景别到当前分镜开始
+        const saveCameraSceneryToShotStart = () => {
+          saveCameraScenery(0); // 0表示相对于分镜的开始时间
+        };
+        
+        // 保存景别到当前对话开始
+        const saveCameraSceneryToDialogStart = () => {
+          // 获取当前时间
+          const currentTimeValue = currentTime.value;
+          
+          // 查找当前时间点所在的分镜
+          const currentShot = timeline.value.shots.find(shot => 
+            currentTimeValue >= shot.startTime && currentTimeValue < shot.startTime + shot.duration
+          );
+          
+          if (!currentShot) {
+            showAlert('未找到当前分镜，请确保时间线指针位于有效分镜内');
+            return;
+          }
+          
+          // 在当前分镜的音频轨道中查找当前时间点正在播放的音频
+          let dialogStartTime = null;
+          if (currentShot.audios && Array.isArray(currentShot.audios)) {
+            const currentAudio = currentShot.audios.find(audio => {
+              const audioStartTime = currentShot.startTime + (audio.startTime || 0);
+              const audioEndTime = audioStartTime + (audio.audioDuration || 0);
+              return currentTimeValue >= audioStartTime && currentTimeValue <= audioEndTime;
+            });
+            
+            if (currentAudio) {
+              dialogStartTime = currentAudio.startTime || 0; // 对话的开始时间（相对于分镜）
+            }
+          }
+          
+          if (dialogStartTime === null) {
+            showAlert('未找到当前对话，请确保时间线指针位于有效对话内');
+            return;
+          }
+          
+          // 调用保存函数，传入对话开始时间
+          saveCameraScenery(dialogStartTime);
         };
         
         // 导出动画
@@ -4148,6 +4198,8 @@
           useSmoothTransition,
           cameraPresets,
           saveCameraScenery,
+          saveCameraSceneryToShotStart,
+          saveCameraSceneryToDialogStart,
           defaultCameraScenery,
           // 虚拟镜头控制方法
           toggleAspectRatio: () => { if (cameraModule) cameraModule.toggleAspectRatio(); },

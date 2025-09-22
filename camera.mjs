@@ -1371,29 +1371,39 @@ export function initCamera(app) {
         // 全景镜头，默认居中
         targetCenterX = canvas.width / 2;
         targetCenterY = canvas.height / 2;
-      } else {
-        // 规则3: 无设置镜头轨道但当前有对话的规则
-        let speakingRoleId = findCurrentSpeakerId(_currentTimeInt, currentShot);
-        if (speakingRoleId != previousSpeakingRoleId) {
-          cameraModuleState.previousSpeakingRoleId = speakingRoleId;
-          
-          let currentExpressionPosition = findCurrentSpeakerIdPosition(_currentTimeInt, speakingRoleId);
-          if (currentExpressionPosition.targetCenterX !== undefined && currentExpressionPosition.targetCenterY !== undefined) {
-            targetCenterX = currentExpressionPosition.targetCenterX;
-            targetCenterY = currentExpressionPosition.targetCenterY;
-          } else {
-            // 规则4: 无设置镜头轨道且当前无对话规则
-            targetCenterX = canvas.width / 2;
-            targetCenterY = canvas.height / 2;
-          }
+      }
+      console.log('规则2: 有设置镜头轨道的镜头', cameraType, targetCenterX, targetCenterY);
+    } else if(findCurrentSpeakerId(_currentTimeInt, currentShot) != null){
+      // 规则3: 无设置镜头但当前有对话的规则
+      let speakingRoleId = findCurrentSpeakerId(_currentTimeInt, currentShot);
+      if (speakingRoleId != previousSpeakingRoleId) {
+        cameraModuleState.previousSpeakingRoleId = speakingRoleId;
+        
+        let currentExpressionPosition = findCurrentSpeakerIdPosition(_currentTimeInt, speakingRoleId);
+        if (currentExpressionPosition.targetCenterX !== undefined && currentExpressionPosition.targetCenterY !== undefined) {
+          targetCenterX = currentExpressionPosition.targetCenterX;
+          targetCenterY = currentExpressionPosition.targetCenterY;
         } else {
           // 规则4: 无设置镜头轨道且当前无对话规则
           targetCenterX = canvas.width / 2;
           targetCenterY = canvas.height / 2;
         }
+      } else {
+        // 规则4: 无设置镜头轨道且当前无对话规则
+        targetCenterX = canvas.width / 2;
+        targetCenterY = canvas.height / 2;
       }
+      //TODO:缺少读取配置项：对话的默认景别
+      const preset = getCameraPreset('近景') || getCameraPreset('中');
+      if (preset) {
+        targetWidth = preset.width;
+        targetHeight = preset.height;
+      }else{
+        console.error('dialog camera set err')
+      }
+      console.log('规则3: 无设置镜头但当前有对话的规则', speakingRoleId, targetCenterX, targetCenterY);
     } else {
-      // 规则2: 无设置镜头轨道的情况
+      // 规则4: 无设置镜头轨道的情况
       const currentShotId = currentShot ? currentShot.id : null;
       cameraModuleState.currentActiveShotId = currentShotId;
       
@@ -1426,6 +1436,7 @@ export function initCamera(app) {
       } else {
         // 说话人物未切换，保持上次位置
       }
+      console.log('规则4: 无设置镜头轨道的情况', cameraModuleState.currentDefaultShotScenery, targetCenterX, targetCenterY);
     }
     
     return {
@@ -1532,7 +1543,7 @@ export function initCamera(app) {
     
     // 1. 判断逻辑：确定目标景别和参数
     const judgmentResult = updateCameraJudgmentLogic(_currentTimeInt, timeline, app, canvas, cameraModuleState);
-    
+    console.log('judgmentResult', judgmentResult);
     // 2. 执行逻辑：根据判断结果更新摄像机位置和参数
     updateCameraExecutionLogic(_currentTimeInt, judgmentResult, cameraModuleState, canvas);
     
