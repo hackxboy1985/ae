@@ -91,6 +91,11 @@
       <h3 class="text-2xl font-bold text-primary"></h3>
       <div class="flex space-x-4">
         <div class="flex items-center space-x-1">
+          <!-- 摄像机开关 -->
+          <button @click="showCameraPreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机" 
+                  :class="{ 'bg-red-100': showCamera }">
+            <i class="fa fa-video-camera" title="摄像机预览"></i>
+          </button>
           <label for="canvasSizeSelect" class="text-sm text-gray-600">画布尺寸:</label>
           <select
             id="canvasSizeSelect"
@@ -233,15 +238,11 @@
         
         <!-- 画布控制按钮 -->
         <div class="absolute top-4 right-4 bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-lg flex space-x-2">
-          <!-- 摄像机开关 -->
-          <button @click="showCameraClick" class="p-2 hover:bg-gray-100 rounded"
-                  :class="{ 'bg-red-100': showCamera }">
-            <i class="fa fa-video-camera" title="显示摄像机"></i>
-          </button>
-          <button @click="showCameraPreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机"
+
+          <!-- <button @click="showCameraPreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机"
                   :class="{ 'bg-red-100': showCameraPreview }">
             <i class="fa fa-eye " title="摄像机预览"></i>
-          </button>
+          </button> -->
           <button @click="resetCamera" class="p-2 hover:bg-gray-100 rounded" title="重置相机位置">
             <i class="fa fa-refresh" ></i>
           </button>
@@ -861,7 +862,7 @@
         startTime: 0,
         endTime: 5000,
         expressionId: 'exp1-3',
-        x: 0,
+        x: -1,
         y: 0,
         x1: 300,
         y1: 250,

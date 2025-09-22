@@ -97,8 +97,8 @@ export function initCamera(app) {
   
   // 显示/隐藏摄像机预览
   const showCameraPreviewClick = () => {
-    console.log('showCameraPreviewClick showCameraPreview.value:', showCameraPreview.value);
     showCameraPreview.value = !showCameraPreview.value;
+    // console.log('showCameraPreviewClick showCameraPreview.value:', showCameraPreview.value);
     
     // 使用try-catch包装setTimeout回调，确保异常能够被捕获和显示
     setTimeout(() => {
@@ -300,10 +300,13 @@ export function initCamera(app) {
     previewCtx.clearRect(0, 0, outputCameraWidth, outputCameraHeight);
     
     try {
+      // console.log('updateCameraPreview cameraX', cameraX, 'cameraY', cameraY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight)
       // 从离屏画布复制摄像机区域的内容到预览画布
+      // 注意：源坐标系使用左下角为原点，需要转换为左上角为原点的坐标系
+      const sourceY = offscreenCanvas.height - cameraY - cameraHeight;
       previewCtx.drawImage(
         offscreenCanvas,
-        cameraX, cameraY, cameraWidth, cameraHeight, // 源区域
+        cameraX, sourceY, cameraWidth, cameraHeight, // 源区域（已转换坐标系）
         0, 0, outputCameraWidth, outputCameraHeight // 目标区域
       );
     } catch (error) {
@@ -933,7 +936,7 @@ export function initCamera(app) {
       
       targetCenterX = currentExpressionTrack.x + (roleWidth * scale) / 2;
       targetCenterY = currentExpressionTrack.y + (roleHeight * scale) / 2;
-      console.log(`找到说话角色 ${speakingRoleId} 的位置: (${currentExpressionTrack.x}, ${currentExpressionTrack.y})`);
+      console.log(`currentTime:${currentTime}, 找到说话角色 ${speakingRoleId} 的位置: (${currentExpressionTrack.x}, ${currentExpressionTrack.y})`);
     }
     return {targetCenterX,targetCenterY};
   }
@@ -1260,7 +1263,7 @@ export function initCamera(app) {
     // }
   };
   
-  // ====== 判断逻辑 ======
+  // ====== 判断逻辑 ======  
   function updateCameraJudgmentLogic(_currentTimeInt, timeline, app, canvas, cameraModuleState) {
     // 初始化变量
     let { previousCameraType, previousSpeakingRoleId, needShiftCamera, shiftCameraStartTime } = cameraModuleState;
@@ -1279,6 +1282,8 @@ export function initCamera(app) {
     if (app.enableCameraEdit.value) {
       return null;
     }
+    
+    
     
     // 2. 查找当前时间点对应的镜头轨道和分镜
     for (const shot of timeline.shots) {
@@ -1311,6 +1316,33 @@ export function initCamera(app) {
     const isStartOfAnimation = _currentTimeInt === 0;
     const isSceneChange = currentSceneId !== cameraModuleState.previousSceneId;
     
+    // 优化：检查是否正在执行轨道镜头差值计算，如果是则直接返回
+    // 先简单查找当前时间点对应的镜头轨道
+    // for (const shot of timeline.shots) {
+    //   const shotStartTime = shot.startTime || 0;
+    //   const shotEndTime = shotStartTime + (shot.duration || 0);
+      
+    //   if (_currentTimeInt >= shotStartTime && _currentTimeInt <= shotEndTime) {
+    //     currentShot = shot;
+        
+    //     if (shot.cameraTracks && Array.isArray(shot.cameraTracks)) {
+    //       for (const cameraTrack of shot.cameraTracks) {
+    //         const trackStartTime = shotStartTime + (cameraTrack.startTime || 0);
+    //         const transitionDuration = 0.3; // 过渡持续时间（秒）
+    //         const transitionEndTime = trackStartTime + transitionDuration * 1000; // 转换为毫秒
+            
+    //         // 如果当前时间在轨道开始后的过渡时间内，表示正在进行差值计算
+    //         if (!isStartOfAnimation && !isSceneChange && _currentTimeInt >= trackStartTime && _currentTimeInt <= transitionEndTime) {
+    //           console.log('当前过度中，跳过判断逻辑');
+    //           return null; // 跳过判断逻辑，继续使用之前的差值计算结果
+    //         }
+    //       }
+    //     }
+    //     break;
+    //   }
+    // }
+
+
     // 规则1: 开场默认镜头或场景切换
     if (isStartOfAnimation || isSceneChange) {
       if (!needShiftCamera) {
@@ -1372,11 +1404,14 @@ export function initCamera(app) {
         targetCenterX = canvas.width / 2;
         targetCenterY = canvas.height / 2;
       }
-      console.log('规则2: 有设置镜头轨道的镜头', cameraType, targetCenterX, targetCenterY);
+      console.log('规则2: 有设置镜头轨道的镜头', 'currentTime:',_currentTimeInt,'',cameraType, '焦点:',targetCenterX, targetCenterY);
     } else if(findCurrentSpeakerId(_currentTimeInt, currentShot) != null){
       // 规则3: 无设置镜头但当前有对话的规则
       let speakingRoleId = findCurrentSpeakerId(_currentTimeInt, currentShot);
-      if (speakingRoleId != previousSpeakingRoleId) {
+      let dialogCameraType = '近景';//默认对话近景
+      // if (speakingRoleId != previousSpeakingRoleId) 
+      {
+        
         cameraModuleState.previousSpeakingRoleId = speakingRoleId;
         
         let currentExpressionPosition = findCurrentSpeakerIdPosition(_currentTimeInt, speakingRoleId);
@@ -1384,24 +1419,26 @@ export function initCamera(app) {
           targetCenterX = currentExpressionPosition.targetCenterX;
           targetCenterY = currentExpressionPosition.targetCenterY;
         } else {
-          // 规则4: 无设置镜头轨道且当前无对话规则
+          // 未找到当前对话焦点，切换到默认焦点及中景
           targetCenterX = canvas.width / 2;
           targetCenterY = canvas.height / 2;
+          dialogCameraType = '中景';
         }
-      } else {
-        // 规则4: 无设置镜头轨道且当前无对话规则
-        targetCenterX = canvas.width / 2;
-        targetCenterY = canvas.height / 2;
-      }
+      } 
+      // else {
+      //   // 对话未切换，仍然是刚才男主
+      //   targetCenterX = canvas.width / 2;
+      //   targetCenterY = canvas.height / 2;
+      // }
       //TODO:缺少读取配置项：对话的默认景别
-      const preset = getCameraPreset('近景') || getCameraPreset('中');
+      const preset = getCameraPreset(dialogCameraType) || getCameraPreset('中');
       if (preset) {
         targetWidth = preset.width;
         targetHeight = preset.height;
       }else{
         console.error('dialog camera set err')
       }
-      console.log('规则3: 无设置镜头但当前有对话的规则', speakingRoleId, targetCenterX, targetCenterY);
+      console.log('规则3: 无设置镜头但当前有对话', 'currentTime:',_currentTimeInt,speakingRoleId, preset.name,'焦点:',targetCenterX, targetCenterY);
     } else {
       // 规则4: 无设置镜头轨道的情况
       const currentShotId = currentShot ? currentShot.id : null;
@@ -1436,7 +1473,7 @@ export function initCamera(app) {
       } else {
         // 说话人物未切换，保持上次位置
       }
-      console.log('规则4: 无设置镜头轨道的情况', cameraModuleState.currentDefaultShotScenery, targetCenterX, targetCenterY);
+      console.log('规则4: 无设置镜头轨道的情况', 'currentTime:',currentTime, cameraModuleState.currentDefaultShotScenery, targetCenterX, targetCenterY);
     }
     
     return {
@@ -1543,7 +1580,8 @@ export function initCamera(app) {
     
     // 1. 判断逻辑：确定目标景别和参数
     const judgmentResult = updateCameraJudgmentLogic(_currentTimeInt, timeline, app, canvas, cameraModuleState);
-    console.log('judgmentResult', judgmentResult);
+    if(judgmentResult != null)
+      console.log('judgmentResult', judgmentResult);
     // 2. 执行逻辑：根据判断结果更新摄像机位置和参数
     updateCameraExecutionLogic(_currentTimeInt, judgmentResult, cameraModuleState, canvas);
     
@@ -1554,6 +1592,7 @@ export function initCamera(app) {
     cameraHeight = cameraModuleState.cameraHeight;
     currentDefaultShotScenery = cameraModuleState.currentDefaultShotScenery;
     currentActiveShotId = cameraModuleState.currentActiveShotId;
+    console.log('cameraY', cameraY)
   }
 
 
