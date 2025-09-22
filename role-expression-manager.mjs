@@ -567,22 +567,15 @@ export class RoleExpressionManager {
     const expressionName = expression ? expression.name : '未知表情';
     
     // 计算文本宽度以正确设置背景
-    ctx.font = '12px Arial';
+    ctx.font = '30px Arial';
     const textWidth = ctx.measureText(expressionName).width + 20;
-    const textHeight = 20;
-    const labelX = x + width / 2 - textWidth / 2;
+    const textHeight = 32;
+    const labelX = x ; //- textWidth / 2 + 30;
     
     // 由于全局坐标系已经翻转，需要将Y坐标调整为在角色下方
-    const labelY = y + height + 15;
+    const labelY = y + height + 10;
     
-    // 应用反向缩放，确保标签在翻转的坐标系中是正立的
-    const centerX = labelX + textWidth / 2;
-    const centerY = labelY + textHeight / 2;
-    ctx.translate(centerX, centerY);
-    ctx.scale(1, -1);
-    ctx.translate(-centerX, -centerY);
-    
-    // 绘制标签背景
+    // 绘制标签背景（不进行额外的缩放变换，避免文本颠倒）
     ctx.fillStyle = '#10B981';
     ctx.beginPath();
     ctx.moveTo(labelX + 5, labelY);
@@ -597,12 +590,25 @@ export class RoleExpressionManager {
     ctx.closePath();
     ctx.fill();
     
-    // 绘制标签文本
+    // 保存当前状态
+    ctx.save();
+    
+    // 应用反向缩放，抵消全局坐标系的翻转
+    const textCenterX = labelX + textWidth / 2 ;
+    const textCenterY = labelY + textHeight / 2 ;
+    ctx.translate(textCenterX, textCenterY);
+    ctx.scale(1, -1); // 翻转Y轴
+    ctx.translate(-textCenterX, -textCenterY);
+    
+    // 绘制标签文本（字体增大到50px）
     ctx.fillStyle = 'white';
-    ctx.font = '12px Arial';
+    ctx.font = '30px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(expressionName, labelX + textWidth / 2, labelY + textHeight / 2);
+    ctx.fillText(expressionName, textCenterX, textCenterY);
+    
+    // 恢复原始状态
+    ctx.restore();
     
     // 恢复原始状态
     ctx.restore();
@@ -759,28 +765,28 @@ export class RoleExpressionManager {
         // 保存当前状态，准备绘制角色名称
         ctx.save();
         
-        // 不使用save/restore和缩放，直接在正确的位置绘制角色名称
-        // 由于全局坐标系已经翻转，需要将Y坐标调整为在角色上方
-        const nameY = currentY + currentHeight + 15;
+        // 计算文本中心点坐标
+        const nameCenterX = currentX + currentWidth / 2;
+        const nameY = currentY + currentHeight ;
         
+        // 应用反向缩放，抵消全局坐标系的翻转
+        ctx.translate(nameCenterX, nameY);
+        ctx.scale(1, -1); // 翻转Y轴
+        ctx.translate(-nameCenterX, -nameY);
+
+        // 设置文本样式
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 2;
         ctx.font = 'bold 36px Arial';
         ctx.textAlign = 'center';
-        ctx.strokeText(
-          role.name, 
-          currentX + currentWidth / 2, 
-          nameY
-        );
-        ctx.fillText(
-            role.name, 
-            currentX + currentWidth / 2, 
-            nameY
-          );
-          
-          // 恢复原始状态
-          ctx.restore();
+        
+        //绘制角色名称（使用已经校正的坐标系，不需要额外的缩放变换）
+        ctx.strokeText(role.name, nameCenterX, nameY);
+        ctx.fillText(role.name, nameCenterX, nameY);
+        
+        // 恢复原始状态
+        ctx.restore();
       } catch (error) {
         console.error('绘制缓存图片时出错: ' + error);
         this.drawRolePlaceholder(ctx, currentExpressionTrack, role, true);
@@ -991,142 +997,7 @@ export class RoleExpressionManager {
     }
   }
 
-  // 绘制角色图片的具体实现
-  drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, img, _currentTimeInt, selectedRoleId, isPlaying) {
-    if (!ctx || !role || !currentExpressionTrack || !expression) {
-      return;
-    }
-    
-    // 如果在播放状态且图片已缓存，则直接使用缓存图片
-    if (img) {
-      // console.log('使用缓存图片: ' + imageUrl);
-      try {
-        // 使用calculateCurrentPosition方法获取当前实际位置和尺寸角度
-        const currentPosition = this.calculateCurrentExpressPosition(currentExpressionTrack, _currentTimeInt);
-        
-        // 如果坐标计算无效，返回
-        if (!currentPosition.isValid) {
-          console.log(`${role.name} ${currentExpressionTrack.expressionId} ${expression.name} miss start/end pos`);
-          return;
-        }
-        
-        //console.log(`will draw ${expression.name} ${currentPosition.width} ${currentPosition.height} scale:${currentExpressionTrack.scale}`);
-        // console.log('currentExpressionTrack:',currentExpressionTrack);
-        const currentX = currentPosition.x;
-        const currentY = currentPosition.y;
-        // 计算缩放系数，考虑canvas实际尺寸与分辨率的关系
-        // const container = document.getElementById('canvasContainer');
-        // const parentWidth = container.parentElement.clientWidth;
-        // const parentHeight = container.parentElement.clientHeight;
-        // const widthRatio = parentWidth / canvas.value.width;
-        // const heightRatio = parentHeight / canvas.value.height;
-        // const scale = Math.min(widthRatio, heightRatio, 1);
-        // console.log('scale:', scale,',widthRatio:',widthRatio,',heightRatio:',heightRatio,', container:',parentWidth,parentHeight,'canvas w h:',canvas.value.width,canvas.value.height,currentExpressionTrack.scale);
 
-        // 计算当前宽高，考虑表情缩放和canvas分辨率缩放
-        const currentWidth = img.width * (currentPosition.scale || 1);
-        const currentHeight = img.height * (currentPosition.scale || 1);
-        const currentAngle = currentPosition.angle;
-        
-        // console.log('current:',currentWidth,currentHeight,currentExpressionTrack.scale);
-
-        // 保存当前状态，准备临时应用反向缩放以抵消全局翻转
-        ctx.save();
-        
-        // 在角色绘制前应用反向缩放，确保图片在翻转的坐标系中是正立的
-        ctx.translate(currentX + currentWidth / 2, currentY + currentHeight / 2);
-        ctx.scale(1, -1);
-        ctx.translate(-(currentX + currentWidth / 2), -(currentY + currentHeight / 2));
-        
-        // 如果有角度，应用旋转
-        if (currentAngle && currentAngle !== 0) {
-          ctx.save();
-          ctx.translate(currentX + currentWidth / 2, currentY + currentHeight / 2);
-          ctx.rotate((currentAngle * Math.PI) / 180); // 转换为弧度
-          ctx.translate(-(currentX + currentWidth / 2), -(currentY + currentHeight / 2));
-        }
-        
-        // console.log('w h:',img.width, img.height,currentWidth,currentHeight);
-        // 绘制角色图片，使用计算后的宽高代替图片原始宽高，解决分辨率误差问题
-        ctx.drawImage(
-          img, 
-          currentX, 
-          currentY,
-          currentWidth, // 使用计算后的宽度
-          currentHeight  // 使用计算后的高度
-        );
-        
-        // 如果应用了旋转，恢复状态
-        if (currentAngle && currentAngle !== 0) {
-          ctx.restore();
-        }
-        
-        // 恢复原始状态
-        ctx.restore();
-
-        
-
-        // 保存当前状态，准备绘制角色名称
-        ctx.save();
-        
-        // 不使用save/restore和缩放，直接在正确的位置绘制角色名称
-        // 由于全局坐标系已经翻转，需要将Y坐标调整为在角色上方
-        const nameY = currentY + currentHeight + 15;
-        
-        ctx.fillStyle = 'white';
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 2;
-        ctx.font = 'bold 36px Arial';
-        ctx.textAlign = 'center';
-        ctx.strokeText(
-          role.name, 
-          currentX + currentWidth / 2, 
-          nameY
-        );
-        ctx.fillText(
-            role.name, 
-            currentX + currentWidth / 2, 
-            nameY
-          );
-          
-          // 恢复原始状态
-          ctx.restore();
-      } catch (error) {
-        console.error('draw role img err: ' + error);
-        this.drawRolePlaceholder(ctx, currentExpressionTrack, role, true);
-      }
-    } else {
-      // 使用统一的图片加载函数
-      try {
-        if (img === null || img === undefined) {
-          // 保存this上下文，以便在回调函数中使用
-          const self = this;
-          img = loadImageWithCORS(
-            imageUrl,
-            (loadedImg) => {
-              // 添加到缓存
-              // console.log('加载角色图片成功: ' , imageUrl,loadedImg);
-              self.drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, loadedImg, _currentTimeInt, selectedRoleId, isPlaying);
-            },
-            () => {
-              console.error('load img err: ', imageUrl);
-              // debugInfo.value = '角色图片加载失败: ' + role.name;
-              // 最终失败时，确保备用图形清晰可见
-              self.drawRolePlaceholder(ctx, currentExpressionTrack, role, true);
-            }
-          );
-        }
-      } catch (error) {
-        console.error('load img err: ' + error);
-        this.drawRolePlaceholder(ctx, currentExpressionTrack, role, true);
-      }
-    }
-
-    // 在Canvas上绘制选中状态
-    if (!isPlaying && selectedRoleId === role.id) {
-      this.drawRoleSelection(ctx, currentExpressionTrack, role, _currentTimeInt);
-    }
-  }
 }//类定义结束
 
 
