@@ -917,12 +917,13 @@ export function initCamera(app) {
     return speakingRoleId;
   }
 
-  const findCurrentSpeakerIdPosition = (currentTime, speakingRoleId) => {
+  const findCurrentSpeakerIdPosition = (_currentTimeInt, speakingRoleId) => {
     let currentExpressionTrack = null;
     let targetCenterX = null;
     let targetCenterY = null;
     if (app.getExpressionTrackByRoleId) {
-      currentExpressionTrack = app.getExpressionTrackByRoleId(speakingRoleId, currentTime, false);
+      currentExpressionTrack = app.getExpressionTrackByRoleId(speakingRoleId, _currentTimeInt, false);
+
       console.log('camera focus on trace expression:', currentExpressionTrack);
     } else {
       console.warn('app.getExpressionTrackByRoleId方法未定义');
@@ -930,13 +931,14 @@ export function initCamera(app) {
           
     if (currentExpressionTrack && currentExpressionTrack.x !== undefined && currentExpressionTrack.y !== undefined) {
       // 使用角色位置及当前帧宽高计算出角色中间点作为目标中心点
-      const roleWidth = currentExpressionTrack.width || 0;
-      const roleHeight = currentExpressionTrack.height || 0;
+      const position = app.calculateCurrentExpressPosition(currentExpressionTrack,_currentTimeInt);
+      const roleWidth = position.width || currentExpressionTrack.width || 0;
+      const roleHeight = position.height || currentExpressionTrack.height || 0;
       const scale = currentExpressionTrack.scale || 1;
       
       targetCenterX = currentExpressionTrack.x + (roleWidth * scale) / 2;
       targetCenterY = currentExpressionTrack.y + (roleHeight * scale) / 2;
-      console.log(`currentTime:${currentTime}, 找到说话角色 ${speakingRoleId} 的位置: (${currentExpressionTrack.x}, ${currentExpressionTrack.y})`);
+      console.log(`currentTime:${_currentTimeInt}, 找到说话角色 ${speakingRoleId} 的位置: (${currentExpressionTrack.x}, ${currentExpressionTrack.y})`);
     }
     return {targetCenterX,targetCenterY};
   }
@@ -1408,7 +1410,8 @@ export function initCamera(app) {
     } else if(findCurrentSpeakerId(_currentTimeInt, currentShot) != null){
       // 规则3: 无设置镜头但当前有对话的规则
       let speakingRoleId = findCurrentSpeakerId(_currentTimeInt, currentShot);
-      let dialogCameraType = '近景';//默认对话近景
+      let dialogCameraType = app.defaultDialogCameraScenery ? app.defaultDialogCameraScenery.value : '近景';//使用默认对话镜头配置，默认近景
+      console.log('使用对话镜头:', app.defaultDialogCameraScenery,dialogCameraType)
       // if (speakingRoleId != previousSpeakingRoleId) 
       {
         
@@ -1473,7 +1476,7 @@ export function initCamera(app) {
       } else {
         // 说话人物未切换，保持上次位置
       }
-      console.log('规则4: 无设置镜头轨道的情况', 'currentTime:',currentTime, cameraModuleState.currentDefaultShotScenery, targetCenterX, targetCenterY);
+      console.log('规则4: 无设置镜头轨道的情况', 'currentTime:',_currentTimeInt, cameraModuleState.currentDefaultShotScenery, targetCenterX, targetCenterY);
     }
     
     return {

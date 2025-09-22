@@ -234,6 +234,8 @@
               </button>
             </div>
           </div>
+          
+
         </div>
         
         <!-- 画布控制按钮 -->
@@ -312,6 +314,18 @@
               <option value="全景">全景 (1920x1080)</option>
             </select>
             
+            <!-- 默认对话镜头设置 -->
+            <div class="mt-3">
+              <div class="text-sm font-medium mb-1">默认对话镜头</div>
+              <!-- 带有默认值的select元素 -->
+              <select id="defaultDialogCameraScenerySelect" v-model="defaultDialogCameraScenery" class="text-sm border border-gray-300 rounded px-2 py-1 w-full">
+                <!-- 静态添加所有选项，确保页面加载时就有完整选项 -->
+                <option value="特写">特写 (854x480)</option>
+                <option value="近景" selected>近景 (1080x635)</option>
+                <option value="中景">中景 (1280x720)</option>
+                <option value="全景">全景 (1920x1080)</option>
+              </select>
+            </div>
           </div>
         </div>
         
@@ -753,16 +767,16 @@
           }
         ],
         cameraTracks: [
-          {
-            id: 'cameraTrack1-1',
-            cameraType:'全',
-            cameraMoveType: '1', //1硬切，2软切
-            targetRoleId:'role1',
-            targetX:0,
-            targetY:0,
-            startTime: 0,
-            duration: 500,
-          }
+          // {
+          //   id: 'cameraTrack1-1',
+          //   cameraType:'全',
+          //   cameraMoveType: '1', //1硬切，2软切
+          //   targetRoleId:'role1',
+          //   targetX:0,
+          //   targetY:0,
+          //   startTime: 0,
+          //   duration: 500,
+          // }
         ]
       },
       {
@@ -789,28 +803,29 @@
             startTime: 2000,
           }
         ],
-        cameraTracks: [{
-            id: 'cameraTrack2-1',
-            cameraType:'全',
-            cameraMoveType: '1', //1硬切，2软切
-            x:0,
-            y:0,
-            width:0,
-            height:0,
-            startTime: 0,
-            duration: 1000,
-          },
-          {
-            id: 'cameraTrack2-2',
-            cameraType:'中',
-            cameraMoveType: '1', //1硬切，2软切
-            x:0,
-            y:0,
-            x1:0,
-            y1:0,
-            startTime: 2000,
-            duration: 1000,
-          }
+        cameraTracks: [
+          // {
+          //   id: 'cameraTrack2-1',
+          //   cameraType:'全',
+          //   cameraMoveType: '1', //1硬切，2软切
+          //   x:0,
+          //   y:0,
+          //   width:0,
+          //   height:0,
+          //   startTime: 0,
+          //   duration: 1000,
+          // },
+          // {
+          //   id: 'cameraTrack2-2',
+          //   cameraType:'中',
+          //   cameraMoveType: '1', //1硬切，2软切
+          //   x:0,
+          //   y:0,
+          //   x1:0,
+          //   y1:0,
+          //   startTime: 2000,
+          //   duration: 1000,
+          // }
         ]
       },
       {
@@ -1069,11 +1084,18 @@
         
         // 默认镜别设置
         const defaultCameraScenery = ref('全景');
+        // 默认对话镜别设置
+        const defaultDialogCameraScenery = ref('近景');
         
         // 当默认镜别改变时，将其存储到localStorage
         watch(defaultCameraScenery, (newValue) => {
           console.log('步骤2: 已在localStorage中设置defaultCameraScenery为', newValue);
           localStorage.setItem('defaultCameraScenery', newValue);
+        });
+        // 当默认对话镜别改变时，将其存储到localStorage
+        watch(defaultDialogCameraScenery, (newValue) => {
+          console.log('已在localStorage中设置defaultDialogCameraScenery为', newValue);
+          localStorage.setItem('defaultDialogCameraScenery', newValue);
         });
         watch(enableCameraEdit, (newValue) => {
           console.log('enableCameraEdit 变化:', newValue);
@@ -1086,14 +1108,22 @@
         // 在组件挂载后
         onMounted(() => {
           console.log('on1Mounted localStorage');
-          // 从localStorage加载保存的值，如果没有则使用默认值'全景'
+          // 从localStorage加载保存的值
+          // 加载默认镜头设置
           const savedValue = localStorage.getItem('defaultCameraScenery');
           if (savedValue) {
             console.log('步骤1: 从localStorage加载defaultCameraScenery值:', savedValue);
             defaultCameraScenery.value = savedValue;
           }
+          // 加载默认对话镜头设置
+          const savedDialogValue = localStorage.getItem('defaultDialogCameraScenery');
+          if (savedDialogValue) {
+            console.log('从localStorage加载defaultDialogCameraScenery值:', savedDialogValue);
+            defaultDialogCameraScenery.value = savedDialogValue;
+          }
           
           Vue.nextTick(() => {
+            // 更新默认镜头select值
             const selectElement = document.querySelector('select[v-model="defaultCameraScenery"]');
             if (selectElement) {
               // 确保select值与defaultCameraScenery保持一致
@@ -1101,6 +1131,15 @@
               // 触发change事件，确保Vue实例能够感知到这个变化
               const event = new Event('change', { bubbles: true });
               selectElement.dispatchEvent(event);
+            }
+            // 更新默认对话镜头select值
+            const dialogSelectElement = document.querySelector('select[v-model="defaultDialogCameraScenery"]');
+            if (dialogSelectElement) {
+              // 确保select值与defaultDialogCameraScenery保持一致
+              dialogSelectElement.value = defaultDialogCameraScenery.value || '近景';
+              // 触发change事件，确保Vue实例能够感知到这个变化
+              const dialogEvent = new Event('change', { bubbles: true });
+              dialogSelectElement.dispatchEvent(dialogEvent);
             }
           });
         });
@@ -1165,6 +1204,7 @@
               timeline,
               expressionManager,
               getExpressionTrackByRoleId,
+              calculateCurrentExpressPosition,
               enableCameraEdit
             });
             
@@ -3429,6 +3469,9 @@
           return expressionManager.getExpressionTrackByRoleId(roleId, time, onlyTrack);
         }
 
+        const calculateCurrentExpressPosition = (currentExpressionTrack, time) => {
+          return expressionManager.calculateCurrentExpressPosition(currentExpressionTrack, time);
+        }
         // // 获取当前时间点指定角色ID的表情轨道
         // const getExpressionTrackByRoleId = (roleId, time, onlyTrack = true) => {
         //   if (!timeline.value.expressionTracks || !Array.isArray(timeline.value.expressionTracks)) {
@@ -4202,6 +4245,7 @@
           saveCameraSceneryToShotStart,
           saveCameraSceneryToDialogStart,
           defaultCameraScenery,
+          defaultDialogCameraScenery,
           // 虚拟镜头控制方法
           toggleAspectRatio: () => { if (cameraModule) cameraModule.toggleAspectRatio(); },
           toggleCameraRotation: () => { if (cameraModule) cameraModule.toggleCameraRotation(); },
