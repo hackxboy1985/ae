@@ -936,10 +936,10 @@
         startTime: 0,
         endTime: 5000,
         expressionId: 'exp1-3',
-        x: -1,
+        x: 310,
         y: 0,
-        x1: 300,
-        y1: 250,
+        x1: 914,
+        y1: 0,
         angle: 0,
         scale: 1
       },
@@ -1864,12 +1864,16 @@
                 audio.id = `audio_${shot.id}_${Date.now()}_${index}`;
               }
               
+              const tmpRound = (x) => {
+                return Math.round(x * 10)/10;
+              }
+
               // 计算音频在时间轴上的位置和宽度 - 与镜头相同的计算方式
               const startTime = shot.startTime + (audio.startTime || 0);
               const endTime = startTime + (audio.audioDuration || shot.duration);
               const startX = ((startTime - currentTime.value) / 1000) * MARGIN * zoom.value;
               const width = ((endTime - startTime) / 1000) * MARGIN * zoom.value;              
-              const audioDuration = audio.audioDuration / 1000;
+              const audioDuration = tmpRound(audio.audioDuration / 1000);
 
 
               // 创建音频轨道元素，与镜头相同的元素创建方式
