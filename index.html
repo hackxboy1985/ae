@@ -383,11 +383,28 @@
               <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          <!-- 设置初始位置按钮 -->
+          <!-- 设置初始位置和添加角色按钮 -->
           <div class="mt-4 pt-3 border-t border-gray-200">
             <button @click="setSceneInitialPosition" class="w-full py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm">
               设置初始位置
             </button>
+            
+            <!-- 添加角色按钮和下拉菜单 -->
+            <div class="relative mt-2">
+              <button @click="toggleRoleDropdown" class="w-full py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm flex items-center justify-between">
+                添加角色
+                <i class="fa fa-chevron-right" :class="{ 'rotate-90': showRoleDropdown }"></i>
+              </button>
+              
+              <!-- 角色下拉菜单 -->
+              <div v-if="showRoleDropdown" class="absolute top-full left-0 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg z-50 max-h-60 overflow-y-auto">
+                <div v-for="role in mockRoles" :key="role.id" 
+                     @click="addRoleToCurrentScene(role.id)" 
+                     class="px-4 py-2 hover:bg-gray-100 cursor-pointer transition text-sm">
+                  {{ role.name }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -586,7 +603,7 @@
     const mockRoles = [
       {
         id: 'role1',
-        name: '老1',
+        name: '陈知行',
         defaultExpressionId: 'exp1-1',
         voice: 'voice1',
         expressions: [
@@ -647,7 +664,7 @@
       },
       {
         id: 'role2',
-        name: '陈2',
+        name: '混江龙',
         defaultExpressionId: 'exp2-1',
         voice: 'voice2',
         expressions: [
@@ -676,7 +693,7 @@
       },
       {
         id: 'role3',
-        name: '张3',
+        name: '璎珞',
         defaultExpressionId: 'exp3-1',
         voice: 'voice3',
         expressions: [
@@ -787,25 +804,25 @@
       {
         id: 'shot1',
         background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg1.webp',
-        duration: 5000, // 5秒
-        audioDuration: 5000,
+        duration: 10300, // 5秒
+        audioDuration: 10000,
         startTime: 0,
         audios: [
           {
             id: 'audio1',
             roleId: 'role1',
-            text: '你好',
-            audio: 'audio1.mp3',
-            audioDuration: 2000,
+            text: '混江龙魏爷，你刚才不是很威风吗？',
+            audio: 'https://rh-images.xiaoyaoyou.com/babfec956cbdabe7f1fb93e2a1d971dc/output/audio/ComfyUI_00002_vieis_1758605920.flac',
+            audioDuration: 4000,
             startTime: 0,
           },
           {
             id: 'audio2',
             roleId: 'role2',
-            text: '你是哪位',
-            audio: 'audio1.mp3',
-            audioDuration: 3000,
-            startTime: 2000,
+            text: '在您面前，哪有什么魏爷，您要是不嫌弃，叫我一声小龙就行',
+            audio: 'https://rh-images.xiaoyaoyou.com/babfec956cbdabe7f1fb93e2a1d971dc/output/audio/ComfyUI_00001_domho_1758606891.flac',
+            audioDuration: 6000,
+            startTime: 4300,
           }
         ],
         cameraTracks: [
@@ -826,7 +843,7 @@
         background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg2.webp',
         duration: 4000, // 4秒
         audioDuration: 4000,
-        startTime: 5000,
+        startTime: 10300,
         audios: [
           {
             id: 'audio3',
@@ -875,7 +892,7 @@
         background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg4.webp',
         duration: 6000, // 6秒
         audioDuration: 6000,
-        startTime: 9000,
+        startTime: 14300,
         audios: [],
         cameraTracks: [{
           id: 'cameraTrack3-1',
@@ -894,7 +911,7 @@
         background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg4.webp',
         duration: 5000, // 6秒
         audioDuration: 5000,
-        startTime: 15000,
+        startTime: 20300,
         audios: [],
         cameraTracks: [
           {
@@ -1202,6 +1219,7 @@
         const showRolePreview = ref(false); // 控制角色预览显示
         const currentSceneRoles = ref([]); // 当前场景的角色信息
         const roleThumbnailRefs = ref({}); // 存储角色缩略图画布引用
+        const showRoleDropdown = ref(false); // 控制添加角色下拉菜单的显示
         
         // 选中的摄像机尺寸 - 设置为1280 × 720比例
         const selectedCameraSize = ref(cameraSizes.value[2]);
@@ -4475,6 +4493,71 @@
             loadCurrentSceneRoles();
           }
         }
+        
+        // 切换添加角色下拉菜单显示状态
+        const toggleRoleDropdown = () => {
+          showRoleDropdown.value = !showRoleDropdown.value;
+        }
+        
+        // 添加角色到当前场景
+        const addRoleToCurrentScene = (roleId) => {
+          // 根据当前时间找到所在的分镜
+          const currentShot = timeline.value.shots.find(shot => 
+            currentTime.value >= shot.startTime && currentTime.value < shot.startTime + shot.duration
+          );
+          
+          if (!currentShot) {
+            console.error('未找到当前分镜，无法添加角色');
+            return;
+          }
+          
+          // 找到包含当前分镜的场景
+          const currentScene = timeline.value.scenes.find(scene => 
+            scene.shots.includes(currentShot.id)
+          );
+          
+          if (!currentScene) {
+            console.error('未找到当前场景，无法添加角色');
+            return;
+          }
+          
+          // 检查角色是否已在场景中
+          const isRoleAlreadyInScene = currentScene.roles.some(r => r.roleId === roleId);
+          if (isRoleAlreadyInScene) {
+            console.warn(`角色 ${roleId} 已在当前场景中`);
+            // 关闭下拉菜单
+            showRoleDropdown.value = false;
+            return;
+          }
+          
+          // 获取角色信息
+          const role = mockRoles.find(r => r.id === roleId);
+          if (!role) {
+            console.error(`未找到角色 ${roleId}`);
+            return;
+          }
+          
+          // 创建新角色对象，设置默认位置和属性
+          const newRole = {
+            roleId: roleId,
+            expressionId: role.defaultExpressionId || 'default',
+            x: (canvas.value.width / 2), // 居中位置
+            y: (canvas.value.height / 2), // 居中位置
+            angle: 0,
+            scale: 1
+          };
+          
+          // 添加到场景的角色数组
+          currentScene.roles.push(newRole);
+          
+          // 更新当前场景角色列表
+          loadCurrentSceneRoles();
+          
+          // 关闭下拉菜单
+          showRoleDropdown.value = false;
+          
+          console.log(`已成功添加角色 ${roleId} 到当前场景`);
+        }
 
         // 加载当前场景的角色信息
         const loadCurrentSceneRoles = () => {
@@ -4736,6 +4819,9 @@
             toggleRoleVisibility,
             setSceneInitialPosition,
             saveRolePositions,
+            showRoleDropdown,
+            toggleRoleDropdown,
+            addRoleToCurrentScene,
             
           };
       }
