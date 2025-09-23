@@ -486,7 +486,7 @@
             
             <!-- 镜头轨道 -->
             <template v-if="showCameraTrack">
-              <div class="timeline-track" style="height: 50px;">
+              <div class="timeline-track" style="height: 30px;">
                 <!-- 音频显示区域 -->
                 <div class="absolute top-0 left-0 h-1/2" ref="audioContainer" style="width: 100%;"></div>
                 <!-- 镜头显示区域 -->
@@ -956,6 +956,7 @@
         let loadImageWithCORS = null;
         let getCacheImage = null;
         let CUSTOM_CAMERA_TYPE = null;
+        let round = null;
 
 
         // 添加重试机制
@@ -964,6 +965,7 @@
             console.log('✅ import utils module success');
             loadImageWithCORS = utilsModule.loadImageWithCORS;
             getCacheImage = utilsModule.getCacheImage;
+            round = utilsModule.round;
             CUSTOM_CAMERA_TYPE = utilsModule.CUSTOM_CAMERA_TYPE;
             utilsModuleLoaded = true;
             console.log('✅ loadImageWithCORS loaded:');
@@ -3144,8 +3146,8 @@
           }
 
           // 刷新表情轨道显示
-          //updateExpressionTracks();
           drawExpressionTracks();
+          renderFrame(19);
         };
         
         // 处理Canvas点击
@@ -3184,14 +3186,10 @@
             selectRole(clickedRole.id);
             // 关闭表情面板，下次点击表情按钮再打开
             showExpressionPanel.value = false;
-            // 调用renderFrame更新选中状态显示
-            renderFrame(18);
           } else {
             // 点击空白处取消选择
             selectRole(null);
             showExpressionPanel.value = false;
-            // 调用renderFrame更新取消选中状态显示
-            renderFrame(19);
           }
         };
         
