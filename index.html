@@ -922,6 +922,7 @@
             y:0,
             x1:0,
             y1:0,
+            startTime: 0,
             duration: 1000,
           }
         ]
@@ -2171,6 +2172,39 @@
               let moveTypeText = cameraTrack.cameraMoveType === '1' ? '硬切' : '软切';
               cameraEl.textContent = `${cameraTypeText}-${moveTypeText}`;
               
+              // 添加左右边缘拖拽句柄
+              const leftHandle = document.createElement('div');
+              leftHandle.className = 'camera-handle camera-handle-left';
+              leftHandle.style.position = 'absolute';
+              leftHandle.style.left = '0';
+              leftHandle.style.top = '0';
+              leftHandle.style.width = '3px';
+              leftHandle.style.height = '100%';
+              leftHandle.style.cursor = 'w-resize';
+              leftHandle.style.backgroundColor = 'rgba(239, 68, 68, 0.7)';
+              leftHandle.style.zIndex = '2';
+              leftHandle.dataset.trackId = cameraTrack.id;
+              leftHandle.dataset.shotId = shot.id;
+              leftHandle.dataset.edgeType = 'left';
+              
+              const rightHandle = document.createElement('div');
+              rightHandle.className = 'camera-handle camera-handle-right';
+              rightHandle.style.position = 'absolute';
+              rightHandle.style.right = '0';
+              rightHandle.style.top = '0';
+              rightHandle.style.width = '3px';
+              rightHandle.style.height = '100%';
+              rightHandle.style.cursor = 'e-resize';
+              rightHandle.style.backgroundColor = 'rgba(239, 68, 68, 0.7)';
+              rightHandle.style.zIndex = '2';
+              rightHandle.dataset.trackId = cameraTrack.id;
+              rightHandle.dataset.shotId = shot.id;
+              rightHandle.dataset.edgeType = 'right';
+              
+              // 添加拖拽句柄到相机轨道元素
+              cameraEl.appendChild(leftHandle);
+              cameraEl.appendChild(rightHandle);
+              
               // 添加到容器
               cameraContainer.value.appendChild(cameraEl);
             });
@@ -2184,6 +2218,13 @@
         let dragEdgeType = null;
         let draggingExpCurrentScene = null; // 'left' 或 'right'
         let lastMouseX = 0;
+
+        // 相机轨道拖拽状态变量
+        let isDraggingCameraEdge = false;
+        let draggedCameraTrack = null;
+        let draggedCameraShot = null;
+        let cameraDragEdgeType = null;
+        let lastCameraMouseX = 0;
 
         // 绘制角色表情轨道
         const drawExpressionTracks = () => {
@@ -2342,7 +2383,29 @@
 
         // 添加表情片段边缘拖拽事件监听
         document.addEventListener('mousedown', (e) => {
-          if ((e.button === 0) && e.target.classList.contains('expression-handle')) {
+          if ((e.button === 0) && e.target.classList.contains('camera-handle')) {
+            e.stopPropagation();
+            stopPlayback();
+            
+            const trackId = e.target.dataset.trackId;
+            const shotId = e.target.dataset.shotId;
+            cameraDragEdgeType = e.target.dataset.edgeType;
+            
+            // 找到对应的分镜
+            draggedCameraShot = timeline.value.shots.find(shot => shot.id === shotId);
+            
+            // 找到对应的相机轨道
+            if (draggedCameraShot && draggedCameraShot.cameraTracks) {
+              draggedCameraTrack = draggedCameraShot.cameraTracks.find(track => track.id === trackId);
+            }
+            
+            if (draggedCameraTrack) {
+              isDraggingCameraEdge = true;
+              lastCameraMouseX = e.clientX;
+              // 设置全局鼠标指针样式
+              document.body.style.cursor = cameraDragEdgeType === 'left' ? 'w-resize' : 'e-resize';
+            }
+          } else if ((e.button === 0) && e.target.classList.contains('expression-handle')) {
             e.stopPropagation();
             stopPlayback();
             
@@ -2891,7 +2954,74 @@
         setupExpressionRightClickMenu();
         
         document.addEventListener('mousemove', (e) => {
-          if (isDraggingExpEdge && draggedExpTrack) {
+          // 相机轨道拖拽处理
+          if (isDraggingCameraEdge && draggedCameraTrack && draggedCameraShot) {
+            const deltaX = e.clientX - lastCameraMouseX;
+            lastCameraMouseX = e.clientX;
+            
+            // 计算时间变化 (像素差 -> 时间差)
+            const timeDelta = (deltaX / MARGIN / zoom.value) * 1000;
+            
+            // 相机轨道最小持续时间（毫秒）
+            const MIN_CAMERA_DURATION = 500;
+            
+            // 重叠检测函数 - 只检查同分值内的其他相机轨道
+            const checkCameraOverlap = (newStartTime, newDuration) => {
+              if (!draggedCameraShot.cameraTracks) return false;
+              
+              const newEndTime = newStartTime + newDuration;
+              
+              // 检查是否与其他相机轨道重叠
+              for (const otherTrack of draggedCameraShot.cameraTracks) {
+                // 跳过自身
+                if (otherTrack.id === draggedCameraTrack.id) continue;
+                
+                const otherStart = otherTrack.startTime || 0;
+                const otherEnd = otherStart + (otherTrack.duration || draggedCameraShot.duration);
+                
+                // 检查是否重叠
+                if (!(newEndTime <= otherStart || newStartTime >= otherEnd)) {
+                  return true;
+                }
+              }
+              return false;
+            };
+            
+            if (cameraDragEdgeType === 'left') {
+              // 左边拖拽：修改开始时间，结束时间不变
+              const currentDuration = draggedCameraTrack.duration || draggedCameraShot.duration;
+              const newStartTime = Math.max(0, draggedCameraTrack.startTime + timeDelta);
+              const newEndTime = newStartTime + currentDuration;
+              
+              // 确保不超过分镜结束时间
+              const shotEndTime = draggedCameraShot.duration || 0;
+              
+              // 确保有最小持续时间
+              if (currentDuration >= MIN_CAMERA_DURATION && newEndTime <= shotEndTime) {
+                if (!checkCameraOverlap(newStartTime, currentDuration)) {
+                  draggedCameraTrack.startTime = newStartTime;
+                }
+              }
+            } else if (cameraDragEdgeType === 'right') {
+              // 右边拖拽：修改持续时间，开始时间不变
+              const currentStartTime = draggedCameraTrack.startTime || 0;
+              const currentDuration = draggedCameraTrack.duration || draggedCameraShot.duration;
+              const newDuration = Math.max(MIN_CAMERA_DURATION, currentDuration + timeDelta);
+              const newEndTime = currentStartTime + newDuration;
+              
+              // 确保不超过分镜结束时间
+              const shotEndTime = draggedCameraShot.duration || 0;
+              
+              if (newEndTime <= shotEndTime) {
+                if (!checkCameraOverlap(currentStartTime, newDuration)) {
+                  draggedCameraTrack.duration = newDuration;
+                }
+              }
+            }
+            
+            updateTimelineDisplay();
+            renderFrame(9);
+          } else if (isDraggingExpEdge && draggedExpTrack) {
             
             const deltaX = e.clientX - lastMouseX;
             lastMouseX = e.clientX;
@@ -3018,7 +3148,23 @@
         });
 
         document.addEventListener('mouseup', () => {
-          if (isDraggingExpEdge && draggedExpTrack) {
+          if (isDraggingCameraEdge && draggedCameraTrack) {
+            isDraggingCameraEdge = false;
+            // 恢复全局鼠标指针样式
+            document.body.style.cursor = 'default';
+            
+            // 打印修改后的相机轨道数据
+            console.log('相机轨道调整后的数据:', {
+              shotId: draggedCameraShot.id,
+              trackId: draggedCameraTrack.id,
+              startTime: draggedCameraTrack.startTime,
+              duration: draggedCameraTrack.duration
+            });
+            
+            draggedCameraTrack = null;
+            draggedCameraShot = null;
+            cameraDragEdgeType = null;
+          } else if (isDraggingExpEdge && draggedExpTrack) {
             isDraggingExpEdge = false;
             // 恢复全局鼠标指针样式
             document.body.style.cursor = 'default';
@@ -4356,7 +4502,7 @@
           
           timelineArea.addEventListener('mousedown', (e) => {
             // 检查是否正在拖拽表情边缘，如果是则不触发时间轴拖拽
-            if (isDraggingExpEdge) {
+            if (isDraggingExpEdge || isDraggingCameraEdge) {
               //console.log('按下1:',e.button,timeMarkers)
               return;
             }
@@ -4417,7 +4563,7 @@
           
           timelineArea.addEventListener('mousemove', (e) => {
             // 检查是否正在拖拽表情边缘，如果是则不触发时间轴拖拽
-            if (isDraggingExpEdge) {
+            if (isDraggingExpEdge || isDraggingCameraEdge) {
               return;
             }
             

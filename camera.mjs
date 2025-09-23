@@ -1457,8 +1457,9 @@ export function initCamera(app) {
       } else {
         cameraModuleState.currentDefaultShotScenery = app.defaultCameraScenery ? app.defaultCameraScenery.value : '全景';
       }
-      
-      const preset = getCameraPreset(cameraModuleState.currentDefaultShotScenery) || cameraPresets['全景'];
+      console.log('cameraModuleState.currentDefaultShotScenery:',_currentTimeInt,cameraModuleState.currentDefaultShotScenery, 'getCameraPreset-全景',getCameraPreset('全景'))
+      const preset = getCameraPreset(cameraModuleState.currentDefaultShotScenery) || getCameraPreset('全景');
+      // console.log('preset:',preset)
       targetWidth = preset.width;
       targetHeight = preset.height;
       
