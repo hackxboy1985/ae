@@ -289,7 +289,7 @@
           </div>
           <!-- 保存景别按钮组 -->
           <div class="flex flex-col space-y-1 mb-2">
-            <button @click="saveCameraScenery" class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition w-full">
+            <button @click="saveCameraScenery(null)" class="text-sm px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition w-full">
               保存景别
             </button>
             <button @click="saveCameraSceneryToShotStart" class="text-sm px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition w-full">
@@ -1289,13 +1289,13 @@
             // 更新引用
             // cameraX = cameraModule.cameraX;
             // cameraY = cameraModule.cameraY;
-            cameraWidth = cameraModule.cameraWidth;
-            cameraHeight = cameraModule.cameraHeight;
-            let size = {
-              'width':cameraWidth,
-              'height':cameraHeight
-            }
-            cameraModule.resetCamera(size);
+            // cameraWidth = cameraModule.cameraWidth;
+            // cameraHeight = cameraModule.cameraHeight;
+            // let size = {
+            //   'width':cameraWidth,
+            //   'height':cameraHeight
+            // }
+            // cameraModule.resetCamera(size);
             // 在摄像机模块初始化后设置setupCameraEvents
             setupCameraEvents = cameraModule.setupCameraEvents;
             
@@ -1344,7 +1344,8 @@
         // 监听摄像机关键属性变化，实时更新预览
         const unwatchCameraProperties = watch(
           [//cameraX, cameraY, cameraModule.cameraX, cameraModule.cameraY,????
-          cameraWidth, cameraHeight, cameraZoom, cameraRotation],
+          // cameraWidth, cameraHeight,
+           cameraZoom, cameraRotation],
           () => {
             if (showCameraPreview.value && cameraModule) {
               cameraModule.updateCameraPreview();
@@ -1567,8 +1568,8 @@
         // 监听相机尺寸变化
         watch(selectedCameraSize, () => {
           if (selectedCameraSize.value) {
-            cameraWidth = selectedCameraSize.value.width;
-            cameraHeight = selectedCameraSize.value.height;
+            const cameraWidth = selectedCameraSize.value.width;
+            const cameraHeight = selectedCameraSize.value.height;
             
             console.log('selectedCameraSize:',selectedCameraSize.value)
             let tmp_cameraAspectRatio = cameraWidth/cameraHeight;
@@ -3720,9 +3721,12 @@
         
         // 保存景别到当前镜头轨道
         const saveCameraScenery = (startTimeOffset = null) => {
-          
+          console.log('saveCameraScenery - 调用',startTimeOffset,startTimeOffset === null);
           // 获取当前时间
           const currentTimeValue = currentTime.value;
+          
+          // 调试日志：记录当前时间值
+          console.log('saveCameraScenery - 当前时间值:', currentTimeValue);
           
           // 查找当前时间点所在的分镜
           const currentShot = timeline.value.shots.find(shot => 
@@ -3734,6 +3738,13 @@
             return;
           }
           
+          // 调试日志：记录当前分镜信息
+          console.log('saveCameraScenery - 当前分镜:', {
+            id: currentShot.id,
+            startTime: currentShot.startTime,
+            duration: currentShot.duration
+          });
+          
           // 如果分镜没有cameraTracks数组，创建一个
           if (!currentShot.cameraTracks) {
             currentShot.cameraTracks = [];
@@ -3744,6 +3755,12 @@
           
           // 确定startTime
           const finalStartTime = startTimeOffset !== null ? startTimeOffset : (currentTimeValue - currentShot.startTime);
+          
+          // 调试日志：记录计算结果
+          console.log('saveCameraScenery - 计算结果:', {
+            startTimeOffset: startTimeOffset,
+            finalStartTime: finalStartTime
+          });
           
           //创建新的镜头轨道
           const newCameraTrack = {
@@ -3759,7 +3776,7 @@
           
           // 添加到分镜的cameraTracks数组
           currentShot.cameraTracks.push(newCameraTrack);
-          console.log('saveCameraScenery newCameraTrack:', newCameraTrack);
+          console.log('saveCameraScenery - 新建镜头轨道:', newCameraTrack);
           // 重新渲染帧
           renderFrame(36);
           

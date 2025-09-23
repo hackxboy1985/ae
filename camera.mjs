@@ -516,19 +516,22 @@ export function initCamera(app) {
       //console.log('cameraPresets:', cameraPresets);
       //console.log('applyCameraPreset:', preset,preset.width,preset.height);
 
-      cameraX = preset.x || cameraX;
-      cameraY = preset.y || cameraY;
+      //改变摄像机预设时，焦点不变
+      const cameraCenterX = cameraX + cameraWidth / 2;
+      const cameraCenterY = cameraY + cameraHeight / 2;
       cameraWidth = preset.width || cameraWidth;
       cameraHeight = preset.height || cameraHeight;
-      cameraRotation.value = preset.rotation || cameraRotation.value;
+      cameraX = cameraCenterX - cameraWidth / 2;
+      cameraY = cameraCenterY - cameraHeight / 2;
+      //cameraRotation.value = preset.rotation || cameraRotation.value;
       console.log('set camera cameraX',cameraX,'cameraY',cameraY,'cameraWidth',cameraWidth,'cameraHeight',cameraHeight);
 
-      app.cameraX = cameraX;
-      app.cameraY = cameraY;
-      app.cameraWidth = cameraWidth;
-      app.cameraHeight = cameraHeight;
-      console.log('set camera preset:', preset.name, preset.width, preset.height,'cameraWidth:',cameraWidth,'cameraHeight:',cameraHeight,'app.cameraWidth:',app.cameraWidth,'app.cameraHeight:',app.cameraHeight,'app.cameraX:',app.cameraX,'app.cameraY:',app.cameraY);
-      
+      // app.cameraX = cameraX;
+      // app.cameraY = cameraY;
+      // app.cameraWidth = cameraWidth;
+      // app.cameraHeight = cameraHeight;
+      // console.log('set camera preset:', preset.name, preset.width, preset.height,'cameraWidth:',cameraWidth,'cameraHeight:',cameraHeight,'app.cameraWidth:',app.cameraWidth,'app.cameraHeight:',app.cameraHeight,'app.cameraX:',app.cameraX,'app.cameraY:',app.cameraY);
+      console.log('set camera preset:', preset.name, preset.width, preset.height);
       renderFrame(35);
     }
   };
@@ -1406,7 +1409,7 @@ export function initCamera(app) {
         targetCenterX = canvas.width / 2;
         targetCenterY = canvas.height / 2;
       }
-      console.log('规则2: 有设置镜头轨道的镜头', 'currentTime:',_currentTimeInt,'',cameraType, '焦点:',targetCenterX, targetCenterY);
+      //console.log('规则2: 有设置镜头轨道的镜头', 'currentTime:',_currentTimeInt,'',cameraType, '焦点:',targetCenterX, targetCenterY);
     } else if(findCurrentSpeakerId(_currentTimeInt, currentShot) != null){
       // 规则3: 无设置镜头但当前有对话的规则
       let speakingRoleId = findCurrentSpeakerId(_currentTimeInt, currentShot);
