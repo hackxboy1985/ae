@@ -96,6 +96,11 @@
                   :class="{ 'bg-red-100': showCamera }">
             <i class="fa fa-video-camera" title="摄像机预览"></i>
           </button>
+          <!-- 角色预览开关 -->
+          <button @click="showRolePreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏角色预览" 
+                  :class="{ 'bg-blue-100': showRolePreview }">
+            <i class="fa fa-users" title="角色预览"></i>
+          </button>
           <label for="canvasSizeSelect" class="text-sm text-gray-600">画布尺寸:</label>
           <select
             id="canvasSizeSelect"
@@ -347,6 +352,43 @@
         </div>
         <div class="p-2 preview-canvas-container" style="min-width: 283px; min-height: 166px;">
           <canvas id="previewCanvas" style="width: 267px; height: 150px;"></canvas>
+        </div>
+      </div>
+
+      <!-- 角色预览小页面 -->
+      <div v-if="showRolePreview" id="rolePreview" class="absolute top-0 left-24 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
+        <div class="bg-gray-800 text-white p-2 rounded-t-lg flex justify-between items-center cursor-move">
+          <span>角色预览</span>
+          <!-- 关闭按钮 -->
+          <button @click="showRolePreview = false" class="text-white hover:text-gray-300">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+        <div class="p-3 role-preview-container" style="min-width: 320px; max-height: 400px; overflow-y: auto;">
+          <!-- 角色列表 -->
+          <div v-for="role in currentSceneRoles" :key="role.roleId" class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+              <!-- 角色缩略图 -->
+              <div class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                <canvas :ref="el => setRoleThumbnailRef(role.roleId, el)" width="48" height="48" class="w-full h-full"></canvas>
+              </div>
+              <!-- 角色名称 -->
+              <div class="text-sm font-medium">
+                {{ getRoleNameById(role.roleId) }}
+              </div>
+            </div>
+            <!-- 显示/隐藏开关 -->
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="role.visible" @change="toggleRoleVisibility(role.roleId)" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+          <!-- 设置初始位置按钮 -->
+          <div class="mt-4 pt-3 border-t border-gray-200">
+            <button @click="setSceneInitialPosition" class="w-full py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm">
+              设置初始位置
+            </button>
+          </div>
         </div>
       </div>
       
@@ -944,7 +986,7 @@
     ];
 
     // 创建Vue应用
-    const { createApp, ref, onMounted, computed, watch } = Vue;
+    const { createApp, ref, onMounted, computed, watch, nextTick } = Vue;
 
 
     createApp({
@@ -1155,6 +1197,11 @@
         const showCameraInfo = ref(false); // 是否显示摄像机信息
         const useSmoothTransition = ref(true); // 是否使用平滑过渡
         const isMaintainingAspectRatio = ref(true); // 是否保持宽高比
+
+        // 角色预览相关
+        const showRolePreview = ref(false); // 控制角色预览显示
+        const currentSceneRoles = ref([]); // 当前场景的角色信息
+        const roleThumbnailRefs = ref({}); // 存储角色缩略图画布引用
         
         // 选中的摄像机尺寸 - 设置为1280 × 720比例
         const selectedCameraSize = ref(cameraSizes.value[2]);
@@ -1583,6 +1630,9 @@
             // 居中显示Canvas
             canvas.value.style.marginLeft = (parentWidth - displayWidth) / 2 + 'px';
             canvas.value.style.marginTop = (parentHeight - displayHeight) / 2 + 'px';
+            console.info('resizeCanvas displaySize:',displayWidth, displayHeight,'parentWidth:',parentWidth);
+            // 设置 canvas 容器宽度（新增这一行）
+            // container.style.width = `${displayWidth}px`;
           }
           
           //if (cameraModule) { cameraModule.resetCamera(); } // 重置摄像机位置到画布中心
@@ -4417,6 +4467,169 @@
         // 初始化时更新时间轴显示，确保镜头轨道正确绘制
         //updateTimelineDisplay();
         
+        // 角色预览相关方法
+        const showRolePreviewClick = () => {
+          showRolePreview.value = !showRolePreview.value;
+          if(showRolePreview.value){
+            // 获取当前场景的角色信息
+            loadCurrentSceneRoles();
+          }
+        }
+
+        // 加载当前场景的角色信息
+        const loadCurrentSceneRoles = () => {
+          // 根据当前时间找到所在的分镜
+          const currentShot = timeline.value.shots.find(shot => 
+            currentTime.value >= shot.startTime && currentTime.value < shot.startTime + shot.duration
+          );
+          
+          if (!currentShot) {
+            currentSceneRoles.value = [];
+            return;
+          }
+          
+          // 找到包含当前分镜的场景
+          const currentScene = timeline.value.scenes.find(scene => 
+            scene.shots.includes(currentShot.id)
+          );
+          
+          if (!currentScene || !currentScene.roles) {
+            currentSceneRoles.value = [];
+            return;
+          }
+          
+          // 复制角色信息并添加visible属性（默认为true）
+          currentSceneRoles.value = currentScene.roles.map(role => ({
+            ...role,
+            visible: true
+          }));
+          
+          // 绘制角色缩略图
+          nextTick(() => {
+            currentSceneRoles.value.forEach(role => {
+              drawRoleThumbnail(role.roleId, role.expressionId);
+            });
+          });
+        }
+
+        // 设置角色缩略图引用
+        const setRoleThumbnailRef = (roleId, el) => {
+          if (el) {
+            roleThumbnailRefs.value[roleId] = el;
+          }
+        }
+
+        // 根据角色ID获取角色名称
+        const getRoleNameById = (roleId) => {
+          const role = mockRoles.find(r => r.id === roleId);
+          return role ? role.name : '未知角色';
+        }
+
+        // 切换角色可见性
+        const toggleRoleVisibility = (roleId) => {
+          const role = currentSceneRoles.value.find(r => r.roleId === roleId);
+          if (role) {
+            // 切换角色可见性
+            role.visible = !role.visible;
+            // 这里可以添加实际的角色显示/隐藏逻辑
+            console.log(`角色 ${roleId} 可见性切换为: ${role.visible}`);
+            // 触发重新渲染
+            currentSceneRoles.value = [...currentSceneRoles.value];
+          }
+        }
+
+        // 设置场景初始位置
+        const setSceneInitialPosition = () => {
+          // 根据当前时间找到所在的分镜
+          const currentShot = timeline.value.shots.find(shot => 
+            currentTime.value >= shot.startTime && currentTime.value < shot.startTime + shot.duration
+          );
+          
+          if (!currentShot) return;
+          
+          // 找到包含当前分镜的场景
+          const currentScene = timeline.value.scenes.find(scene => 
+            scene.shots.includes(currentShot.id)
+          );
+          
+          if (!currentScene || !currentScene.shots || currentScene.shots.length === 0) return;
+          
+          // 找到场景中的第一个分镜
+          const firstShot = timeline.value.shots.find(shot => currentScene.shots.includes(shot.id));
+          if (!firstShot) return;
+          
+          // 将时间指针设置到场景的初始位置
+          currentTime.value = firstShot.startTime;
+          
+          // 滚动时间轴到初始位置
+          //scrollTimelineToTime(initialTime);
+          updateTimelineDisplay();
+          
+          console.log('已将时间指针调整到场景初始位置');
+        }
+
+        // 绘制角色缩略图
+        const drawRoleThumbnail = (roleId, expressionId) => {
+          const canvas = roleThumbnailRefs.value[roleId];
+          if (!canvas) return;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // 简单绘制角色缩略图（实际项目中应该根据expressionId绘制对应的表情）
+          // 这里使用占位符颜色和简单图形代替
+          const role = mockRoles.find(r => r.id === roleId);
+          if (role) {
+            // 根据角色ID生成不同的背景色
+            const color = `hsl(${(roleId.charCodeAt(0) * 31) % 360}, 70%, 60%)`;
+            ctx.fillStyle = color;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制简单的表情图标
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height / 2, 16, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // 保存角色位置信息（用于后续提交HTTP请求）
+        const saveRolePositions = () => {
+          // 根据当前时间找到所在的分镜
+          const currentShot = timeline.value.shots.find(shot => 
+            currentTime.value >= shot.startTime && currentTime.value < shot.startTime + shot.duration
+          );
+          
+          if (!currentShot) return null;
+          
+          // 找到包含当前分镜的场景
+          const currentScene = timeline.value.scenes.find(scene => 
+            scene.shots.includes(currentShot.id)
+          );
+          
+          if (!currentScene || !currentScene.roles) return null;
+          
+          const sceneRoles = currentScene.roles;
+          
+          // 准备要保存的数据格式
+          const saveData = {
+            sceneId: currentScene.id,
+            roles: sceneRoles.map(role => ({
+              roleId: role.roleId,
+              position: {
+                x: role.x,
+                y: role.y,
+                angle: role.angle,
+                scale: role.scale
+              },
+              expressionId: role.expressionId
+            }))
+          };
+          
+          console.log('准备保存的角色位置数据:', saveData);
+          return saveData;
+        }
+
         return {
           debugInfo,
           canvas,
@@ -4511,10 +4724,20 @@
           saveCameraPreset: (presetName) => { if (cameraModule) cameraModule.saveCameraPreset(presetName); },
           deleteCameraPreset: (presetIndex) => { if (cameraModule) cameraModule.deleteCameraPreset(presetIndex); },
           resetCamera: () => { if (cameraModule) cameraModule.resetCamera(); },
-          forceUpdateCameraPreview: () => { if (cameraModule) cameraModule.forceUpdateCameraPreview(); },
-          
-          
-        };
+            forceUpdateCameraPreview: () => { if (cameraModule) cameraModule.forceUpdateCameraPreview(); },
+            
+            // 角色预览相关
+            showRolePreview,
+            currentSceneRoles,
+            roleThumbnailRefs,
+            showRolePreviewClick,
+            setRoleThumbnailRef,
+            getRoleNameById,
+            toggleRoleVisibility,
+            setSceneInitialPosition,
+            saveRolePositions,
+            
+          };
       }
     }).mount('#app');
     // 添加全局错误处理器，专门捕获表情选择相关的错误
