@@ -1,6 +1,6 @@
 //无效位置，如果x1,y1为此值，表明表情属于固定位置表情
 // 导入公共工具类
-import { loadImageWithCORS, round, getCacheImage } from './utils.mjs';
+import { loadImageWithCORS, round, getCacheImage,imageCache } from './utils.mjs';
 
 const invalidPos = -999;
 
@@ -119,7 +119,13 @@ export class RoleExpressionManager {
   
   // 获取指定角色的当前帧图片
   getCurrentFrameUrl(roleId, currentExpression) {
-    if (!this.roleStates[roleId] || !currentExpression || !currentExpression.frames || currentExpression.frames.length === 0) {
+
+    if (!currentExpression || !currentExpression.frames || currentExpression.frames.length === 0) {
+      return null;
+    }
+
+    if(!this.roleStates[roleId] ){
+      console.error('roleId',roleId,'roleStates:',this.roleStates[roleId],'currentExpression',currentExpression)
       return null;
     }
     
@@ -154,167 +160,7 @@ export class RoleExpressionManager {
     // 返回场景中的角色信息，如果场景不存在或没有角色信息，则返回空数组
     return currentScene && currentScene.roles ? [...currentScene.roles] : [];
   };
-  
-  // 计算角色当前实际位置（基于时间的线性插值）
-  calculateCurrentExpressPosition(currentExpressionTrack, _currentTimeInt) {
-    let  currentX = 0;
-    let  currentY = 0;
-    // 获取当前时间点的场景级角色配置
-    const sceneRoles = this.getSceneRolesByTime(_currentTimeInt);
-    const roleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === currentExpressionTrack.roleId) : null;
 
-    // 检查是否存在临时位置（拖拽过程中使用）
-    if (currentExpressionTrack._tempX !== undefined && currentExpressionTrack._tempY !== undefined) {
-      
-      // 返回临时位置时，确保Y坐标在渲染坐标系中是正确的
-      // 注意：这里不进行额外转换，因为拖拽时已经计算好了正确的坐标
-      console.log('calculateCurrentPosition 1:',currentExpressionTrack);
-
-      currentX = currentExpressionTrack._tempX;
-      currentY = currentExpressionTrack._tempY;
-    }else{
-      // 计算当前表情位置（基于当前时间的线性插值）
-      const duration = currentExpressionTrack.endTime - currentExpressionTrack.startTime;
-      const elapsed = _currentTimeInt - currentExpressionTrack.startTime;
-      const progress = Math.min(Math.max(elapsed / duration, 0), 1);
-      // console.log('calculateCurrentPosition :',duration,elapsed,progress);
-      // 获取结束位置，如果没有则使用开始位置
-      let endX = currentExpressionTrack.x1;
-      let endY = currentExpressionTrack.y1;
-      if (endX === undefined || endX === invalidPos) {
-        endX = currentExpressionTrack.x;
-      }
-      if (endY === undefined || endY === invalidPos) {
-        endY = currentExpressionTrack.y;
-      }
-      // console.log('calculateCurrentPosition 2:',currentExpressionTrack,progress);
-      // 线性插值计算当前位置
-      currentX = currentExpressionTrack.x + (endX - currentExpressionTrack.x) * progress;
-      currentY = currentExpressionTrack.y + (endY - currentExpressionTrack.y) * progress;
-      // console.log('calculateCurrentPosition currentX:',currentX,',currentY:',currentY);
-    }
-    
-    // 获取当前帧图片的实际宽高
-    let frameWidth = 50;
-    let frameHeight = 50;
-    
-    try {
-      // 获取当前帧图片URL
-      const currentExpression = this.getRoleExpression(currentExpressionTrack.roleId,currentExpressionTrack.expressionId);
-      const currentFrameUrl = this.getCurrentFrameUrl(currentExpressionTrack.roleId,currentExpression);
-      const imageUrl = currentFrameUrl;  
-      // console.log('currentExpression:',currentExpression,',imageUrl:',imageUrl);
-      // 尝试从图片缓存中获取图片的实际宽高
-      // 注意：这里假设imageCache是全局可访问的
-
-      const cachedImg = getCacheImage(imageUrl);
-      if (cachedImg && cachedImg.width && cachedImg.height) {
-        //console.log('cachedImg.width:',cachedImg.width);
-        frameWidth = cachedImg.width;
-        frameHeight = cachedImg.height;
-      }
-
-      } catch (error) {
-      console.error('获取当前帧图片宽高时出错:', error);
-      // 出错时使用默认宽高
-    }
-    
-
-
-    //console.log('222>>>>',currentX,currentY,frameWidth,frameHeight,currentExpressionTrack.scale);
-    // 返回位置和场景配置中的尺寸和角度，优先使用当前帧图片的实际宽高
-    const position = { 
-      x: currentX, 
-      y: currentY, 
-      width: frameWidth || roleConfig?.width ,
-      height: frameHeight ||roleConfig?.height,
-      angle: currentExpressionTrack.angle || roleConfig?.angle || 0,
-      scale: round(currentExpressionTrack.scale) || 1,
-      isValid: true 
-    }
-    //console.log('333>>>>',position);
-    return position;
-  }
-  
-  // 计算角色当前实际位置（基于时间的线性插值） 调试使用 哪个方法有问题调用
-  calculateCurrentExpressPosition_debug(currentExpressionTrack, _currentTimeInt) {
-    let  currentX = 0;
-    let  currentY = 0;
-    // 获取当前时间点的场景级角色配置
-    const sceneRoles = this.getSceneRolesByTime(_currentTimeInt);
-    const roleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === currentExpressionTrack.roleId) : null;
-
-    // 检查是否存在临时位置（拖拽过程中使用）
-    if (currentExpressionTrack._tempX !== undefined && currentExpressionTrack._tempY !== undefined) {
-      
-      // 返回临时位置时，确保Y坐标在渲染坐标系中是正确的
-      // 注意：这里不进行额外转换，因为拖拽时已经计算好了正确的坐标
-      console.log('calculateCurrentPosition 2-1:',currentExpressionTrack);
-
-      currentX = currentExpressionTrack._tempX;
-      currentY = currentExpressionTrack._tempY;
-    }else{
-      console.log('calculateCurrentPosition 2-2:',currentExpressionTrack);
-
-      // 计算当前表情位置（基于当前时间的线性插值）
-      const duration = currentExpressionTrack.endTime - currentExpressionTrack.startTime;
-      const elapsed = _currentTimeInt - currentExpressionTrack.startTime;
-      const progress = Math.min(Math.max(elapsed / duration, 0), 1);
-      // console.log('calculateCurrentPosition :',duration,elapsed,progress);
-      // 获取结束位置，如果没有则使用开始位置
-      let endX = currentExpressionTrack.x1;
-      let endY = currentExpressionTrack.y1;
-      if (endX === undefined || endX === invalidPos) {
-        endX = currentExpressionTrack.x;
-      }
-      if (endY === undefined || endY === invalidPos) {
-        endY = currentExpressionTrack.y;
-      }
-      // console.log('calculateCurrentPosition 2:',currentExpressionTrack,progress);
-      // 线性插值计算当前位置
-      currentX = currentExpressionTrack.x + (endX - currentExpressionTrack.x) * progress;
-      currentY = currentExpressionTrack.y + (endY - currentExpressionTrack.y) * progress;
-      // console.log('calculateCurrentPosition currentX:',currentX,',currentY:',currentY);
-    }
-    
-    // 获取当前帧图片的实际宽高
-    let frameWidth = 50;
-    let frameHeight = 50;
-    
-    try {
-      // 获取当前帧图片URL
-      const currentExpression = this.getRoleExpression(currentExpressionTrack.roleId,currentExpressionTrack.expressionId);
-      const currentFrameUrl = this.getCurrentFrameUrl(currentExpressionTrack.roleId,currentExpression);
-      const imageUrl = currentFrameUrl;  
-      console.log('currentExpression:',currentExpression,',imageUrl:',imageUrl);
-      // 尝试从图片缓存中获取图片的实际宽高
-      const cachedImg = getCacheImage(imageUrl);
-      if (cachedImg && cachedImg.width && cachedImg.height) {
-        console.log('cachedImg.width:',cachedImg.width);
-        frameWidth = cachedImg.width;
-        frameHeight = cachedImg.height;
-      }
-    } catch (error) {
-      console.error('获取当前帧图片宽高时出错:', error);
-      // 出错时使用默认宽高
-    }
-    
-
-
-    console.log('222>>>>',currentX,currentY,frameWidth,frameHeight,currentExpressionTrack.scale);
-    // 返回位置和场景配置中的尺寸和角度，优先使用当前帧图片的实际宽高
-    const position = { 
-      x: currentX, 
-      y: currentY, 
-      width: frameWidth || roleConfig?.width ,
-      height: frameHeight ||roleConfig?.height,
-      angle: currentExpressionTrack.angle || roleConfig?.angle || 0,
-      scale: round(currentExpressionTrack.scale) || 1,
-      isValid: true 
-    }
-    //console.log('333>>>>',position);
-    return position;
-  }
   
   // 获取当前时间点指定角色ID的表情轨道
   getExpressionTrackByRoleId(roleId, time, onlyTrack = true) {
@@ -675,13 +521,15 @@ export class RoleExpressionManager {
 
   // 重置所有状态
   reset() {
+    // console.log('reset all role state');
     this.roleStates = {};
     this.lastFrameTime = {};
   }
   
-  // 重置特定角色的状态
+  //重置特定角色的状态
   resetRole(roleId) {
     if (this.roleStates[roleId]) {
+      // console.log('reset role state:',roleId);
       delete this.roleStates[roleId];
       delete this.lastFrameTime[roleId];
     }
@@ -860,7 +708,7 @@ export class RoleExpressionManager {
       // 线性插值计算当前位置
       currentX = currentExpressionTrack.x + (endX - currentExpressionTrack.x) * progress;
       currentY = currentExpressionTrack.y + (endY - currentExpressionTrack.y) * progress;
-      // console.log('calculateCurrentPosition currentX:',currentX,',currentY:',currentY);
+      // console.log('calculateCurrentPosition 2 currentX:',currentX,',currentY:',currentY);
     }
     
     // 获取当前帧图片的实际宽高
@@ -875,10 +723,13 @@ export class RoleExpressionManager {
       // console.log('currentExpression:',currentExpression,',imageUrl:',imageUrl);
       // 尝试从图片缓存中获取图片的实际宽高
       const cachedImg = getCacheImage(imageUrl);
+      // console.log('calculateCurrentExpressPosition cachedImg:',cachedImg);
       if (cachedImg && cachedImg.width && cachedImg.height) {
         //console.log('cachedImg.width:',cachedImg.width);
         frameWidth = cachedImg.width;
         frameHeight = cachedImg.height;
+      }else{
+        console.info('get image cache for w/h error, use frameWidth:50  , url:',imageUrl, 'imageCache:',Object.keys(imageCache),imageCache);
       }
     } catch (error) {
       console.error('获取当前帧图片宽高时出错:', error);
@@ -980,21 +831,6 @@ export class RoleExpressionManager {
     }
     //console.log('333>>>>',position);
     return position;
-  }
-
-  // 重置所有状态
-  reset() {
-    this.roleStates = {};
-    this.lastFrameTime = {};
-  }
-
-
-  // 重置特定角色的状态
-  resetRole(roleId) {
-    if (this.roleStates[roleId]) {
-      delete this.roleStates[roleId];
-      delete this.lastFrameTime[roleId];
-    }
   }
 
 

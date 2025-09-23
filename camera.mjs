@@ -380,7 +380,7 @@ export function initCamera(app) {
       
       // 不旋转时直接绘制矩形边框
       ctx.value.strokeRect(cameraX, bottomLeftY, cameraWidth, cameraHeight);
-      // console.log('drawCamera cameraX', cameraX, 'cameraY(左下角坐标系)', bottomLeftY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight);
+      // console.log('drawCamera > cameraX', cameraX, 'cameraY:',cameraY,'cameraY(左下角坐标系)', bottomLeftY, 'cameraWidth', cameraWidth, 'cameraHeight', cameraHeight);
 
       // 绘制边框内部的半透明区域
       ctx.value.fillStyle = 'rgba(255, 0, 0, 0.1)';
@@ -923,8 +923,7 @@ export function initCamera(app) {
     let targetCenterY = null;
     if (app.getExpressionTrackByRoleId) {
       currentExpressionTrack = app.getExpressionTrackByRoleId(speakingRoleId, _currentTimeInt, false);
-
-      console.log('camera focus on trace expression:', currentExpressionTrack);
+      // console.log('camera focus on trace expression:', currentExpressionTrack);
     } else {
       console.warn('app.getExpressionTrackByRoleId方法未定义');
     }
@@ -936,9 +935,10 @@ export function initCamera(app) {
       const roleHeight = position.height || currentExpressionTrack.height || 0;
       const scale = currentExpressionTrack.scale || 1;
       
+      //console.log('findCurrentSpeakerIdPosition > currentExpressionTrack:',currentExpressionTrack,'position:',position,'roleWidth:',roleWidth,'roleHeight:',roleHeight);
       targetCenterX = currentExpressionTrack.x + (roleWidth * scale) / 2;
       targetCenterY = currentExpressionTrack.y + (roleHeight * scale) / 2;
-      console.log(`currentTime:${_currentTimeInt}, 找到说话角色 ${speakingRoleId} 的位置: (${currentExpressionTrack.x}, ${currentExpressionTrack.y})`);
+      // console.log(`currentTime:${_currentTimeInt}, 找到说话角色 ${speakingRoleId} 的位置: (${currentExpressionTrack.x}, ${currentExpressionTrack.y})`);
     }
     return {targetCenterX,targetCenterY};
   }
@@ -1411,7 +1411,7 @@ export function initCamera(app) {
       // 规则3: 无设置镜头但当前有对话的规则
       let speakingRoleId = findCurrentSpeakerId(_currentTimeInt, currentShot);
       let dialogCameraType = app.defaultDialogCameraScenery ? app.defaultDialogCameraScenery.value : '近景';//使用默认对话镜头配置，默认近景
-      console.log('使用对话镜头:', app.defaultDialogCameraScenery,dialogCameraType)
+      //console.log('使用对话镜头:', app.defaultDialogCameraScenery,dialogCameraType)
       // if (speakingRoleId != previousSpeakingRoleId) 
       {
         
@@ -1421,6 +1421,7 @@ export function initCamera(app) {
         if (currentExpressionPosition.targetCenterX !== undefined && currentExpressionPosition.targetCenterY !== undefined) {
           targetCenterX = currentExpressionPosition.targetCenterX;
           targetCenterY = currentExpressionPosition.targetCenterY;
+          console.log('说话人物：targetCenterX',targetCenterX,'targetCenterY',targetCenterY)
         } else {
           // 未找到当前对话焦点，切换到默认焦点及中景
           targetCenterX = canvas.width / 2;
@@ -1441,7 +1442,7 @@ export function initCamera(app) {
       }else{
         console.error('dialog camera set err')
       }
-      console.log('规则3: 无设置镜头但当前有对话', 'currentTime:',_currentTimeInt,speakingRoleId, preset.name,'焦点:',targetCenterX, targetCenterY);
+      //console.log('规则3: 无设置镜头但当前有对话', 'currentTime:',_currentTimeInt,speakingRoleId, preset.name,'焦点:',targetCenterX, targetCenterY);
     } else {
       // 规则4: 无设置镜头轨道的情况
       const currentShotId = currentShot ? currentShot.id : null;
@@ -1476,7 +1477,7 @@ export function initCamera(app) {
       } else {
         // 说话人物未切换，保持上次位置
       }
-      console.log('规则4: 无设置镜头轨道的情况', 'currentTime:',_currentTimeInt, cameraModuleState.currentDefaultShotScenery, targetCenterX, targetCenterY);
+      //console.log('规则4: 无设置镜头轨道的情况', 'currentTime:',_currentTimeInt, cameraModuleState.currentDefaultShotScenery, targetCenterX, targetCenterY);
     }
     
     return {
@@ -1583,8 +1584,10 @@ export function initCamera(app) {
     
     // 1. 判断逻辑：确定目标景别和参数
     const judgmentResult = updateCameraJudgmentLogic(_currentTimeInt, timeline, app, canvas, cameraModuleState);
-    if(judgmentResult != null)
-      console.log('judgmentResult', judgmentResult);
+ 
+    if(judgmentResult != null){
+      // console.log('judgmentResult', judgmentResult);
+    }
     // 2. 执行逻辑：根据判断结果更新摄像机位置和参数
     updateCameraExecutionLogic(_currentTimeInt, judgmentResult, cameraModuleState, canvas);
     
@@ -1595,7 +1598,7 @@ export function initCamera(app) {
     cameraHeight = cameraModuleState.cameraHeight;
     currentDefaultShotScenery = cameraModuleState.currentDefaultShotScenery;
     currentActiveShotId = cameraModuleState.currentActiveShotId;
-    console.log('cameraY', cameraY)
+    // console.log('cameraX', cameraX,'cameraY',cameraY,cameraWidth,cameraHeight)
   }
 
 

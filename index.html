@@ -804,8 +804,8 @@
       {
         id: 'shot1',
         background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg1.webp',
-        duration: 10300, // 5秒
-        audioDuration: 10000,
+        duration: 9500, // 5秒
+        audioDuration: 9500,
         startTime: 0,
         audios: [
           {
@@ -813,7 +813,7 @@
             roleId: 'role1',
             text: '混江龙魏爷，你刚才不是很威风吗？',
             audio: 'https://rh-images.xiaoyaoyou.com/babfec956cbdabe7f1fb93e2a1d971dc/output/audio/ComfyUI_00002_vieis_1758605920.flac',
-            audioDuration: 4000,
+            audioDuration: 3224,
             startTime: 0,
           },
           {
@@ -822,7 +822,7 @@
             text: '在您面前，哪有什么魏爷，您要是不嫌弃，叫我一声小龙就行',
             audio: 'https://rh-images.xiaoyaoyou.com/babfec956cbdabe7f1fb93e2a1d971dc/output/audio/ComfyUI_00001_domho_1758606891.flac',
             audioDuration: 6000,
-            startTime: 4300,
+            startTime: 3300,
           }
         ],
         cameraTracks: [
@@ -843,7 +843,7 @@
         background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg2.webp',
         duration: 4000, // 4秒
         audioDuration: 4000,
-        startTime: 10300,
+        startTime: 9500,
         audios: [
           {
             id: 'audio3',
@@ -892,7 +892,7 @@
         background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg4.webp',
         duration: 6000, // 6秒
         audioDuration: 6000,
-        startTime: 14300,
+        startTime: 13500,
         audios: [],
         cameraTracks: [{
           id: 'cameraTrack3-1',
@@ -911,7 +911,7 @@
         background: 'https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/bg4.webp',
         duration: 5000, // 6秒
         audioDuration: 5000,
-        startTime: 20300,
+        startTime: 19500,
         audios: [],
         cameraTracks: [
           {
@@ -1237,12 +1237,23 @@
         // 声明setupCameraEvents变量，稍后在摄像机模块初始化后赋值
         let setupCameraEvents;
         
+        // 声明音频管理器变量
+        let audioManager;
+        
         // 先导入RoleExpressionManager类并初始化expressionManager
         import('./role-expression-manager.mjs').then(roleModule => {
           // 创建RoleExpressionManager实例
           expressionManager = new roleModule.RoleExpressionManager();
         }).catch(error => {
           console.error('导入角色表情管理器模块失败:', error);
+        });
+        
+        // 导入音频管理器模块
+        import('./audio-manager.mjs').then(({ default: AudioManager }) => {
+          // 创建AudioManager实例
+          audioManager = new AudioManager();
+        }).catch(error => {
+          console.error('导入音频管理器模块失败:', error);
         });
 
           // 使用ES模块导入摄像机模块
@@ -3049,15 +3060,11 @@
         
         // 渲染当前帧 - 重新定义完整的renderFrame函数实现
         let renderFrame = (trace=-1) => {
-            // console.log('renderFrame:', trace)
+            console.log('renderFrame:', trace)
             // 1. 前置检查
             if (!canvas.value || !ctx.value || !offscreenCanvas || !offscreenCtx) {
               debugInfo.value = `Canvas or context invalid: canvas=${!!canvas.value}, ctx=${!!ctx.value}`;
               return;
-            }
-            // 在播放时根据当前时间动态更新摄像机设置
-            if (cameraModule && cameraModule.updateCameraOnPlayback) {
-              cameraModule.updateCameraOnPlayback(currentTime.value, timeline.value);
             }
             
             // 添加调试信息，显示当前渲染状态
@@ -3079,6 +3086,7 @@
                 ) : null;
             }
             targetShot = currentShot || targetShot;
+            
 
             // 4. 绘制底层背景
             // 设置基础背景色
@@ -3110,6 +3118,12 @@
             // 恢复原始坐标系状态
             offscreenCtx.restore();
             
+            // 在播放时根据当前时间动态更新摄像机设置,一定要在绘制角色层之后！！！！！！！
+            //否则，在绘制角色层之前，摄像机设置可能获取焦点时，角色状态还未初始化，将获取错误的宽高，导致计算错误的焦点
+            if (cameraModule && cameraModule.updateCameraOnPlayback) {
+              cameraModule.updateCameraOnPlayback(currentTime.value, timeline.value);
+            }
+
             // 6. 绘制上层信息（FPS等）
             //drawTopLayerInfo(offscreenCtx);
             
@@ -3119,12 +3133,45 @@
             // 8. 将离屏Canvas内容复制到可见Canvas（顶层合成）
             ctx.value.drawImage(offscreenCanvas, 0, 0);
             
-            // 8. 绘制摄像机边框（如果启用）
+            // 9. 播放当前分镜的音频
+            if (audioManager && isPlaying.value) {
+              // 获取当前分镜中应该在当前时间播放的音频
+              if (currentShot && currentShot.audios && Array.isArray(currentShot.audios)) {
+                const currentTimeInShot = currentTime.value - currentShot.startTime;
+                
+                currentShot.audios.forEach(audio => {
+                  // 检查音频是否应该在当前时间播放
+                  if (audio.startTime <= currentTimeInShot && 
+                      (audio.startTime + (audio.audioDuration || 0)) > currentTimeInShot) {
+
+                    if(!audioManager.isPlayIng(audio.audio, audio.roleId)){
+                      // 计算音频应该开始播放的时间点（秒）
+                      const audioStartTimeInShot = currentTimeInShot - audio.startTime;
+                      //console.log('开始播放音频', audio.audio, audio.roleId, '从', audioStartTimeInShot, '秒开始');
+                      audioManager.playAudio(audio.audio, audio.roleId, audioStartTimeInShot/1000);
+                    }
+                  } else {
+                    if(audioManager.isPlayIng(audio.audio, audio.roleId)){
+                      // 音频不在播放时间范围内，停止播放
+                      console.log('停止播放音频', audio.audio, audio.roleId);
+                      audioManager.stopAudio(audio.audio, audio.roleId);
+                    }
+                  }
+                });
+              }
+              
+              // 如果没有当前分镜，停止所有音频
+              if (!currentShot) {
+                audioManager.stopAllAudios(currentTime.value);
+              }
+            }
+
+            // 10. 绘制摄像机边框（如果启用）
             if (cameraModule) {
               cameraModule.drawCamera();
             }
-            
 
+            // 11. 绘制摄像机预览（如果启用）
             if (showCameraPreview.value && cameraModule) {
               cameraModule.updateCameraPreview(); // 更新预览
             }
@@ -3267,7 +3314,7 @@
         // 绘制角色
         const drawRoles = () => {
           if (!offscreenCtx) {
-            debugInfo.value = 'offscreenCtx null ';
+            // debugInfo.value = 'offscreenCtx null ';
             return;
           }
           
@@ -3279,7 +3326,7 @@
             offscreenCtx.fillText('无角色数据', offscreenCanvas.width/2, offscreenCanvas.height/2 + 30);
             return;
           }
-          
+          // console.log('drawRoles start!!!!');
           // 初始化角色表情管理器
           if (expressionManager && Object.keys(expressionManager.expressionCache).length === 0) {
             expressionManager.init(timeline.value.scenes, timeline.value.shots, timeline.value.roles, timeline.value.expressionTracks);
@@ -3308,20 +3355,19 @@
           
           // 4. 按角色依次绘制 -- 暂未考虑Z轴排序问题，后续补上
           roleIdsToDraw.forEach(roleId => {
+            // console.log('drawRoles roleId',roleId);
             // 找到对应的角色对象
             const role = timeline.value.roles.find(r => r.id === roleId);
             if (!role) return;
 
             // 5. 绘制时，先寻找表情轨道中当前时间该角色是否包含表情dr
             let currentExpressionTrack = getExpressionTrackByRoleId(roleId,currentTime.value,false)
-            //console.log('draw currentExpressionTrack:',roleId,currentExpressionTrack);
             
             // 如果没有找到表情轨道，则使用场景中该角色的缺省表情及位置、宽高角度等信息进行绘制
             if(!currentExpressionTrack) {
+              //console.log('draw currentExpressionTrack:',roleId,currentExpressionTrack);
               return;
             }
-            //console.log('draw currentExpressionTrack:',roleId,currentExpressionTrack);
-
 
             //ctx, role, currentExpressionTrack, expression,
             // 获取表情，添加安全检查
@@ -3329,13 +3375,14 @@
                               role.expressions.find(exp => exp && exp.id === role.defaultExpressionId);
             
             if (!expression || !expression.frames || expression.frames.length === 0) return;
-            
 
             expressionManager.drawRoleExpression(offscreenCtx, role, currentExpressionTrack, expression, currentTime.value, !isPlaying.value ? selectedRoleId.value : null);
             return;
 
           });
         
+          // console.log('drawRoles  finish!!!!');
+
         };
         
         // 动画循环
@@ -3400,6 +3447,10 @@
           lastTime = null;
           // 重置角色表情管理器，确保从当前时间点开始正确播放表情
           expressionManager.reset();
+          // 重置音频管理器，清除之前的播放状态
+          if (audioManager) {
+            audioManager.stopAllAudios(currentTime.value);
+          }
           // 立即渲染一帧
           renderFrame(13);
           animationFrameId.value = requestAnimationFrame(animate);
@@ -3410,6 +3461,10 @@
           isPlaying.value = false;
           if (animationFrameId.value) {
             cancelAnimationFrame(animationFrameId.value);
+          }
+          // 停止所有正在播放的音频
+          if (audioManager) {
+            audioManager.stopAllAudios(currentTime.value);
           }
           // 暂停时重新渲染，确保显示正确的画面
           //renderFrame(14);
