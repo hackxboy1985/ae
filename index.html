@@ -2318,7 +2318,7 @@
         
         // 为表情元素添加右键菜单功能
         const setupExpressionRightClickMenu = () => {
-          // 创建右键菜单元素
+          // 创建表情右键菜单元素
           let contextMenu = document.getElementById('expression-context-menu');
           if (!contextMenu) {
             contextMenu = document.createElement('div');
@@ -2382,6 +2382,67 @@
             document.body.appendChild(contextMenu);
           }
           
+          // 创建分镜右键菜单元素
+          let shotContextMenu = document.getElementById('shot-context-menu');
+          if (!shotContextMenu) {
+            shotContextMenu = document.createElement('div');
+            shotContextMenu.id = 'shot-context-menu';
+            shotContextMenu.style.cssText = `
+              display: none;
+              position: fixed;
+              background: white;
+              border: 1px solid #ccc;
+              border-radius: 4px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              z-index: 1000;
+              min-width: 160px;
+              padding: 4px 0;
+              font-size: 14px;
+            `;
+            
+            // 创建分镜菜单项
+            const shotMenuItems = [
+              { id: 'shot-set-start', text: '设置开始时间' },
+              { id: 'shot-set-end', text: '设置结束时间' },
+              { id: 'shot-duplicate', text: '复制分镜' },
+              { id: 'shot-delete', text: '删除分镜' }
+            ];
+            
+            shotMenuItems.forEach(item => {
+              const menuItem = document.createElement('div');
+              menuItem.id = `shot-menu-${item.id}`;
+              menuItem.textContent = item.text;
+              menuItem.style.cssText = `
+                padding: 8px 16px;
+                cursor: pointer;
+                white-space: nowrap;
+              `;
+              
+              menuItem.addEventListener('mouseover', () => {
+                menuItem.style.backgroundColor = '#f0f0f0';
+              });
+              
+              menuItem.addEventListener('mouseout', () => {
+                menuItem.style.backgroundColor = 'transparent';
+              });
+              
+              menuItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const shotItem = document.querySelector('.shot-context-menu-active');
+                if (shotItem) {
+                  const shotId = shotItem.dataset.shotId;
+                  handleShotContextMenuAction(item.id, shotId);
+                }
+                hideContextMenu();
+                hideShotContextMenu();
+              });
+              
+              shotContextMenu.appendChild(menuItem);
+            });
+            
+            document.body.appendChild(shotContextMenu);
+          }
+          
           // 显示右键菜单
           const showContextMenu = (e, element) => {
             const menu = document.getElementById('expression-context-menu');
@@ -2392,6 +2453,8 @@
             // 添加激活状态类
             element.classList.add('context-menu-active');
           };
+          
+
           
           // 隐藏右键菜单
           const hideContextMenu = () => {
@@ -2482,6 +2545,167 @@
             renderFrame(8);
           };
           
+          // 隐藏分镜右键菜单
+          const hideShotContextMenu = () => {
+            const menu = document.getElementById('shot-context-menu');
+            if (menu) {
+              menu.style.display = 'none';
+            }
+            
+            // 移除所有激活状态类
+            document.querySelectorAll('.shot-context-menu-active').forEach(el => {
+              el.classList.remove('shot-context-menu-active');
+            });
+          };
+          
+          // 显示分镜右键菜单
+          const showShotContextMenu = (e, element) => {
+            // 阻止默认右键菜单
+            e.preventDefault();
+            
+            // 隐藏其他菜单
+            hideContextMenu();
+            
+            // 创建菜单元素（如果不存在）
+            let menu = document.getElementById('shot-context-menu');
+            if (!menu) {
+              menu = document.createElement('div');
+              menu.id = 'shot-context-menu';
+              menu.style.cssText = `
+                display: none;
+                position: fixed;
+                background: white;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+                min-width: 160px;
+                padding: 4px 0;
+                font-size: 14px;
+              `;
+              
+              // 创建菜单项
+              const menuItems = [
+                { id: 'shot-set-start', text: '设置开始时间' },
+                { id: 'shot-set-end', text: '设置结束时间' },
+                { id: 'shot-duplicate', text: '复制分镜' },
+                { id: 'shot-delete', text: '删除分镜' }
+              ];
+              
+              menuItems.forEach(item => {
+                const menuItem = document.createElement('div');
+                menuItem.id = `shot-menu-${item.id}`;
+                menuItem.textContent = item.text;
+                menuItem.style.cssText = `
+                  padding: 8px 16px;
+                  cursor: pointer;
+                  white-space: nowrap;
+                `;
+                
+                menuItem.addEventListener('mouseover', () => {
+                  menuItem.style.backgroundColor = '#f0f0f0';
+                });
+                
+                menuItem.addEventListener('mouseout', () => {
+                  menuItem.style.backgroundColor = 'transparent';
+                });
+                
+                menuItem.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  const shotItem = document.querySelector('.shot-context-menu-active');
+                  if (shotItem) {
+                    const shotId = shotItem.dataset.shotId || shotItem.id;
+                    handleShotContextMenuAction(item.id, shotId);
+                  }
+                  hideContextMenu();
+                  hideShotContextMenu();
+                });
+                
+                menu.appendChild(menuItem);
+              });
+              
+              document.body.appendChild(menu);
+            }
+            
+            menu.style.top = e.clientY + 'px';
+            menu.style.left = e.clientX + 'px';
+            menu.style.display = 'block';
+            
+            // 添加激活状态类
+            element.classList.add('shot-context-menu-active');
+          };
+          
+          // 处理分镜右键菜单项的点击事件
+          const handleShotContextMenuAction = (actionId, shotId) => {
+            console.log(`执行分镜操作: ${actionId} 分镜ID: ${shotId}`);
+            
+            // 根据操作ID执行不同的功能
+            switch(actionId) {
+              case 'shot-set-start':
+                console.log('设置分镜开始时间', shotId);
+                // 找到对应的分镜
+                const shot = timeline.value.shots.find(s => s.id === shotId);
+                if (shot) {
+                  shot.startTime = currentTime.value;
+                  updateTimelineDisplay();
+                  renderFrame(31);
+                }
+                break;
+              case 'shot-set-end':
+                console.log('设置分镜结束时间', shotId);
+                // 找到对应的分镜
+                const shotEnd = timeline.value.shots.find(s => s.id === shotId);
+                if (shotEnd) {
+                  shotEnd.startTime = Math.max(0, currentTime.value - shotEnd.duration);
+                  updateTimelineDisplay();
+                  renderFrame(32);
+                }
+                break;
+              case 'shot-duplicate':
+                console.log('复制分镜', shotId);
+                // 复制分镜的逻辑
+                const originalShot = timeline.value.shots.find(s => s.id === shotId);
+                if (originalShot) {
+                  // 创建新分镜对象，深拷贝原始分镜
+                  const newShot = JSON.parse(JSON.stringify(originalShot));
+                  // 生成新的ID
+                  newShot.id = 'shot-' + Date.now();
+                  // 将新分镜添加到时间轴
+                  timeline.value.shots.push(newShot);
+                  // 找到包含该分镜的场景，并将新分镜添加到场景中
+                  const containingScene = timeline.value.scenes.find(scene => scene.shots.includes(originalShot.id));
+                  if (containingScene) {
+                    containingScene.shots.push(newShot.id);
+                  }
+                  // 更新显示
+                  updateTimelineDisplay();
+                  renderFrame(33);
+                }
+                break;
+              case 'shot-delete':
+                console.log('删除分镜', shotId);
+                // 删除分镜的逻辑
+                const shotIndex = timeline.value.shots.findIndex(s => s.id === shotId);
+                if (shotIndex !== -1) {
+                  // 从所有包含该分镜的场景中移除
+                  timeline.value.scenes.forEach(scene => {
+                    const sceneShotIndex = scene.shots.indexOf(shotId);
+                    if (sceneShotIndex !== -1) {
+                      scene.shots.splice(sceneShotIndex, 1);
+                    }
+                  });
+                  // 从时间轴中删除分镜
+                  timeline.value.shots.splice(shotIndex, 1);
+                  // 更新显示
+                  updateTimelineDisplay();
+                  renderFrame(34);
+                }
+                break;
+              default:
+                console.log('未知操作', actionId);
+            }
+          };
+          
           // 为所有现有的表情元素添加右键菜单事件
           const addRightClickListeners = () => {
             document.querySelectorAll('.expression-item').forEach(item => {
@@ -2489,6 +2713,17 @@
               item.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 showContextMenu(e, item);
+              });
+            });
+          };
+          
+          // 为所有现有的分镜项添加右键菜单事件
+          const addShotRightClickListeners = () => {
+            document.querySelectorAll('.shot-item').forEach(item => {
+              // 屏蔽浏览器右键菜单
+              item.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showShotContextMenu(e, item);
               });
             });
           };
@@ -2501,7 +2736,29 @@
                 !e.target.classList.contains('expression-item')) {
               hideContextMenu();
             }
+            
+            // 隐藏分镜右键菜单
+            const shotMenu = document.getElementById('shot-context-menu');
+            if (shotMenu && shotMenu.style.display === 'block' && 
+                !shotMenu.contains(e.target) && 
+                !e.target.classList.contains('shot-item')) {
+              hideShotContextMenu();
+            }
           });
+          
+          // 额外添加定期检查的机制，确保新创建的分镜也能被监听
+          setInterval(() => {
+            const newShotItems = document.querySelectorAll('.shot-item:not([data-shot-right-click-bound])');
+            if (newShotItems.length > 0) {
+              newShotItems.forEach(item => {
+                item.setAttribute('data-shot-right-click-bound', 'true');
+                item.addEventListener('contextmenu', (e) => {
+                  e.preventDefault();
+                  showShotContextMenu(e, item);
+                });
+              });
+            }
+          }, 1000);
           
           // 监听drawExpressionTracks完成后的事件，为新创建的表情元素添加右键菜单
           // 创建一个包装器，不直接修改原函数
