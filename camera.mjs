@@ -231,8 +231,201 @@ export function initCamera(app) {
     console.log('拖拽功能设置完成');
   };
   
+
+  // 字幕相关变量
+  let currentSubtitle = '';        // 当前显示的字幕
+  let subtitleSegments = [];       // 分段后的台词数组
+  let subtitleSegmentsRange = [];   // 分段后的台词时间范围数组
+  let currentSubtitleIndex = 0;    // 当前显示的段落索引
+  let subtitleTimer = null;        // 字幕切换定时器
+  let needsSubtitleUpdate = false; // 是否需要更新字幕
+  let currentAudio = null; // 当前正在播放的音频对象
+  
+  
+  // 台词显示管理函数
+  // 参数：currentAudio - 当前音频对象，包含text属性的台词
+  const manageSubtitleDisplay = (_currentAudio,_currentShotStartTime) => {
+    
+    if (!_currentAudio || !_currentAudio.text) {
+      // 没有台词文本，不显示
+      return;
+    }
+
+    if(_currentAudio === currentAudio){
+      return;
+    }
+
+    // 清除现有的字幕显示状态
+    if (subtitleTimer) {
+      clearTimeout(subtitleTimer);
+      subtitleTimer = null;
+    }
+    currentSubtitleIndex = 0;
+    subtitleSegments = [];
+    subtitleSegmentsRange = [];
+    currentAudio = _currentAudio;
+
+    //console.log('处理台词分段');
+    
+    const fullText = _currentAudio.text;
+    
+    // 分段逻辑：根据标点符号分段
+    // 匹配中文和英文常见的标点符号
+    const punctuationRegex = /([。！？.!?，,；;：:])/g;
+    let segments = [];
+    let lastIndex = 0;
+    
+    // 使用exec循环查找所有标点符号
+
+    let match;
+    while ((match = punctuationRegex.exec(fullText)) !== null) {
+      const segment = fullText.substring(lastIndex, punctuationRegex.lastIndex).trim();
+      
+      if (segment) {
+        // 检查从标点符号往前是否超过10个字符
+        const textBeforePunctuation = fullText.substring(lastIndex, match.index);
+        //console.log('处理台词分段:',textBeforePunctuation,textBeforePunctuation.length,'segment:',segment)
+        // if (textBeforePunctuation.length > 10) {
+        //   // 需要在标点符号前分割
+        //   segments.push(textBeforePunctuation /*+ match[0]*/);//不要标点
+        // } else {
+        //   // 可以接受这个片段
+        //   segments.push(segment);
+        // }
+        // console.log('match[0]:', match[0]);
+        if('?' === match[0].trim() || '？' === match[0].trim() ){
+          segments.push(segment);
+        }else
+          segments.push(textBeforePunctuation);
+      }
+      
+      lastIndex = punctuationRegex.lastIndex;
+    }
+    
+    // 处理最后一个没有标点符号的部分
+    if (lastIndex < fullText.length) {
+      const lastSegment = fullText.substring(lastIndex).trim();
+      if (lastSegment) {
+        segments.push(lastSegment);
+      }
+    }
+    
+    // 如果没有通过标点符号分段，按字符长度大致分段
+    if (segments.length === 0) {
+      // 简单的按固定长度分段
+      const maxSegmentLength = 20;
+      for (let i = 0; i < fullText.length; i += maxSegmentLength) {
+        segments.push(fullText.substring(i, i + maxSegmentLength));
+      }
+    }
+    
+    // 保存分段结果
+    subtitleSegments = segments;
+    // console.log('subtitleSegments:', subtitleSegments);
+
+    // 开始显示第一段
+    //displayNextSubtitle(_currentShotStartTime + _currentAudio.startTime);
+    const baseStartTime = _currentShotStartTime + _currentAudio.startTime;
+    const preWordTime = 220;
+    let latestWordTime = baseStartTime;
+    for(let i=0;i<subtitleSegments.length;i++){
+      const segment = subtitleSegments[i];
+      const startTime = latestWordTime;
+      const endTime = startTime + segment.length*preWordTime;
+      latestWordTime = endTime+2;
+      subtitleSegmentsRange.push({
+        text: segment,
+        startTime,
+        endTime,
+      })
+    }
+    console.log('subtitleSegmentsRange:', subtitleSegmentsRange); 
+  };
+  
+  // 显示下一段台词
+  // const displayNextSubtitle = (_currentAudioStartTime = -1) => {
+  //   if (currentSubtitleIndex <= subtitleSegments.length) {
+  //     currentSubtitle = subtitleSegments[currentSubtitleIndex];
+  //     currentSubtitleIndex++;
+  //     subtitleSegmentsRange.push({
+  //       text: currentSubtitle,
+  //       startTime: _currentAudioStartTime,
+  //       endTime: _currentAudioStartTime + currentSubtitle.length*220,
+  //     })
+  //     // 标记需要更新字幕
+  //     needsSubtitleUpdate = true;
+      
+  //     // const timeout = currentSubtitle.length*220;
+  //     // console.log('displayNextSubtitle:',timeout)
+  //     // 设置定时器显示下一段
+  //     // subtitleTimer = setTimeout(displayNextSubtitle, timeout); // 每段显示3秒
+  //   } else {
+  //     // 所有段落显示完毕，清除当前字幕
+  //     currentSubtitle = '';
+  //     needsSubtitleUpdate = false;
+  //   }
+  // };
+  
+  const getCurrentSubtitle = (_currentTimeInt = -1) => {
+    if(subtitleSegmentsRange.length === 0){
+      return '';
+    }
+    for(let i=0;i<subtitleSegmentsRange.length;i++){
+      const segment = subtitleSegmentsRange[i];
+      if(_currentTimeInt >= segment.startTime && _currentTimeInt < segment.endTime){
+        return segment.text;
+      }
+    }
+    return '';
+  }
+
+  // 在预览Canvas上绘制字幕
+  const drawSubtitle = (_currentTimeInt = -1) => {
+    if (_currentTimeInt== -1 || /*!needsSubtitleUpdate || !currentSubtitle || */ !previewCtx || !previewCanvas.value) {
+      //console.log('drawTitle:',needsSubtitleUpdate,currentSubtitle)
+      return;
+    }
+    currentSubtitle = getCurrentSubtitle(_currentTimeInt)
+    const canvasWidth = previewCanvas.value.width;
+    const canvasHeight = previewCanvas.value.height;
+    
+    // 计算字幕区域的高度（约占画布高度的1/5）
+    const subtitleAreaHeight = Math.min(canvasHeight * 0.1, 160);
+    const subtitleY = canvasHeight - subtitleAreaHeight + 10;
+    //console.log('drawTitle:',currentSubtitle,'subtitleY:',subtitleY,'subtitleAreaHeight：',subtitleAreaHeight,'canvasHeight:',canvasHeight)
+    // 清除字幕区域
+    //previewCtx.clearRect(0, canvasHeight - subtitleAreaHeight, canvasWidth, subtitleAreaHeight);
+    
+    // 设置文本样式
+    previewCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    previewCtx.font = '40px Arial';
+    previewCtx.textAlign = 'center';
+    previewCtx.textBaseline = 'middle';
+    
+    // // 绘制半透明背景
+    // const textMetrics = previewCtx.measureText(currentSubtitle);
+    // const padding = 10;
+    // const backgroundX = (canvasWidth - textMetrics.width - padding * 2) / 2;
+    // const backgroundY = subtitleY - 10;
+    // const backgroundWidth = textMetrics.width + padding * 2;
+    // const backgroundHeight = 28;
+    
+    // previewCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    // previewCtx.beginPath();
+    // previewCtx.roundRect(backgroundX, backgroundY, backgroundWidth, backgroundHeight, 4);
+    // previewCtx.fill();
+    
+    // 绘制文本
+    previewCtx.fillStyle = 'white';
+    previewCtx.fillText(currentSubtitle, canvasWidth / 2, subtitleY);
+    
+    // 重置更新标志
+    // needsSubtitleUpdate = false;
+  };
+  
+
   // 更新相机预览
-  const updateCameraPreview = () => {
+  const updateCameraPreview = (_currentTimeInt = -1) => {
     // 检查是否启用了相机预览
     if (!showCameraPreview.value) {
       //console.log('updateCameraPreview showCameraPreview.value:', showCameraPreview.value);
@@ -312,6 +505,10 @@ export function initCamera(app) {
       );
     } catch (error) {
       console.error('复制预览内容出错:', error);
+    }
+    if(_currentTimeInt>=0){
+      // 绘制字幕
+      drawSubtitle(_currentTimeInt);
     }
   };
   
@@ -559,7 +756,7 @@ export function initCamera(app) {
   // 强制刷新相机预览
   const forceUpdateCameraPreview = () => {
     if (showCameraPreview.value) {
-      updateCameraPreview();
+      updateCameraPreview(-2);
     }
   };
   
@@ -1423,7 +1620,7 @@ export function initCamera(app) {
         if (currentExpressionPosition.targetCenterX !== undefined && currentExpressionPosition.targetCenterY !== undefined) {
           targetCenterX = currentExpressionPosition.targetCenterX;
           targetCenterY = currentExpressionPosition.targetCenterY;
-          console.log('说话人物：',speakingRoleId,'targetCenterX',targetCenterX,'targetCenterY',targetCenterY)
+          //console.log('说话人物：',speakingRoleId,'targetCenterX',targetCenterX,'targetCenterY',targetCenterY)
         } else {
           // 未找到当前对话焦点，切换到默认焦点及中景
           targetCenterX = canvas.width / 2;
@@ -1630,6 +1827,7 @@ export function initCamera(app) {
     saveCameraPreset,
     deleteCameraPreset,
     watchCameraSize,
-    updateCameraOnPlayback
+    updateCameraOnPlayback,
+    manageSubtitleDisplay,
   };
 }

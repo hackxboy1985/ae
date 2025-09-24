@@ -1351,23 +1351,37 @@
            cameraZoom, cameraRotation],
           () => {
             if (showCameraPreview.value && cameraModule) {
-              cameraModule.updateCameraPreview();
+              // cameraModule.updateCameraPreview();
             }
           },
           { deep: true }
         );
 
         // 确保在主画布渲染完成后也更新预览
-        watch([currentTime, isPlaying], () => {
+        watch([currentTime /*, isPlaying*/], () => {
+          // 强制重新绘制时间轴及分镜轨道
+          updateTimelineDisplay();
+
           if (showCameraPreview.value && cameraModule) {
             // 使用setTimeout确保在主渲染完成后再更新预览
-            setTimeout(() => {
-              cameraModule.updateCameraPreview();
-            }, 0);
+            // setTimeout(() => {
+              // cameraModule.updateCameraPreview(currentTime.value);
+            // }, 0);
+            //
+            //渲染一帧，如果当前不是播放状态，且预览界面打开，就渲染当前时间的一帧
+            if(!isPlaying.value){
+              // console.log('111');
+              renderFrame();
+            }
+            if(currentTime.value==0){
+
+            }
           }
+
+          // 然后额外应用高亮效果
+          setTimeout(() => updateShotHighlights(), 0);
         });
 
-        // forceUpdateCameraPreview函数现在在cameraModule中定义
 
         // 确保showCameraPreview复选框的变化能够触发强制刷新
         document.querySelectorAll('input[type="checkbox"][v-model="showCameraPreview"]').forEach(checkbox => {
@@ -1375,11 +1389,11 @@
             if (checkbox.checked) {
               console.log('打开相机预览');
               // 使用setTimeout确保DOM更新完成后再刷新
-              setTimeout(() => {
-                if (cameraModule) {
-                  cameraModule.forceUpdateCameraPreview();
-                }
-              }, 100);
+              // setTimeout(() => {
+              //   if (cameraModule) {
+              //     // cameraModule.forceUpdateCameraPreview();
+              //   }
+              // }, 100);
             }
           });
         });
@@ -3250,7 +3264,7 @@
           if (targetShot !== lastRenderShot) {
             lastRenderShot = targetShot;
             // 分镜切换时，重置异步渲染状态
-            console.log('分镜切换:', targetShot.id);
+            console.log('shot change:', targetShot.id);
           }
 
           // 4. 绘制底层背景
@@ -3295,7 +3309,7 @@
           ctx.value.drawImage(offscreenCanvas, 0, 0);
           
           // 9. 播放当前分镜的音频
-          if (audioManager && isPlaying.value) {
+          if (audioManager /*&& isPlaying.value */) {//不播放时也要处理台词
             // 获取当前分镜中应该在当前时间播放的音频
             if (currentShot && currentShot.audios && Array.isArray(currentShot.audios)) {
               const currentTimeInShot = currentTime.value - currentShot.startTime;
@@ -3305,14 +3319,18 @@
                 if (audio.startTime <= currentTimeInShot && 
                     (audio.startTime + (audio.audioDuration || 0)) > currentTimeInShot) {
 
-                  if(!audioManager.isPlayIng(audio.audio, audio.roleId)){
+                  // 管理字幕显示
+                  cameraModule.manageSubtitleDisplay(audio, currentShot.startTime);
+
+                  if(isPlaying.value && !audioManager.isPlayIng(audio.audio, audio.roleId) ){
                     // 计算音频应该开始播放的时间点（秒）
                     const audioStartTimeInShot = currentTimeInShot - audio.startTime;
                     //console.log('start play audio', audio.audio, audio.roleId, '从', audioStartTimeInShot, '秒开始');
                     audioManager.playAudio(audio.audio, audio.roleId, audioStartTimeInShot/1000);
-                  }
-                } else {
-                  if(audioManager.isPlayIng(audio.audio, audio.roleId)){
+                  } 
+
+                }else {
+                  if(isPlaying.value && audioManager.isPlayIng(audio.audio, audio.roleId)){
                     // 音频不在播放时间范围内，停止播放
                     //console.log('stop play audio', audio.audio, audio.roleId);
                     audioManager.stopAudio(audio.audio, audio.roleId);
@@ -3332,16 +3350,17 @@
 
           // 10. 绘制摄像机边框（如果启用）
           if (cameraModule) {
-            if (cameraModule.updateCameraOnPlayback) {
+
+            // if (cameraModule.updateCameraOnPlayback) {
               cameraModule.updateCameraOnPlayback(currentTime.value, timeline.value);
-            }
+            // }
             cameraModule.drawCamera();
 
             // 11. 绘制摄像机预览（如果启用）- 改为异步执行以提高性能
             if (showCameraPreview.value) {
               // 使用requestAnimationFrame异步执行预览更新，不阻塞主渲染流程
               requestAnimationFrame(() => {
-                cameraModule.updateCameraPreview(); // 更新预览
+                cameraModule.updateCameraPreview(currentTime.value); // 更新预览
               });
             }
           }
@@ -4031,7 +4050,7 @@
           
           // 配置MediaRecorder
           const options = {
-            mimeType: 'video/webm; codecs=vp9', // 使用vp9编码，兼容性较好
+            mimeType: 'video/mp4; codecs=avc1', // 更改为mp4格式
             videoBitsPerSecond: 5000000, // 5Mbps比特率
             framerate: videoFps.value
           };
@@ -4049,14 +4068,14 @@
             // 监听录制停止事件
             mediaRecorder.value.onstop = () => {
               // 录制结束后创建视频文件
-              const blob = new Blob(videoChunks.value, { type: 'video/webm' });
+              const blob = new Blob(videoChunks.value, { type: 'video/mp4' });
               const url = URL.createObjectURL(blob);
               
               // 创建下载链接
               const a = document.createElement('a');
               a.style.display = 'none';
               a.href = url;
-              a.download = `animation_${Date.now()}.webm`;
+              a.download = `animation_${Date.now()}.mp4`;
               document.body.appendChild(a);
               a.click();
               
@@ -4109,19 +4128,19 @@
           
           // console.log('开始预加载背景图:', uniqueUrls);
           //debugInfo.value = `开始预加载背景图: ${uniqueUrls.length}张`;
-          console.info('开始预加载背景图:', uniqueUrls.length, '张');
+          //console.info('开始预加载背景图:', uniqueUrls.length, '张');
           // 预加载每张图片
           uniqueUrls.forEach(url => {
             if (getCacheImage && loadImageWithCORS && !getCacheImage(url)) {
               loadImageWithCORS(
                 url,
                 (img) => {
-                  console.log('成功加载背景图:', url);
+                  console.log('load succ bgimg');
                   //预加载成功后，刷新下，否则背景是未渲染状态
                   renderFrame(23);
                 },
                 () => {
-                  console.error('无法预加载背景图:', url);
+                  console.error('load err bgimg:', url);
                 }
               );
             }
@@ -4812,14 +4831,7 @@
           });
         };
         
-        // 在播放时额外调用更新分镜高亮的函数
-        watch([currentTime, isPlaying], () => {
-          // 强制重新绘制时间轴及分镜轨道
-          updateTimelineDisplay();
-          
-          // 然后额外应用高亮效果
-          setTimeout(() => updateShotHighlights(), 0);
-        });
+        
         
         
 
@@ -5149,21 +5161,21 @@
           saveCameraPreset: (presetName) => { if (cameraModule) cameraModule.saveCameraPreset(presetName); },
           deleteCameraPreset: (presetIndex) => { if (cameraModule) cameraModule.deleteCameraPreset(presetIndex); },
           resetCamera: () => { if (cameraModule) cameraModule.resetCamera(); },
-            forceUpdateCameraPreview: () => { if (cameraModule) cameraModule.forceUpdateCameraPreview(); },
-            
-            // 角色预览相关
-            showRolePreview,
-            currentSceneRoles,
-            roleThumbnailRefs,
-            showRolePreviewClick,
-            setRoleThumbnailRef,
-            getRoleNameById,
-            toggleRoleVisibility,
-            setSceneInitialPosition,
-            saveRolePositions,
-            showRoleDropdown,
-            toggleRoleDropdown,
-            addRoleToCurrentScene,
+          forceUpdateCameraPreview: () => { if (cameraModule) cameraModule.forceUpdateCameraPreview(); },
+          
+          // 角色预览相关
+          showRolePreview,
+          currentSceneRoles,
+          roleThumbnailRefs,
+          showRolePreviewClick,
+          setRoleThumbnailRef,
+          getRoleNameById,
+          toggleRoleVisibility,
+          setSceneInitialPosition,
+          saveRolePositions,
+          showRoleDropdown,
+          toggleRoleDropdown,
+          addRoleToCurrentScene,
             
           };
       }

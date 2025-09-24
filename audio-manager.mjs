@@ -113,8 +113,9 @@ class AudioManager {
       if (!audioUrl.startsWith('http://') && !audioUrl.startsWith('https://')) {
         // 假设音频文件在audio目录下
         fullAudioUrl = `./audio/${audioUrl}`;
+        return null;
       }
-      
+      //console.log('play audio', audioId);
       // 加载音频
       const audio = await this.loadAudio(fullAudioUrl);
       
@@ -123,7 +124,7 @@ class AudioManager {
       }
       // 存储活动音频
       this.activeAudios.set(audioId, audio);
-      
+
       // 设置音频开始播放的时间点
       audio.currentTime = startTime;
       // console.log('播放音频', audioId, '从', startTime, '秒开始');
@@ -138,7 +139,7 @@ class AudioManager {
       
       // 设置音频结束时的处理
       const handleAudioEnd = () => {
-        // console.log('play finish', audioId);
+        console.log('play finish', audioId);
         this.activeAudios.delete(audioId);
         audio.removeEventListener('ended', handleAudioEnd);
       };
@@ -163,6 +164,7 @@ class AudioManager {
       audio.pause();
       audio.currentTime = 0;
       this.activeAudios.delete(audioId);
+      // console.log('stop audio', audioId);
     }
   }
 
@@ -184,7 +186,7 @@ class AudioManager {
    */
   cleanup() {
     this.stopAllAudios();
-    this.audioCache.clear();
+    //this.audioCache.clear();
   }
 }
 

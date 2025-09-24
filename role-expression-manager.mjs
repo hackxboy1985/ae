@@ -96,7 +96,14 @@ export class RoleExpressionManager {
     // 基于时间轴时间计算经过的时间，而不是系统时间
     const elapsed = _currentTimeInt - state.startTime;
     // console.log(`currentTime:${currentTime},state.startTime:${state.startTime},elapsed:${elapsed}`)
-
+    if(elapsed < 0){
+      // console.log('drag timeline backward, so elapsed < 0')
+      //可能是向前拖拽，倒放所致
+      state.expressionId = currentExpression.id;
+      state.currentFrameIndex = 0;
+      state.startTime = _currentTimeInt;
+      return state.currentFrameIndex;
+    }
     // 计算应该显示的帧索引，确保与时间轴指针同步
     // 使用 Math.floor 确保整数帧索引
     const expectedFrameIndex = Math.floor(elapsed / frameInterval) % currentExpression.frames.length;
@@ -298,7 +305,7 @@ export class RoleExpressionManager {
   }
   
   // 绘制角色表情-- 暂未使用
-  drawRoleExpression(ctx, role, currentExpressionTrack, expression,_currentTimeInt, selectedRoleId) {
+  drawRoleExpression(ctx, role, currentExpressionTrack, expression, _currentTimeInt, selectedRoleId) {
     if (!ctx || !role || !currentExpressionTrack || !expression) {
       return false;
     }
@@ -309,7 +316,7 @@ export class RoleExpressionManager {
       
       // 检查是否有有效的表情帧
       if (!expression.frames || !expression.frames[frameIndex]) {
-        console.log(`角色 ${role.name} 在时间点 ${_currentTimeInt} 没有有效的表情帧${frameIndex} , ${expression.expressionName}`);
+        console.log(`[role] ${role.name} at ${_currentTimeInt} has no frame idx ${frameIndex} , ${expression.name}`);
         console.log(expression);
         return false;
       }
@@ -729,10 +736,10 @@ export class RoleExpressionManager {
         frameWidth = cachedImg.width;
         frameHeight = cachedImg.height;
       }else{
-        console.info('get image cache for w/h error, use frameWidth:50  , url:',imageUrl, 'imageCache:',Object.keys(imageCache),imageCache);
+        console.info('get image cache for w/h error, use frameWidth:50  , url:',imageUrl);//, 'imageCache:',Object.keys(imageCache),imageCache);
       }
     } catch (error) {
-      console.error('获取当前帧图片宽高时出错:', error);
+      console.error('get frame w/h err:', error);
       // 出错时使用默认宽高
     }
 
