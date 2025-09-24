@@ -5,6 +5,7 @@
  */
 
 class AudioManager {
+
   constructor() {
     // 当前正在播放的音频对象列表
     this.activeAudios = new Map();
@@ -14,7 +15,81 @@ class AudioManager {
     this.isMuted = false;
     // 音量控制
     this.volume = 1.0;
+    // 录制相关的音频上下文和增益节点
+    this.recordingAudioContext = null;
+    this.recordingGainNode = null;
+    // 存储音频源节点的映射
+    this.audioSourceNodes = new Map();
   }
+  
+  /**
+   * 设置录制相关的音频上下文和增益节点
+   * @param {AudioContext} audioContext - 音频上下文
+   * @param {GainNode} gainNode - 增益节点
+   */
+  setRecordingContext(audioContext, gainNode) {
+    this.recordingAudioContext = audioContext;
+    this.recordingGainNode = gainNode;
+  }
+
+
+  /**
+   * 清除录制上下文
+   */
+  clearRecordingContext() {
+    // 断开所有音频源节点的连接
+    this.audioSourceNodes.forEach((sourceNode, audioId) => {
+      if (sourceNode) {
+        try {
+          sourceNode.disconnect();
+        } catch (error) {
+          console.error('断开音频源节点连接时出错:', error);
+        }
+      }
+    });
+    
+    this.audioSourceNodes.clear();
+    this.recordingAudioContext = null;
+    this.recordingGainNode = null;
+  }
+
+
+
+  addAudio2Record= (audioId,audio) =>{
+    // 如果正在录制，为这个音频创建源节点并连接到录制系统
+    if (this.recordingAudioContext && this.recordingGainNode && !this.audioSourceNodes.has(audioId)) {
+      try {
+
+        // 创建音频元素源节点
+        const sourceNode = this.recordingAudioContext.createMediaElementSource(audio);
+        if (!this.audioSourceNodes.has(audioId)) {
+          // 将源节点连接到录制系统的增益节点
+          sourceNode.connect(this.recordingGainNode);
+        }
+        // 存储源节点引用
+        this.audioSourceNodes.set(audioId, sourceNode);
+        
+        console.log('已将音频连接到录制系统:', audioId);
+      } catch (error) {
+        console.error('创建音频源节点并连接到录制系统时出错:', audioId, error);
+      }
+    }
+  }
+
+  clearSourceNode = (audioId) => {
+  // 清理音频源节点
+    if (this.audioSourceNodes.has(audioId)) {
+        const sourceNode = this.audioSourceNodes.get(audioId);
+        try {
+          console.log('clear source node', audioId);
+          sourceNode.disconnect();
+        } catch (error) {
+          console.error('断开音频源节点连接时出错:', error);
+        }
+        this.audioSourceNodes.delete(audioId);
+      }
+  }
+
 
 
   /**
@@ -44,7 +119,7 @@ class AudioManager {
    * @param {string} audioUrl - 音频文件URL
    * @returns {Promise<HTMLAudioElement>} 加载完成的音频对象
    */
-  async loadAudio(audioUrl) {
+  async loadAudio(audioUrl,audioId) {
     // 检查是否已经缓存
     if (this.audioCache.has(audioUrl)) {
       return this.audioCache.get(audioUrl);
@@ -53,8 +128,11 @@ class AudioManager {
     return new Promise((resolve, reject) => {
       const audio = new Audio();
       
+      // 设置跨域属性以解决CORS问题
+      audio.crossOrigin = 'anonymous';
+      
       // 设置音频属性
-      audio.preload = 'auto';
+      audio.preload = 'metadata';//auto
       audio.volume = this.isMuted ? 0 : this.volume;
       audio.loop = false; // 明确设置为不循环播放
       
@@ -86,6 +164,7 @@ class AudioManager {
       }
       return false;
   }
+
   /**
    * 播放指定的音频
    * @param {string} audioUrl - 音频文件URL或文件名
@@ -117,24 +196,33 @@ class AudioManager {
       }
       //console.log('play audio', audioId);
       // 加载音频
-      const audio = await this.loadAudio(fullAudioUrl);
+      const audio = await this.loadAudio(fullAudioUrl,audioId);
+      
       
       if (this.activeAudios.has(audioId)) {
         return null;
       }
       // 存储活动音频
       this.activeAudios.set(audioId, audio);
+      
+
+      
 
       // 设置音频开始播放的时间点
       audio.currentTime = startTime;
-      // console.log('播放音频', audioId, '从', startTime, '秒开始');
+      console.log('播放音频', audioId, '从', startTime, '秒开始');
       audio.loop = false;
+      // 连接到录制系统
+      this.addAudio2Record(audioId, audio);
       
       // 播放音频
       audio.play().catch(error => {
         console.error('Failed to play audio:', audioId, error);
         // 移除失败的音频
         this.activeAudios.delete(audioId);
+        
+        // 清理音频源节点
+        this.clearSourceNode(audioId)
       });
       
       // 设置音频结束时的处理
@@ -142,6 +230,8 @@ class AudioManager {
         console.log('play finish', audioId);
         this.activeAudios.delete(audioId);
         audio.removeEventListener('ended', handleAudioEnd);
+
+        this.clearSourceNode(audioId)
       };
       
       audio.addEventListener('ended', handleAudioEnd);
@@ -151,6 +241,8 @@ class AudioManager {
       console.error('Error playing audio:', audioUrl, error);
     }
   }
+
+
 
   /**
    * 停止指定的音频

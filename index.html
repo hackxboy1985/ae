@@ -4033,30 +4033,99 @@
         const recordingStartTime = ref(0);
         const videoFps = ref(targetFps);
         
+        // 音频相关变量
+        let audioContext = null;
+        let mainGainNode = null;
+        let audioSources = [];
+        
+        // 初始化音频上下文
+        function initAudioContext() {
+          // 创建音频上下文
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          
+          // 创建主音量控制节点
+          mainGainNode = audioContext.createGain();
+          mainGainNode.gain.value = 0.8; // 默认音量
+          mainGainNode.connect(audioContext.destination);
+          
+          // 为每个音频元素创建源节点
+          audioSources = [];
+          // 实际应用中需要获取所有音频元素
+          // 这里先预留接口
+        }
+        
         // 开始录制
-        const startRecording = () => {
+        const startRecording = async () => {
           // 检查浏览器支持
           if (!navigator.mediaDevices || !MediaRecorder) {
             alert('您的浏览器不支持视频录制功能，请使用Chrome或Firefox最新版本');
             return;
           }
           
+          // 初始化音频上下文
+          if (!audioContext) {
+            initAudioContext();
+          }
+          
           // 准备录制
           isRecording.value = true;
           videoChunks.value = [];
           
-          // 创建视频流
-          const stream = canvas.value.captureStream(videoFps.value);
+          // 将音频上下文和增益节点传递给AudioManager，使其能够在播放音频时连接到录制系统
+          if (audioManager) {
+            audioManager.setRecordingContext(audioContext, mainGainNode);
+            console.log('已设置AudioManager的录制上下文');
+          }
+          
+          // 获取Canvas视频流
+          const videoStream = canvas.value.captureStream(videoFps.value);
+          
+          // 创建合并流
+          const combinedStream = new MediaStream();
+          
+          // 添加视频轨道
+          videoStream.getVideoTracks().forEach(track => {
+            combinedStream.addTrack(track);
+          });
+          
+          // 创建录制专用的音频输出节点
+          const audioDestination = audioContext.createMediaStreamDestination();
+          // 关键：将主音量节点连接到录制目的地
+          mainGainNode.connect(audioDestination);
+          
+          // 添加音频轨道
+          audioDestination.stream.getAudioTracks().forEach(track => {
+            console.log('添加音频轨道:', track);
+            combinedStream.addTrack(track);
+          });
+
+          // 检查支持的MIME类型
+          const possibleMimeTypes = ['video/mp4; codecs=avc1', 'video/mp4', 'video/webm; codecs=vp9', 'video/webm'];
+          let supportedMimeType = null;
+          
+          for (const mimeType of possibleMimeTypes) {
+            if (MediaRecorder.isTypeSupported(mimeType)) {
+              supportedMimeType = mimeType;
+              break;
+            }
+          }
+          
+          if (!supportedMimeType) {
+            alert('您的浏览器不支持任何视频录制格式');
+            isRecording.value = false;
+            return;
+          }
           
           // 配置MediaRecorder
           const options = {
-            mimeType: 'video/mp4; codecs=avc1', // 更改为mp4格式
-            videoBitsPerSecond: 5000000, // 5Mbps比特率
+            mimeType: supportedMimeType,
+            videoBitsPerSecond: 5000000, // 5Mbps
+            audioBitsPerSecond: 128000,  // 128kbps
             framerate: videoFps.value
           };
           
           try {
-            mediaRecorder.value = new MediaRecorder(stream, options);
+            mediaRecorder.value = new MediaRecorder(combinedStream, options);
             
             // 监听数据可用事件
             mediaRecorder.value.ondataavailable = (e) => {
@@ -4068,14 +4137,14 @@
             // 监听录制停止事件
             mediaRecorder.value.onstop = () => {
               // 录制结束后创建视频文件
-              const blob = new Blob(videoChunks.value, { type: 'video/mp4' });
+              const blob = new Blob(videoChunks.value, { type: supportedMimeType });
               const url = URL.createObjectURL(blob);
               
               // 创建下载链接
               const a = document.createElement('a');
               a.style.display = 'none';
               a.href = url;
-              a.download = `animation_${Date.now()}.mp4`;
+              a.download = `animation_${Date.now()}${supportedMimeType.includes('mp4') ? '.mp4' : '.webm'}`;
               document.body.appendChild(a);
               a.click();
               
@@ -4108,6 +4177,25 @@
             isRecording.value = false;
             stopPlayback();
             console.log('录制已停止');
+            
+              
+            // 清除AudioManager的录制上下文
+            if (audioManager) {
+              audioManager.clearRecordingContext();
+              console.log('已清除AudioManager的录制上下文');
+            }
+            
+            // 清理音频上下文
+            if (audioContext) {
+              audioContext.close().then(() => {
+                console.log('音频上下文已关闭');
+                audioContext = null;
+                audioSources = [];
+                mainGainNode = null;
+              }).catch(error => {
+                console.error('关闭音频上下文时出错:', error);
+              });
+            }
           }
         };
         
