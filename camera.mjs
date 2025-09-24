@@ -108,7 +108,8 @@ export function initCamera(app) {
           // 必须设置，否则会有异常
           previewCtx = null;
         }
-        updateCameraPreview();
+        app.renderFrame(31);
+        //updateCameraPreview();
       } catch (error) {
         console.error('setupCameraPreviewDrag error:', error);
         throw error; // 重新抛出异常，确保它能在控制台中显示
@@ -971,10 +972,8 @@ export function initCamera(app) {
     }
 
      console.log('app.enableCameraEdit:',app.enableCameraEdit.value);
-
     if(app.enableCameraEdit.value)
-      return;
-    
+      return;    
 
     // 查找当前时间点对应的镜头轨道和分镜
     let currentCameraTrack = null;
@@ -1424,7 +1423,7 @@ export function initCamera(app) {
         if (currentExpressionPosition.targetCenterX !== undefined && currentExpressionPosition.targetCenterY !== undefined) {
           targetCenterX = currentExpressionPosition.targetCenterX;
           targetCenterY = currentExpressionPosition.targetCenterY;
-          console.log('说话人物：targetCenterX',targetCenterX,'targetCenterY',targetCenterY)
+          console.log('说话人物：',speakingRoleId,'targetCenterX',targetCenterX,'targetCenterY',targetCenterY)
         } else {
           // 未找到当前对话焦点，切换到默认焦点及中景
           targetCenterX = canvas.width / 2;
@@ -1457,7 +1456,7 @@ export function initCamera(app) {
       } else {
         cameraModuleState.currentDefaultShotScenery = app.defaultCameraScenery ? app.defaultCameraScenery.value : '全景';
       }
-      console.log('cameraModuleState.currentDefaultShotScenery:',_currentTimeInt,cameraModuleState.currentDefaultShotScenery, 'getCameraPreset-全景',getCameraPreset('全景'))
+      //console.log('cameraModuleState.currentDefaultShotScenery:',_currentTimeInt,cameraModuleState.currentDefaultShotScenery, 'getCameraPreset-全景',getCameraPreset('全景'))
       const preset = getCameraPreset(cameraModuleState.currentDefaultShotScenery) || getCameraPreset('全景');
       // console.log('preset:',preset)
       targetWidth = preset.width;

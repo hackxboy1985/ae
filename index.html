@@ -93,7 +93,7 @@
         <div class="flex items-center space-x-1">
           <!-- 摄像机开关 -->
           <button @click="showCameraPreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机" 
-                  :class="{ 'bg-red-100': showCamera }">
+                  :class="{ 'bg-red-100': showCameraPreview }">
             <i class="fa fa-video-camera" title="摄像机预览"></i>
           </button>
           <!-- 角色预览开关 -->
@@ -156,8 +156,10 @@
           <span>保存</span>
         </button>
         <button @click="exportAnimation" class="flex items-center space-x-1 bg-accent text-white px-4 py-2 rounded hover:bg-accent/90 transition">
-          <i class="fa fa-download"></i>
-          <span>导出</span>
+          <i v-if="!isRecording" class="fa fa-download"></i>
+          <i v-else class="fa fa-stop-circle"></i>
+          <span v-if="!isRecording">导出</span>
+          <span v-else>停止录制</span>
         </button>
       </div>
     </header>
@@ -2684,12 +2686,15 @@
                 }
                 break;
             }
-            
-            // 更新显示
-            updateTimelineDisplay();
-            
 
-            renderFrame(8);
+
+            renderFrame();
+
+            // 更新显示 - 改为异步执行以提高性能
+            requestAnimationFrame(() => {
+              updateTimelineDisplay();
+            });
+            
           };
           
           // 隐藏分镜右键菜单
@@ -3209,125 +3214,142 @@
             }
         };
         
+        let lastRenderShot = null;
         // 渲染当前帧 - 重新定义完整的renderFrame函数实现
         let renderFrame = (trace=-1) => {
+          if(trace !== -1){
             console.log('renderFrame:', trace)
-            // 1. 前置检查
-            if (!canvas.value || !ctx.value || !offscreenCanvas || !offscreenCtx) {
-              debugInfo.value = `Canvas or context invalid: canvas=${!!canvas.value}, ctx=${!!ctx.value}`;
-              return;
-            }
-            
-            // 添加调试信息，显示当前渲染状态
-            //debugInfo.value = `render frame: ${formatTime(currentTime.value)}, play=${isPlaying.value}, FPS=${fps}, canvas size=${canvas.value.width}x${canvas.value.height}`;
-            
-            // 2. 清空离屏画布
-            offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          }
+
+          // 1. 前置检查
+          if (!canvas.value || !ctx.value || !offscreenCanvas || !offscreenCtx) {
+            debugInfo.value = `Canvas or context invalid: canvas=${!!canvas.value}, ctx=${!!ctx.value}`;
+            return;
+          }
           
-            // 3. 找到当前分镜
-            let targetShot = null;
-            const currentShot = timeline.value.shots.find(shot => 
-              currentTime.value >= shot.startTime && 
-              currentTime.value < shot.startTime + shot.duration
-            );
+          // 添加调试信息，显示当前渲染状态
+          //debugInfo.value = `render frame: ${formatTime(currentTime.value)}, play=${isPlaying.value}, FPS=${fps}, canvas size=${canvas.value.width}x${canvas.value.height}`;
+          
+          // 2. 清空离屏画布
+          offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        
+          // 3. 找到当前分镜
+          let targetShot = null;
+          const currentShot = timeline.value.shots.find(shot => 
+            currentTime.value >= shot.startTime && 
+            currentTime.value < shot.startTime + shot.duration
+          );
+          if (!currentShot) {
+            targetShot = timeline.value.shots.length > 0 ? 
+              timeline.value.shots.reduce((last, current) => 
+                (current.startTime > last.startTime) ? current : last
+              ) : null;
+          }
+          targetShot = currentShot || targetShot;
+          // 检查是否分镜切换
+          if (targetShot !== lastRenderShot) {
+            lastRenderShot = targetShot;
+            // 分镜切换时，重置异步渲染状态
+            console.log('分镜切换:', targetShot.id);
+          }
+
+          // 4. 绘制底层背景
+          // 设置基础背景色
+          offscreenCtx.fillStyle = '#f0f0f0';
+          offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          
+          // 如果有当前分镜，绘制分镜背景
+          let isBackgroundDrawn = drawBackgroundLayer(targetShot);
+          // 为异步加载场景提供备用渲染
+          if (currentShot && !isBackgroundDrawn) {
+            // 对于正在加载的图片，设置备用渲染
+            setupAsyncRenderFallback(currentShot);
+          }
+
+          // 保存当前状态，准备应用坐标系变换
+          offscreenCtx.save();
+          
+          // 应用坐标系变换：将原点从左上角移到左下角，并翻转Y轴
+          offscreenCtx.translate(0, offscreenCanvas.height);
+          offscreenCtx.scale(1, -1);
+          
+          // 5. 绘制角色层（中间层）
+          if (expressionManager) {
+            drawRoles();
+          } else {
+            console.log('expressionManager not initialized yet, skipping role drawing');
+          }
+          
+          // 恢复原始坐标系状态
+          offscreenCtx.restore();
+          
+          
+
+          // 6. 绘制上层信息（FPS等）
+          //drawTopLayerInfo(offscreenCtx);
+          
+          // 7. 清空可见画布，防止残影
+          ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
+          
+          // 8. 将离屏Canvas内容复制到可见Canvas（顶层合成）
+          ctx.value.drawImage(offscreenCanvas, 0, 0);
+          
+          // 9. 播放当前分镜的音频
+          if (audioManager && isPlaying.value) {
+            // 获取当前分镜中应该在当前时间播放的音频
+            if (currentShot && currentShot.audios && Array.isArray(currentShot.audios)) {
+              const currentTimeInShot = currentTime.value - currentShot.startTime;
+              
+              currentShot.audios.forEach(audio => {
+                // 检查音频是否应该在当前时间播放
+                if (audio.startTime <= currentTimeInShot && 
+                    (audio.startTime + (audio.audioDuration || 0)) > currentTimeInShot) {
+
+                  if(!audioManager.isPlayIng(audio.audio, audio.roleId)){
+                    // 计算音频应该开始播放的时间点（秒）
+                    const audioStartTimeInShot = currentTimeInShot - audio.startTime;
+                    //console.log('start play audio', audio.audio, audio.roleId, '从', audioStartTimeInShot, '秒开始');
+                    audioManager.playAudio(audio.audio, audio.roleId, audioStartTimeInShot/1000);
+                  }
+                } else {
+                  if(audioManager.isPlayIng(audio.audio, audio.roleId)){
+                    // 音频不在播放时间范围内，停止播放
+                    //console.log('stop play audio', audio.audio, audio.roleId);
+                    audioManager.stopAudio(audio.audio, audio.roleId);
+                  }
+                }
+              });
+            }
+            
+            // 如果没有当前分镜，停止所有音频
             if (!currentShot) {
-              targetShot = timeline.value.shots.length > 0 ? 
-                timeline.value.shots.reduce((last, current) => 
-                  (current.startTime > last.startTime) ? current : last
-                ) : null;
+              audioManager.stopAllAudios(currentTime.value);
             }
-            targetShot = currentShot || targetShot;
-            
+          }
 
-            // 4. 绘制底层背景
-            // 设置基础背景色
-            offscreenCtx.fillStyle = '#f0f0f0';
-            offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-            
-            // 如果有当前分镜，绘制分镜背景
-            let isBackgroundDrawn = drawBackgroundLayer(targetShot);
-            // 为异步加载场景提供备用渲染
-            if (currentShot && !isBackgroundDrawn) {
-              // 对于正在加载的图片，设置备用渲染
-              setupAsyncRenderFallback(currentShot);
-            }
+          // 在播放时根据当前时间动态更新摄像机设置,一定要在绘制角色层之后！！！！！！！
+          //否则，在绘制角色层之前，摄像机设置可能获取焦点时，角色状态还未初始化，将获取错误的宽高，导致计算错误的焦点
 
-            // 保存当前状态，准备应用坐标系变换
-            offscreenCtx.save();
-            
-            // 应用坐标系变换：将原点从左上角移到左下角，并翻转Y轴
-            offscreenCtx.translate(0, offscreenCanvas.height);
-            offscreenCtx.scale(1, -1);
-            
-            // 5. 绘制角色层（中间层）
-            if (expressionManager) {
-              drawRoles();
-            } else {
-              console.log('expressionManager not initialized yet, skipping role drawing');
-            }
-            
-            // 恢复原始坐标系状态
-            offscreenCtx.restore();
-            
-            // 在播放时根据当前时间动态更新摄像机设置,一定要在绘制角色层之后！！！！！！！
-            //否则，在绘制角色层之前，摄像机设置可能获取焦点时，角色状态还未初始化，将获取错误的宽高，导致计算错误的焦点
-            if (cameraModule && cameraModule.updateCameraOnPlayback) {
+          // 10. 绘制摄像机边框（如果启用）
+          if (cameraModule) {
+            if (cameraModule.updateCameraOnPlayback) {
               cameraModule.updateCameraOnPlayback(currentTime.value, timeline.value);
             }
+            cameraModule.drawCamera();
 
-            // 6. 绘制上层信息（FPS等）
-            //drawTopLayerInfo(offscreenCtx);
-            
-            // 7. 清空可见画布，防止残影
-            ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
-            
-            // 8. 将离屏Canvas内容复制到可见Canvas（顶层合成）
-            ctx.value.drawImage(offscreenCanvas, 0, 0);
-            
-            // 9. 播放当前分镜的音频
-            if (audioManager && isPlaying.value) {
-              // 获取当前分镜中应该在当前时间播放的音频
-              if (currentShot && currentShot.audios && Array.isArray(currentShot.audios)) {
-                const currentTimeInShot = currentTime.value - currentShot.startTime;
-                
-                currentShot.audios.forEach(audio => {
-                  // 检查音频是否应该在当前时间播放
-                  if (audio.startTime <= currentTimeInShot && 
-                      (audio.startTime + (audio.audioDuration || 0)) > currentTimeInShot) {
-
-                    if(!audioManager.isPlayIng(audio.audio, audio.roleId)){
-                      // 计算音频应该开始播放的时间点（秒）
-                      const audioStartTimeInShot = currentTimeInShot - audio.startTime;
-                      //console.log('开始播放音频', audio.audio, audio.roleId, '从', audioStartTimeInShot, '秒开始');
-                      audioManager.playAudio(audio.audio, audio.roleId, audioStartTimeInShot/1000);
-                    }
-                  } else {
-                    if(audioManager.isPlayIng(audio.audio, audio.roleId)){
-                      // 音频不在播放时间范围内，停止播放
-                      console.log('停止播放音频', audio.audio, audio.roleId);
-                      audioManager.stopAudio(audio.audio, audio.roleId);
-                    }
-                  }
-                });
-              }
-              
-              // 如果没有当前分镜，停止所有音频
-              if (!currentShot) {
-                audioManager.stopAllAudios(currentTime.value);
-              }
+            // 11. 绘制摄像机预览（如果启用）- 改为异步执行以提高性能
+            if (showCameraPreview.value) {
+              // 使用requestAnimationFrame异步执行预览更新，不阻塞主渲染流程
+              requestAnimationFrame(() => {
+                cameraModule.updateCameraPreview(); // 更新预览
+              });
             }
+          }
 
-            // 10. 绘制摄像机边框（如果启用）
-            if (cameraModule) {
-              cameraModule.drawCamera();
-            }
+          
 
-            // 11. 绘制摄像机预览（如果启用）
-            if (showCameraPreview.value && cameraModule) {
-              cameraModule.updateCameraPreview(); // 更新预览
-            }
 
-            drawTopLayerInfo(ctx.value);
+          drawTopLayerInfo(ctx.value);
         };
         
         // 绘制背景层
@@ -3569,14 +3591,21 @@
               } else {
                 stopPlayback();
                 currentTime.value = totalDuration.value;
+                
+                // 如果正在录制，自动停止录制
+                if (isRecording.value) {
+                  stopRecording();
+                }
               }
             }
             
-            // 更新显示
-            updateTimelineDisplay();
+            renderFrame();
+
+            // // 更新显示 - 改为异步执行以提高性能
+            // requestAnimationFrame(() => {
+            //   updateTimelineDisplay();
+            // });
             
-            
-            renderFrame(12);
           }
           
           // 继续动画
@@ -3978,9 +4007,98 @@
           saveCameraScenery(dialogStartTime);
         };
         
+        // 录制相关状态变量
+        const isRecording = ref(false);
+        const mediaRecorder = ref(null);
+        const videoChunks = ref([]);
+        const recordingStartTime = ref(0);
+        const videoFps = ref(targetFps);
+        
+        // 开始录制
+        const startRecording = () => {
+          // 检查浏览器支持
+          if (!navigator.mediaDevices || !MediaRecorder) {
+            alert('您的浏览器不支持视频录制功能，请使用Chrome或Firefox最新版本');
+            return;
+          }
+          
+          // 准备录制
+          isRecording.value = true;
+          videoChunks.value = [];
+          
+          // 创建视频流
+          const stream = canvas.value.captureStream(videoFps.value);
+          
+          // 配置MediaRecorder
+          const options = {
+            mimeType: 'video/webm; codecs=vp9', // 使用vp9编码，兼容性较好
+            videoBitsPerSecond: 5000000, // 5Mbps比特率
+            framerate: videoFps.value
+          };
+          
+          try {
+            mediaRecorder.value = new MediaRecorder(stream, options);
+            
+            // 监听数据可用事件
+            mediaRecorder.value.ondataavailable = (e) => {
+              if (e.data.size > 0) {
+                videoChunks.value.push(e.data);
+              }
+            };
+            
+            // 监听录制停止事件
+            mediaRecorder.value.onstop = () => {
+              // 录制结束后创建视频文件
+              const blob = new Blob(videoChunks.value, { type: 'video/webm' });
+              const url = URL.createObjectURL(blob);
+              
+              // 创建下载链接
+              const a = document.createElement('a');
+              a.style.display = 'none';
+              a.href = url;
+              a.download = `animation_${Date.now()}.webm`;
+              document.body.appendChild(a);
+              a.click();
+              
+              // 清理
+              setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                videoChunks.value = [];
+              }, 100);
+            };
+            
+            // 开始录制
+            mediaRecorder.value.start(100); // 每100ms收集一次数据
+            recordingStartTime.value = Date.now();
+            
+            // 开始渲染动画帧
+            goToStart();
+            startPlayback();
+          } catch (error) {
+            console.error('录制失败:', error);
+            alert('录制失败: ' + error.message);
+            isRecording.value = false;
+          }
+        };
+        
+        // 停止录制
+        const stopRecording = () => {
+          if (mediaRecorder.value && isRecording.value) {
+            mediaRecorder.value.stop();
+            isRecording.value = false;
+            stopPlayback();
+            console.log('录制已停止');
+          }
+        };
+        
         // 导出动画
         const exportAnimation = () => {
-          alert('动画导出功能 - 模拟实现');
+          if (!isRecording.value) {
+            startRecording();
+          } else {
+            stopRecording();
+          }
         };
         
         // 预加载所有背景图
@@ -4576,7 +4694,7 @@
               currentTime.value = Math.max(0, Math.min(currentTime.value - timeDelta, totalDuration.value));
               
               updateTimelineDisplay();
-              renderFrame(30);
+              renderFrame();
             }
           });
           
@@ -4696,8 +4814,9 @@
         
         // 在播放时额外调用更新分镜高亮的函数
         watch([currentTime, isPlaying], () => {
-          // 强制重新绘制分镜轨道
-          drawShotTrack();
+          // 强制重新绘制时间轴及分镜轨道
+          updateTimelineDisplay();
+          
           // 然后额外应用高亮效果
           setTimeout(() => updateShotHighlights(), 0);
         });
@@ -4975,6 +5094,7 @@
           canvasResetZoom,
           saveProject,
           exportAnimation,
+          isRecording,
           targetFps,
           selectedShotId,
           selectedRoleId,
