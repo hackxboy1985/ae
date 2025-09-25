@@ -911,6 +911,13 @@
             imageCanvas.addEventListener('mousemove', handleImageMouseMove);
             cropBox.addEventListener('mousedown', handleImageMouseDown);
             cropBox.addEventListener('mousemove', handleImageMouseMove);
+            cropBox.addEventListener('dblclick', function(e) {
+                // 阻止事件冒泡，避免触发其他元素的双击事件
+                e.stopPropagation();
+                if (isCropping) {
+                    saveModule();
+                }
+            });
             document.addEventListener('mouseup', handleImageMouseUp);
             // imageCanvas.addEventListener('mouseleave', handleImageMouseUp);
             
@@ -1274,7 +1281,7 @@
                 clickY >= cropRect.top-borderWidth/2 && clickY <= cropRect.bottom+borderWidth/2) {
 
                 isImageModuleRangeMoving = false;
-                
+ 
                 // 记录初始状态
                 initialLeft = cropRect.left;
                 initialTop = cropRect.top;
@@ -1517,7 +1524,7 @@
                     
                     // 重置裁剪框
                     cropBox.style.display = 'none';
-                    isCropping = false;
+                    // isCropping = false;
                     document.getElementById('crop-module').textContent = '框选模块';
                     
                     // 隐藏模块信息提示
