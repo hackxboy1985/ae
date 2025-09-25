@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动作编辑器</title>
+    <script src="js/module.js"></script>
+    <script src="js/frame.js"></script>
+    <script src="js/animation.js"></script>
+    <script src="js/sprite.js"></script>
+    <script src="js/project.js"></script>
+    <script src="js/image.js"></script>
+    <script src="js/commands.js"></script>
+    <style>
+        /* 基础样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        
+        /* 头部样式 */
+        header {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .header-actions button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        /* 主体内容样式 */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 200px;
+            background-color: #f0f0f0;
+            padding: 10px;
+            overflow-y: auto;
+            border-right: 1px solid #ddd;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+        
+        .sidebar-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .sidebar-list {
+            list-style: none;
+        }
+        
+        .sidebar-list li {
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-list li:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .sidebar-list li.active {
+            background-color: #ddd;
+            font-weight: bold;
+        }
+        
+        .add-button {
+            width: 100%;
+            padding: 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-top: 10px;
+        }
+        
+        /* 主编辑区域样式 */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+        }
+        
+        /* Tabbar 样式 */
+        .tabbar {
+            display: flex;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-size: 16px;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab.active {
+            background-color: white;
+            border-bottom: 3px solid #4CAF50;
+            font-weight: bold;
+        }
+        
+        /* Tab 内容区域样式 */
+        .tab-content {
+            flex: 1;
+            display: none;
+            overflow: hidden;
+        }
+        
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 动画编辑区域 */
+        .animation-editor {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            margin: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #animation-canvas {
+            background-color: white;
+            border: 1px solid #ccc;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* 图片编辑区域 */
+        .image-editor {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .image-canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            margin: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #image-canvas {
+            background-color: white;
+            border: 1px solid #ccc;
+        }
+        
+        /* 时间轴样式 */
+        .timeline-container {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .timeline {
+            display: flex;
+            gap: 5px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .timeline-frame {
+            min-width: 60px;
+            height: 40px;
+            background-color: white;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        .timeline-frame:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .timeline-frame.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        
+        .timeline-frame.keyframe {
+            border-color: #2196F3;
+            border-width: 2px;
+        }
+        
+        /* 模块列表样式 */
+        .modules-container {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .modules-list {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .module-item {
+            min-width: 100px;
+            height: 100px;
+            background-color: white;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .module-item:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .module-item.selected {
+            border-color: #4CAF50;
+            border-width: 2px;
+        }
+        
+        /* 工具栏样式 */
+        .toolbar {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .toolbar button {
+            padding: 5px 10px;
+            background-color: white;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        .toolbar button:hover {
+            background-color: #e0e0e0;
+        }
+        
+        /* 控制面板样式 */
+        .control-panel {
+            width: 200px;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-left: 1px solid #ddd;
+        }
+        
+        .control-section {
+            margin-bottom: 20px;
+        }
+        
+        .control-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .control-group input {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 400px;
+            max-width: 90%;
+        }
+        
+        .modal-header {
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .modal-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .modal-button.primary {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .modal-button.secondary {
+            background-color: #ddd;
+            color: #333;
+        }
+        
+        /* 裁剪框样式 */
+        .crop-container {
+            position: relative;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .crop-box {
+            position: absolute;
+            border: 2px solid #4CAF50;
+            background-color: rgba(76, 175, 80, 0.2);
+            cursor: move;
+        }
+        
+        .crop-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #4CAF50;
+            border: 1px solid white;
+        }
+        
+        .crop-handle.top-left {
+            top: -5px;
+            left: -5px;
+            cursor: nwse-resize;
+        }
+        
+        .crop-handle.top-right {
+            top: -5px;
+            right: -5px;
+            cursor: nesw-resize;
+        }
+        
+        .crop-handle.bottom-left {
+            bottom: -5px;
+            left: -5px;
+            cursor: nesw-resize;
+        }
+        
+        .crop-handle.bottom-right {
+            bottom: -5px;
+            right: -5px;
+            cursor: nwse-resize;
+        }
+        
+        /* 模块信息提示样式 */
+        .module-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">动作编辑器</div>
+        <div class="header-actions">
+            <button id="new-project">新建项目</button>
+            <button id="save-project">保存项目</button>
+            <button id="load-project">加载项目</button>
+        </div>
+    </header>
+    
+    <div class="main-container">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">角色</div>
+                <ul id="sprite-list" class="sidebar-list"></ul>
+                <button id="add-sprite" class="add-button">添加角色</button>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-title">动作</div>
+                <ul id="anim-list" class="sidebar-list"></ul>
+                <button id="add-anim" class="add-button">添加动作</button>
+            </div>
+        </div>
+        
+        <!-- 主编辑区域 -->
+        <div class="editor-container">
+            <!-- Tabbar -->
+            <div class="tabbar">
+                <button id="tab-animation" class="tab active" onclick="switchTab('animation')">动作编辑</button>
+                <button id="tab-image" class="tab" onclick="switchTab('image')">图片模块编辑</button>
+            </div>
+            
+            <!-- 动画编辑Tab内容 -->
+            <div id="content-animation" class="tab-content active">
+                <div class="animation-editor">
+                    <div class="toolbar">
+                        <button id="add-frame">添加帧</button>
+                        <button id="delete-frame">删除帧</button>
+                        <button id="add-frame-module">添加模块</button>
+                        <button id="delete-frame-module">删除模块</button>
+                        <button id="flip-horizontal">水平翻转</button>
+                        <button id="flip-vertical">垂直翻转</button>
+                        <button id="rotate">旋转</button>
+                        <button id="play-animation">播放</button>
+                    </div>
+                    
+                    <div class="canvas-container">
+                        <canvas id="animation-canvas" width="600" height="400"></canvas>
+                    </div>
+                    
+                    <div class="timeline-container">
+                        <div class="timeline-header">
+                            <div id="current-anim-name">选择一个动作开始编辑</div>
+                            <div class="animation-speed">
+                                速度: <input type="range" id="speed-range" min="50" max="500" value="100">
+                            </div>
+                        </div>
+                        <div id="timeline" class="timeline"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 图片模块编辑Tab内容 -->
+            <div id="content-image" class="tab-content">
+                <div class="image-editor">
+                    <div class="toolbar">
+                        <button id="upload-image">上传图片</button>
+                        <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
+                        <button id="crop-module">框选模块</button>
+                        <button id="save-module">保存模块</button>
+                    </div>
+                    
+                    <div class="image-canvas-container">
+                        <canvas id="image-canvas" width="800" height="600"></canvas>
+                        <div id="crop-box" class="crop-box" style="display: none;">
+                            <div class="crop-handle top-left"></div>
+                            <div class="crop-handle top-right"></div>
+                            <div class="crop-handle bottom-left"></div>
+                            <div class="crop-handle bottom-right"></div>
+                        </div>
+                        <div id="module-info" class="module-info" style="display: none;"></div>
+                    </div>
+                    
+                    <div class="modules-container">
+                        <div class="control-title">已选模块</div>
+                        <div id="modules-list" class="modules-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <div class="control-section">
+                <div class="control-title">模块属性</div>
+                <div class="control-group">
+                    <label for="module-x">X 坐标</label>
+                    <input type="number" id="module-x" value="0">
+                </div>
+                <div class="control-group">
+                    <label for="module-y">Y 坐标</label>
+                    <input type="number" id="module-y" value="0">
+                </div>
+                <div class="control-group">
+                    <label for="module-width">宽度</label>
+                    <input type="number" id="module-width" value="0" disabled>
+                </div>
+                <div class="control-group">
+                    <label for="module-height">高度</label>
+                    <input type="number" id="module-height" value="0" disabled>
+                </div>
+            </div>
+            
+            <div class="control-section">
+                <div class="control-title">当前图片</div>
+                <div id="current-image-info" style="font-size: 12px; color: #666;">未选择图片</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 新建角色模态框 -->
+    <div id="new-sprite-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">新建角色</div>
+            <div class="modal-body">
+                <div class="control-group">
+                    <label for="sprite-name">角色名称</label>
+                    <input type="text" id="sprite-name" placeholder="输入角色名称">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="create-sprite" class="modal-button primary">创建</button>
+                <button id="cancel-create-sprite" class="modal-button secondary">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 新建动作模态框 -->
+    <div id="new-anim-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">新建动作</div>
+            <div class="modal-body">
+                <div class="control-group">
+                    <label for="anim-name">动作名称</label>
+                    <input type="text" id="anim-name" placeholder="输入动作名称">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="create-anim" class="modal-button primary">创建</button>
+                <button id="cancel-create-anim" class="modal-button secondary">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 上传图片模态框 -->
+    <div id="upload-image-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">上传图片</div>
+            <div class="modal-body">
+                <div class="control-group">
+                    <label for="modal-image-upload">选择图片</label>
+                    <input type="file" id="modal-image-upload" accept="image/*">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-upload" class="modal-button primary">上传</button>
+                <button id="cancel-upload" class="modal-button secondary">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let canvas = document.getElementById('animation-canvas');
+        let ctx = canvas.getContext('2d');
+        let imageCanvas = document.getElementById('image-canvas');
+        let imageCtx = imageCanvas.getContext('2d');
+        let currentProject = null;
+        let currentSprite = null;
+        let currentAnim = null;
+        let currentFrame = null;
+        let currentFrameIndex = 0;
+        let selectedModuleIndex = -1;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let isPlaying = false;
+        let animationSpeed = 100;
+        let lastFrameTime = 0;
+        let animationFrameId = null;
+        let imageManager = null; // 只声明不初始化
+        let currentImage = null;
+        let currentImageId = null;
+        let isCropping = false;
+        let cropStartX = 0;
+        let cropStartY = 0;
+        let cropBox = document.getElementById('crop-box');
+        let selectedImageModule = -1;
+        let selectedImageModules = []; // 支持多选模块的数组
+        let currentTab = 'animation';
+        
+        // 命令管理器单例
+        CommandManager.instance = new CommandManager();
+        
+        // 调整canvas大小以适应容器
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            // 设置canvas的实际尺寸
+            canvas.width = containerWidth;
+            canvas.height = containerHeight;
+            
+            // 重新渲染画布
+            renderCanvas();
+        }
+        
+        // 初始化函数
+        function init() {
+            imageManager = new LWImageManager(); // 在init函数中初始化
+            
+            // 尝试加载保存的项目数据
+            const projectLoaded = loadProject();
+            
+            // 如果没有加载到项目数据，创建默认项目
+            if (!projectLoaded) {
+                currentProject = new Project();
+                
+                // 创建默认角色和动作
+                const defaultSprite = new Sprite('角色1');
+                currentProject.addSprite(defaultSprite);
+                
+                const defaultAnim = new Anim('动作1');
+                defaultSprite.mAnimList.push(defaultAnim);
+                
+                // 添加默认帧
+                const defaultFrame = new Frame();
+                const defaultAnimFrame = new AnimFrame(defaultFrame, true);
+                defaultAnim.aframeList.push(defaultAnimFrame);
+                
+                // 选择默认角色和动作
+                currentSprite = defaultSprite;
+                currentAnim = defaultAnim;
+                currentFrame = defaultFrame;
+            }
+            
+            // 调整canvas大小
+            resizeCanvas();
+            
+            // 渲染界面
+            renderSpriteList();
+            renderAnimList();
+            renderTimeline();
+            renderCanvas();
+            
+            // 绑定事件
+            bindEvents();
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', resizeCanvas);
+        }
+        
+        // 绑定事件函数
+        function bindEvents() {
+            // 角色相关事件
+            document.getElementById('add-sprite').addEventListener('click', showNewSpriteModal);
+            document.getElementById('create-sprite').addEventListener('click', createSprite);
+            document.getElementById('cancel-create-sprite').addEventListener('click', hideNewSpriteModal);
+            
+            // 动作相关事件
+            document.getElementById('add-anim').addEventListener('click', showNewAnimModal);
+            document.getElementById('create-anim').addEventListener('click', createAnim);
+            document.getElementById('cancel-create-anim').addEventListener('click', hideNewAnimModal);
+            
+            // 帧相关事件
+            document.getElementById('add-frame').addEventListener('click', addFrame);
+            document.getElementById('delete-frame').addEventListener('click', deleteFrame);
+            
+            // 模块相关事件
+            document.getElementById('add-frame-module').addEventListener('click', showAddModuleModal);
+            document.getElementById('delete-frame-module').addEventListener('click', deleteFrameModule);
+            document.getElementById('flip-horizontal').addEventListener('click', flipHorizontal);
+            document.getElementById('flip-vertical').addEventListener('click', flipVertical);
+            document.getElementById('rotate').addEventListener('click', rotateModule);
+            
+            // 动画播放相关事件
+            document.getElementById('play-animation').addEventListener('click', togglePlayAnimation);
+            document.getElementById('speed-range').addEventListener('input', changeAnimationSpeed);
+            
+            // 图片相关事件
+            document.getElementById('upload-image').addEventListener('click', showUploadImageModal);
+            document.getElementById('confirm-upload').addEventListener('click', uploadImage);
+            document.getElementById('cancel-upload').addEventListener('click', hideUploadImageModal);
+            document.getElementById('crop-module').addEventListener('click', toggleCropping);
+            document.getElementById('save-module').addEventListener('click', saveModule);
+            
+            // 项目保存事件
+            document.getElementById('save-project').addEventListener('click', saveProject);
+            
+            // 画布事件
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp);
+            
+            imageCanvas.addEventListener('mousedown', handleImageMouseDown);
+            imageCanvas.addEventListener('mousemove', handleImageMouseMove);
+            imageCanvas.addEventListener('mouseup', handleImageMouseUp);
+            imageCanvas.addEventListener('mouseleave', handleImageMouseUp);
+            
+            // 控制面板事件
+            document.getElementById('module-x').addEventListener('input', updateModulePosition);
+            document.getElementById('module-y').addEventListener('input', updateModulePosition);
+        }
+        
+        // 保存项目函数
+        function saveProject() {
+            try {
+                // 准备项目数据进行保存
+                const projectData = {
+                    // 保存所有图片数据（包括Base64编码的图片）
+                    images: Array.from(imageManager.m_imageMap.entries()).map(([id, imageItem]) => ({
+                        id: imageItem.id,
+                        name: imageItem.name,
+                        src: imageItem.src,
+                        modulesList: imageItem.modulesList
+                    })),
+                    // 保存项目的角色、动作、帧等数据
+                    project: {
+                        m_spriteList: currentProject.m_spriteList.map(sprite => ({
+                            name: sprite.name,
+                            mAnimList: sprite.mAnimList.map(anim => ({
+                                name: anim.name,
+                                aframeList: anim.aframeList.map(aframe => ({
+                                    KeyFrameState: aframe.KeyFrameState,
+                                    frame: {
+                                        fmList: aframe.frame.fmList.map(fm => ({
+                                            module: fm.module,
+                                            x: fm.x,
+                                            y: fm.y,
+                                            flag: fm.flag
+                                        }))
+                                    }
+                                }))
+                            }))
+                        }))
+                    }
+                };
+                
+                // 使用localStorage保存项目数据
+                localStorage.setItem('animationEditorProject', JSON.stringify(projectData));
+                
+                alert('项目保存成功！');
+            } catch (error) {
+                console.error('保存项目失败:', error);
+                alert('保存项目失败，请刷新页面重试。');
+            }
+        }
+        
+        // 加载项目函数
+        function loadProject() {
+            try {
+                const savedData = localStorage.getItem('animationEditorProject');
+                if (!savedData) {
+                    console.log('没有找到保存的项目数据');
+                    return false;
+                }
+                
+                const projectData = JSON.parse(savedData);
+                
+                // 重建图像管理器和所有图片
+                imageManager = new LWImageManager();
+                projectData.images.forEach(savedImage => {
+                    const imageItem = new ImageItem(savedImage.id, savedImage.src, savedImage.name);
+                    imageItem.modulesList = savedImage.modulesList || [];
+                    imageManager.addImage(imageItem);
+                });
+                
+                // 重建项目、角色、动作、帧等数据
+                currentProject = new Project();
+                projectData.project.m_spriteList.forEach(savedSprite => {
+                    const sprite = new Sprite(savedSprite.name);
+                    currentProject.addSprite(sprite);
+                    
+                    // 为角色添加图片引用
+                    projectData.images.forEach(savedImage => {
+                        const imageItem = imageManager.getImage(savedImage.id);
+                        if (imageItem) {
+                            sprite.addImage(imageItem);
+                        }
+                    });
+                    
+                    // 重建动作
+                    savedSprite.mAnimList.forEach(savedAnim => {
+                        const anim = new Anim(savedAnim.name);
+                        sprite.mAnimList.push(anim);
+                        
+                        // 重建动画帧
+                        savedAnim.aframeList.forEach(savedAFrame => {
+                            const frame = new Frame();
+                            frame.fmList = savedAFrame.frame.fmList.map(savedFm => {
+                                const fm = new FrameModule(savedFm.module, savedFm.x, savedFm.y, savedFm.flag);
+                                return fm;
+                            });
+                            const aframe = new AnimFrame(frame, savedAFrame.KeyFrameState);
+                            anim.aframeList.push(aframe);
+                        });
+                    });
+                });
+                
+                // 选择默认的角色和动作
+                if (currentProject.m_spriteList.length > 0) {
+                    currentSprite = currentProject.m_spriteList[0];
+                    if (currentSprite.mAnimList.length > 0) {
+                        currentAnim = currentSprite.mAnimList[0];
+                        if (currentAnim.aframeList.length > 0) {
+                            currentFrame = currentAnim.aframeList[0].frame;
+                        }
+                    }
+                }
+                
+                console.log('项目加载成功！');
+                return true;
+            } catch (error) {
+                console.error('加载项目失败:', error);
+                alert('加载项目失败，请尝试重新创建项目。');
+                return false;
+            }
+        }
+        
+        // 绘制所有已选模块到图片画布上
+        function drawSelectedModules() {
+            if (!currentImage || !currentSprite || !currentImageId) return;
+            
+            // 清空画布并重绘原图
+            imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+            imageCtx.drawImage(currentImage, 0, 0);
+            
+            const imageItem = currentSprite.getImage(currentImageId);
+            if (!imageItem) return;
+            
+            // 绘制所有选中的模块
+            const allSelectedModules = selectedImageModule !== -1 ? [selectedImageModule] : selectedImageModules;
+            
+            allSelectedModules.forEach(index => {
+                if (index >= 0 && index < imageItem.modulesList.length) {
+                    const module = imageItem.modulesList[index];
+                    
+                    // 绘制选中模块的高亮框
+                    imageCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                    imageCtx.lineWidth = 2;
+                    imageCtx.strokeRect(module.x, module.y, module.width, module.height);
+                    
+                    // 绘制模块索引
+                    imageCtx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                    imageCtx.font = '12px Arial';
+                    imageCtx.fillText(`${index + 1}`, module.x + 2, module.y + 14);
+                }
+            });
+        }
+        
+        // 切换Tab函数
+        function switchTab(tabName) {
+            // 更新Tab状态
+            document.getElementById('tab-animation').classList.remove('active');
+            document.getElementById('tab-image').classList.remove('active');
+            document.getElementById('content-animation').classList.remove('active');
+            document.getElementById('content-image').classList.remove('active');
+            
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            document.getElementById(`content-${tabName}`).classList.add('active');
+            
+            currentTab = tabName;
+            
+            // 根据Tab重新渲染
+            if (tabName === 'animation') {
+                renderCanvas();
+            } else if (tabName === 'image') {
+                renderModulesList();
+                drawSelectedModules(); // 绘制选中的模块
+            }
+        }
+        
+        // 显示新建角色模态框
+        function showNewSpriteModal() {
+            document.getElementById('new-sprite-modal').style.display = 'flex';
+            document.getElementById('sprite-name').focus();
+        }
+        
+        // 隐藏新建角色模态框
+        function hideNewSpriteModal() {
+            document.getElementById('new-sprite-modal').style.display = 'none';
+            document.getElementById('sprite-name').value = '';
+        }
+        
+        // 创建角色
+        function createSprite() {
+            const spriteName = document.getElementById('sprite-name').value.trim();
+            if (!spriteName) {
+                alert('请输入角色名称');
+                return;
+            }
+            
+            const newSprite = new Sprite(spriteName);
+            currentProject.addSprite(newSprite);
+            
+            // 更新界面
+            renderSpriteList();
+            hideNewSpriteModal();
+        }
+        
+        // 显示新建动作模态框
+        function showNewAnimModal() {
+            if (!currentSprite) {
+                alert('请先选择一个角色');
+                return;
+            }
+            
+            document.getElementById('new-anim-modal').style.display = 'flex';
+            document.getElementById('anim-name').focus();
+        }
+        
+        // 隐藏新建动作模态框
+        function hideNewAnimModal() {
+            document.getElementById('new-anim-modal').style.display = 'none';
+            document.getElementById('anim-name').value = '';
+        }
+        
+        // 创建动作
+        function createAnim() {
+            if (!currentSprite) return;
+            
+            const animName = document.getElementById('anim-name').value.trim();
+            if (!animName) {
+                alert('请输入动作名称');
+                return;
+            }
+            
+            const newAnim = new Anim(animName);
+            currentSprite.mAnimList.push(newAnim);
+            
+            // 添加默认帧
+            const defaultFrame = new Frame();
+            const defaultAnimFrame = new AnimFrame(defaultFrame, true);
+            newAnim.aframeList.push(defaultAnimFrame);
+            
+            // 更新界面
+            renderAnimList();
+            hideNewAnimModal();
+        }
+        
+        // 显示上传图片模态框
+        function showUploadImageModal() {
+            document.getElementById('upload-image-modal').style.display = 'flex';
+        }
+        
+        // 隐藏上传图片模态框
+        function hideUploadImageModal() {
+            document.getElementById('upload-image-modal').style.display = 'none';
+            document.getElementById('modal-image-upload').value = '';
+        }
+        
+        // 上传图片
+        function uploadImage() {
+            const fileInput = document.getElementById('modal-image-upload');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('请选择一张图片');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const imageUrl = e.target.result;
+                const imageId = Date.now().toString();
+                const imageName = file.name;
+                
+                // 创建图片项
+                const imageItem = new ImageItem(imageId, imageUrl, imageName);
+                
+                // 添加到角色和图像管理器
+                if (currentSprite) {
+                    currentSprite.addImage(imageItem);
+                }
+                imageManager.addImage(imageItem);
+                
+                // 设置当前图片
+                currentImage = imageItem.image;
+                currentImageId = imageId;
+                
+                // 绘制图片到画布
+                currentImage.onload = function() {
+                    // 调整画布大小以适应图片
+                    imageCanvas.width = currentImage.width;
+                    imageCanvas.height = currentImage.height;
+                    
+                    // 绘制图片
+                    imageCtx.drawImage(currentImage, 0, 0);
+                    
+                    // 更新当前图片信息
+                    document.getElementById('current-image-info').textContent = 
+                        `${imageName} (${currentImage.width}x${currentImage.height})`;
+                    
+                    // 清空之前的模块
+                    if (currentSprite && currentImageId) {
+                        const imageItem = currentSprite.getImage(currentImageId);
+                        if (imageItem) {
+                            imageItem.modulesList = [];
+                        }
+                    }
+                    
+                    renderModulesList();
+                    drawSelectedModules();
+                };
+            };
+            
+            reader.readAsDataURL(file);
+            hideUploadImageModal();
+        }
+        
+        // 切换裁剪模式
+        function toggleCropping() {
+            if (!currentImage) {
+                alert('请先上传一张图片');
+                return;
+            }
+            
+            isCropping = !isCropping;
+            const cropButton = document.getElementById('crop-module');
+            cropButton.textContent = isCropping ? '取消裁剪' : '框选模块';
+            
+            if (!isCropping) {
+                cropBox.style.display = 'none';
+            }
+        }
+        
+        let isImageModuleRangeMoving = false;
+        // 处理图片画布鼠标按下事件
+        function handleImageMouseDown(e) {
+            if (!isCropping || !currentImage) return;
+
+            isImageModuleRangeMoving = true;
+            const rect = imageCanvas.getBoundingClientRect();
+            cropStartX = e.clientX - rect.left;
+            cropStartY = e.clientY - rect.top;
+            
+            // 显示裁剪框并设置初始位置（相对于canvas的位置）
+            cropBox.style.display = 'block';
+            cropBox.style.left = cropStartX + 'px';
+            cropBox.style.top = cropStartY + 'px';
+            cropBox.style.width = '0px';
+            cropBox.style.height = '0px';
+        }
+        
+        // 处理图片画布鼠标移动事件
+        function handleImageMouseMove(e) {
+            if (!isCropping || !currentImage || !isImageModuleRangeMoving) return;
+            
+            const rect = imageCanvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            // 计算裁剪框的位置和大小
+            const x = Math.min(cropStartX, currentX);
+            const y = Math.min(cropStartY, currentY);
+            const width = Math.abs(currentX - cropStartX);
+            const height = Math.abs(currentY - cropStartY);
+            
+            // 更新裁剪框样式
+            cropBox.style.left = x + 'px';
+            cropBox.style.top = y + 'px';
+            cropBox.style.width = width + 'px';
+            cropBox.style.height = height + 'px';
+        }
+        
+        // 处理图片画布鼠标释放事件
+        function handleImageMouseUp() {
+            if (!isCropping || !currentImage) return;
+            
+            isImageModuleRangeMoving = false;
+            // 当鼠标释放时，检查裁剪框是否有有效尺寸
+            const rect = cropBox.getBoundingClientRect();
+            if (rect.width > 10 && rect.height > 10) {
+                // 显示提示信息，告知用户可以点击"保存模块"按钮确认
+                const moduleInfo = document.getElementById('module-info');
+                if (moduleInfo) {
+                    moduleInfo.textContent = `已选择区域: ${Math.round(rect.width)}x${Math.round(rect.height)} - 点击"保存模块"确认`;
+                    moduleInfo.style.display = 'block';
+                }
+                // 不自动保存模块，让用户点击按钮确认
+            } else if (rect.width > 0 && rect.height > 0) {
+                // 如果尺寸太小，重置裁剪框
+                cropBox.style.display = 'none';
+                const moduleInfo = document.getElementById('module-info');
+                if (moduleInfo) {
+                    moduleInfo.style.display = 'none';
+                }
+            }
+        }
+        
+        // 保存模块
+        function saveModule() {
+            if (!currentImage || !isCropping) {
+                alert('请先框选一个模块');
+                return;
+            }
+            
+            const rect = cropBox.getBoundingClientRect();
+            const canvasRect = imageCanvas.getBoundingClientRect();
+            
+            // 计算模块在画布上的实际位置和大小
+            // 注意：这里直接使用rect和canvasRect的相对位置计算，与框选时的计算保持一致
+            const x = rect.left - canvasRect.left;
+            const y = rect.top - canvasRect.top;
+            const width = rect.width;
+            const height = rect.height;
+            
+            // 检查模块大小是否有效
+            if (width < 10 || height < 10) {
+                alert('模块尺寸过小，请重新框选');
+                return;
+            }
+            
+            // 保存模块信息
+            if (currentSprite && currentImageId) {
+                const imageItem = currentSprite.getImage(currentImageId);
+                if (imageItem) {
+                    const moduleId = imageItem.modulesList.length;
+                    imageItem.modulesList.push({ x, y, width, height });
+                    
+                    // 重置裁剪框
+                    cropBox.style.display = 'none';
+                    isCropping = false;
+                    document.getElementById('crop-module').textContent = '框选模块';
+                    
+                    // 隐藏模块信息提示
+                    const moduleInfo = document.getElementById('module-info');
+                    if (moduleInfo) {
+                        moduleInfo.style.display = 'none';
+                    }
+                    
+                    // 更新模块列表
+                    renderModulesList();
+                }
+            }
+        }
+        
+        // 渲染模块列表
+        function renderModulesList() {
+            const modulesListEl = document.getElementById('modules-list');
+            modulesListEl.innerHTML = '';
+            
+            if (!currentSprite || !currentImageId) return;
+            
+            const imageItem = currentSprite.getImage(currentImageId);
+            if (!imageItem || imageItem.modulesList.length === 0) return;
+            
+            imageItem.modulesList.forEach((module, index) => {
+                const moduleItem = document.createElement('div');
+                moduleItem.className = 'module-item' + (selectedImageModule === index || selectedImageModules.includes(index) ? ' selected' : '');
+                
+                // 创建一个小画布来显示模块预览
+                const previewCanvas = document.createElement('canvas');
+                previewCanvas.width = 80;
+                previewCanvas.height = 80;
+                const previewCtx = previewCanvas.getContext('2d');
+                
+                // 计算缩放比例
+                const scale = Math.min(80 / module.width, 80 / module.height);
+                const scaledWidth = module.width * scale;
+                const scaledHeight = module.height * scale;
+                
+                // 绘制预览
+                previewCtx.drawImage(
+                    currentImage,
+                    module.x, module.y,
+                    module.width, module.height,
+                    (80 - scaledWidth) / 2, (80 - scaledHeight) / 2,
+                    scaledWidth, scaledHeight
+                );
+                
+                moduleItem.appendChild(previewCanvas);
+                
+                // 添加模块索引
+                const indexText = document.createElement('div');
+                indexText.style.position = 'absolute';
+                indexText.style.bottom = '5px';
+                indexText.style.right = '5px';
+                indexText.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                indexText.style.color = 'white';
+                indexText.style.padding = '2px 5px';
+                indexText.style.borderRadius = '3px';
+                indexText.style.fontSize = '12px';
+                indexText.textContent = index + 1;
+                moduleItem.appendChild(indexText);
+                
+                // 添加点击事件
+                moduleItem.addEventListener('click', (e) => {
+                    // 如果按住Ctrl键，进行多选
+                    if (e.ctrlKey || e.metaKey) {
+                        // 切换该模块的选中状态
+                        const indexInArray = selectedImageModules.indexOf(index);
+                        if (indexInArray === -1) {
+                            selectedImageModules.push(index);
+                        } else {
+                            selectedImageModules.splice(indexInArray, 1);
+                        }
+                        selectedImageModule = -1; // 清除单选状态
+                    } else {
+                        // 单选
+                        selectedImageModule = index;
+                        selectedImageModules = []; // 清除多选状态
+                    }
+                    
+                    renderModulesList();
+                    drawSelectedModules(); // 绘制选中的模块
+                });
+                
+                modulesListEl.appendChild(moduleItem);
+            });
+        }
+        
+        // 显示添加模块模态框
+        function showAddModuleModal() {
+            if (!currentFrame) {
+                alert('请先选择一个帧');
+                return;
+            }
+            
+            // 如果没有可用的图片模块，提示用户去图片编辑tab
+            if (!hasAvailableModules()) {
+                alert('没有可用的图片模块，请先去图片编辑tab创建模块');
+                switchTab('image');
+                return;
+            }
+            
+            // 如果有可用的模块，直接添加一个随机模块
+            addRandomModule();
+        }
+        
+        // 检查是否有可用的模块
+        function hasAvailableModules() {
+            if (!currentSprite) return false;
+            
+            for (const imageItem of currentSprite.m_imageList) {
+                if (imageItem.modulesList.length > 0) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        
+        // 添加随机模块
+        function addRandomModule() {
+            if (!currentSprite || !currentFrame) return;
+            
+            // 找到所有可用的模块
+            const availableModules = [];
+            
+            currentSprite.m_imageList.forEach(imageItem => {
+                imageItem.modulesList.forEach((moduleRect, moduleIndex) => {
+                    availableModules.push({
+                        imageId: imageItem.id,
+                        moduleIndex: moduleIndex
+                    });
+                });
+            });
+            
+            if (availableModules.length === 0) return;
+            
+            // 随机选择一个模块
+            const randomModule = availableModules[Math.floor(Math.random() * availableModules.length)];
+            
+            // 创建FrameModule并添加到当前帧
+            const module = new Module(randomModule.imageId, randomModule.moduleIndex);
+            const frameModule = new FrameModule(module, 0, 0, 0);
+            
+            CommandManager.instance.addCommand(new AddFmCommand(currentFrame, frameModule));
+            
+            // 更新界面
+            renderCanvas();
+        }
+        
+        // 添加帧
+        function addFrame() {
+            if (!currentAnim) {
+                alert('请先选择一个动作');
+                return;
+            }
+            
+            // 创建新帧
+            let newFrame;
+            if (currentFrame) {
+                // 复制当前帧
+                newFrame = currentFrame.clone();
+            } else {
+                newFrame = new Frame();
+            }
+            
+            const newAnimFrame = new AnimFrame(newFrame, true);
+            
+            // 插入到当前帧之后
+            currentAnim.aframeList.splice(currentFrameIndex + 1, 0, newAnimFrame);
+            
+            // 选择新创建的帧
+            selectFrame(currentFrameIndex + 1);
+        }
+        
+        // 删除帧
+        function deleteFrame() {
+            if (!currentAnim || currentAnim.aframeList.length <= 1) {
+                alert('至少需要保留一帧');
+                return;
+            }
+            
+            // 删除当前帧
+            currentAnim.aframeList.splice(currentFrameIndex, 1);
+            
+            // 选择上一帧或第一帧
+            currentFrameIndex = Math.min(currentFrameIndex, currentAnim.aframeList.length - 1);
+            currentFrame = currentAnim.aframeList[currentFrameIndex].frame;
+            selectedModuleIndex = -1;
+            
+            // 更新界面
+            renderTimeline();
+            renderCanvas();
+            
+            document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
+        }
+        
+        // 删除帧模块
+        function deleteFrameModule() {
+            if (!currentFrame || selectedModuleIndex < 0) return;
+            
+            const frameModule = currentFrame.fmList[selectedModuleIndex];
+            CommandManager.instance.addCommand(new AddFmCommand(currentFrame, frameModule));
+            
+            // 从当前帧中删除模块
+            currentFrame.fmList.splice(selectedModuleIndex, 1);
+            selectedModuleIndex = -1;
+            
+            // 更新界面
+            renderCanvas();
+        }
+        
+        // 水平翻转
+        function flipHorizontal() {
+            if (!currentFrame || selectedModuleIndex < 0) return;
+            
+            const fm = currentFrame.fmList[selectedModuleIndex];
+            CommandManager.instance.addCommand(new TransformFmCommand(fm, fm.x, fm.y, fm.flag));
+            
+            // 切换水平翻转标志
+            fm.flag ^= 1;
+            
+            // 更新界面
+            renderCanvas();
+        }
+        
+        // 垂直翻转
+        function flipVertical() {
+            if (!currentFrame || selectedModuleIndex < 0) return;
+            
+            const fm = currentFrame.fmList[selectedModuleIndex];
+            CommandManager.instance.addCommand(new TransformFmCommand(fm, fm.x, fm.y, fm.flag));
+            
+            // 切换垂直翻转标志
+            fm.flag ^= 2;
+            
+            // 更新界面
+            renderCanvas();
+        }
+        
+        // 旋转模块
+        function rotateModule() {
+            if (!currentFrame || selectedModuleIndex < 0) return;
+            
+            const fm = currentFrame.fmList[selectedModuleIndex];
+            CommandManager.instance.addCommand(new TransformFmCommand(fm, fm.x, fm.y, fm.flag));
+            
+            // 切换旋转标志
+            fm.flag ^= 4;
+            
+            // 更新界面
+            renderCanvas();
+        }
+        
+        // 改变动画速度
+        function changeAnimationSpeed() {
+            animationSpeed = 550 - document.getElementById('speed-range').value;
+        }
+        
+        // 处理鼠标按下事件
+        function handleMouseDown(e) {
+            if (!currentFrame) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 检查是否点击了某个模块
+            const originX = canvas.width / 2;
+            const originY = canvas.height / 2;
+            
+            // 从后往前检查，确保上层的模块先被选中
+            for (let i = currentFrame.fmList.length - 1; i >= 0; i--) {
+                const fm = currentFrame.fmList[i];
+                const module = fm.module;
+                if (!module) continue;
+                
+                const imageItem = currentSprite.getImage(module.imageId);
+                if (!imageItem || !imageItem.modulesList[module.imageModuleId]) continue;
+                
+                const rectModule = imageItem.modulesList[module.imageModuleId];
+                let width = rectModule.width;
+                let height = rectModule.height;
+                
+                // 应用变换后的尺寸
+                if (fm.flag & 4) { // 90度旋转
+                    [width, height] = [height, width];
+                }
+                
+                // 计算模块的边界框
+                let left = originX + fm.x - width / 2;
+                let top = originY - fm.y - height / 2;
+                let right = left + width;
+                let bottom = top + height;
+                
+                // 检查点击是否在模块内
+                if (x >= left && x <= right && y >= top && y <= bottom) {
+                    selectedModuleIndex = i;
+                    isDragging = true;
+                    dragStartX = x - (originX + fm.x);
+                    dragStartY = y - (originY - fm.y);
+                    
+                    // 更新控制面板
+                    document.getElementById('module-x').value = Math.round(fm.x);
+                    document.getElementById('module-y').value = Math.round(fm.y);
+                    document.getElementById('module-width').value = width;
+                    document.getElementById('module-height').value = height;
+                    
+                    renderCanvas();
+                    return;
+                }
+            }
+            
+            // 如果没有点击到任何模块，取消选择
+            selectedModuleIndex = -1;
+            
+            // 清空控制面板
+            document.getElementById('module-x').value = 0;
+            document.getElementById('module-y').value = 0;
+            document.getElementById('module-width').value = 0;
+            document.getElementById('module-height').value = 0;
+            
+            renderCanvas();
+        }
+        
+        // 处理鼠标移动事件
+        function handleMouseMove(e) {
+            if (!isDragging || !currentFrame || selectedModuleIndex < 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const originX = canvas.width / 2;
+            const originY = canvas.height / 2;
+            
+            const fm = currentFrame.fmList[selectedModuleIndex];
+            const command = new TransformFmCommand(fm, fm.x, fm.y, fm.flag);
+            
+            fm.x = x - originX - dragStartX;
+            fm.y = originY - y + dragStartY;
+            
+            // 更新控制面板
+            document.getElementById('module-x').value = Math.round(fm.x);
+            document.getElementById('module-y').value = Math.round(fm.y);
+            
+            CommandManager.instance.addCommand(command);
+            renderCanvas();
+        }
+        
+        // 处理鼠标释放事件
+        function handleMouseUp() {
+            isDragging = false;
+        }
+        
+        // 更新模块位置
+        function updateModulePosition() {
+            if (!currentFrame || selectedModuleIndex < 0) return;
+            
+            const fm = currentFrame.fmList[selectedModuleIndex];
+            const command = new TransformFmCommand(fm, fm.x, fm.y, fm.flag);
+            
+            fm.x = parseInt(document.getElementById('module-x').value) || 0;
+            fm.y = parseInt(document.getElementById('module-y').value) || 0;
+            
+            CommandManager.instance.addCommand(command);
+            renderCanvas();
+        }
+        
+        // 渲染角色列表
+        function renderSpriteList() {
+            const spriteListEl = document.getElementById('sprite-list');
+            spriteListEl.innerHTML = '';
+            
+            currentProject.m_spriteList.forEach((sprite, index) => {
+                const li = document.createElement('li');
+                li.textContent = sprite.name;
+                if (currentSprite === sprite) {
+                    li.classList.add('active');
+                }
+                li.addEventListener('click', () => {
+                    selectSprite(index);
+                });
+                spriteListEl.appendChild(li);
+            });
+        }
+        
+        // 渲染动作列表
+        function renderAnimList() {
+            const animListEl = document.getElementById('anim-list');
+            animListEl.innerHTML = '';
+            
+            if (!currentSprite) return;
+            
+            currentSprite.mAnimList.forEach((anim, index) => {
+                const li = document.createElement('li');
+                li.textContent = anim.name;
+                if (currentAnim === anim) {
+                    li.classList.add('active');
+                }
+                li.addEventListener('click', () => {
+                    selectAnim(index);
+                });
+                animListEl.appendChild(li);
+            });
+        }
+        
+        // 渲染时间轴
+        function renderTimeline() {
+            const timelineEl = document.getElementById('timeline');
+            timelineEl.innerHTML = '';
+            
+            if (!currentAnim) return;
+            
+            currentAnim.aframeList.forEach((animFrame, index) => {
+                const frameEl = document.createElement('div');
+                frameEl.className = 'timeline-frame' + (index === currentFrameIndex ? ' active' : '');
+                if (animFrame.KeyFrameState) {
+                    frameEl.classList.add('keyframe');
+                }
+                frameEl.textContent = index + 1;
+                frameEl.addEventListener('click', () => {
+                    selectFrame(index);
+                });
+                timelineEl.appendChild(frameEl);
+            });
+        }
+        
+        // 渲染画布
+        function renderCanvas() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!currentFrame) return;
+            
+            // 绘制当前帧
+            const originX = canvas.width / 2;
+            const originY = canvas.height / 2;
+            currentFrame.draw(ctx, currentSprite, originX, originY);
+            
+            // 如果有选中的模块，绘制选中框
+            if (selectedModuleIndex >= 0 && selectedModuleIndex < currentFrame.fmList.length) {
+                const fm = currentFrame.fmList[selectedModuleIndex];
+                const module = fm.module;
+                if (module) {
+                    const imageItem = currentSprite.getImage(module.imageId);
+                    if (imageItem && imageItem.modulesList[module.imageModuleId]) {
+                        const rectModule = imageItem.modulesList[module.imageModuleId];
+                        let width = rectModule.width;
+                        let height = rectModule.height;
+                        
+                        // 应用变换后的尺寸
+                        if (fm.flag & 4) { // 90度旋转
+                            [width, height] = [height, width];
+                        }
+                        
+                        // 绘制选中框
+                        ctx.strokeStyle = 'blue';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(
+                            originX + fm.x - width / 2 - 2,
+                            originY - fm.y - height / 2 - 2,
+                            width + 4,
+                            height + 4
+                        );
+                        
+                        // 绘制控制点
+                        const points = [
+                            { x: originX + fm.x - width / 2, y: originY - fm.y - height / 2 },
+                            { x: originX + fm.x + width / 2, y: originY - fm.y - height / 2 },
+                            { x: originX + fm.x + width / 2, y: originY - fm.y + height / 2 },
+                            { x: originX + fm.x - width / 2, y: originY - fm.y + height / 2 }
+                        ];
+                        
+                        ctx.fillStyle = 'blue';
+                        points.forEach(point => {
+                            ctx.beginPath();
+                            ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+                            ctx.fill();
+                        });
+                        
+                        // 绘制坐标信息
+                        ctx.fillStyle = 'black';
+                        ctx.font = '12px Arial';
+                        ctx.fillText(`X: ${Math.round(fm.x)}`, originX + fm.x + width / 2 + 10, originY - fm.y - height / 2 - 10);
+                        ctx.fillText(`Y: ${Math.round(fm.y)}`, originX + fm.x + width / 2 + 10, originY - fm.y - height / 2);
+                    }
+                }
+            }
+        }
+        
+        // 选择角色
+        function selectSprite(index) {
+            if (index < 0 || index >= currentProject.m_spriteList.length) return;
+            
+            currentSprite = currentProject.m_spriteList[index];
+            currentAnim = null;
+            currentFrame = null;
+            currentFrameIndex = 0;
+            selectedModuleIndex = -1;
+            
+            // 更新界面
+            renderSpriteList();
+            renderAnimList();
+            renderTimeline();
+            renderCanvas();
+            
+            document.getElementById('current-anim-name').textContent = '选择一个动作开始编辑';
+        }
+        
+        // 选择动作
+        function selectAnim(index) {
+            if (!currentSprite || index < 0 || index >= currentSprite.mAnimList.length) return;
+            
+            currentAnim = currentSprite.mAnimList[index];
+            currentFrame = currentAnim.aframeList.length > 0 ? currentAnim.aframeList[0].frame : null;
+            currentFrameIndex = 0;
+            selectedModuleIndex = -1;
+            
+            // 更新界面
+            renderAnimList();
+            renderTimeline();
+            renderCanvas();
+            
+            document.getElementById('current-anim-name').textContent = currentAnim.name + (currentFrame ? ` - 帧${currentFrameIndex + 1}` : ' - 无帧');
+        }
+        
+        // 选择帧
+        function selectFrame(index) {
+            if (!currentAnim || index < 0 || index >= currentAnim.aframeList.length) return;
+            
+            currentFrameIndex = index;
+            currentFrame = currentAnim.aframeList[index].frame;
+            selectedModuleIndex = -1;
+            
+            // 更新界面
+            renderTimeline();
+            renderCanvas();
+            
+            document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
+        }
+        
+        // 切换播放动画
+        function togglePlayAnimation() {
+            if (!currentAnim || currentAnim.aframeList.length === 0) {
+                alert('没有可播放的动画');
+                return;
+            }
+            
+            isPlaying = !isPlaying;
+            const playButton = document.getElementById('play-animation');
+            playButton.textContent = isPlaying ? '暂停' : '播放';
+            
+            if (isPlaying) {
+                lastFrameTime = performance.now();
+                playAnimation();
+            } else if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        }
+        
+        // 播放动画
+        function playAnimation(timestamp) {
+            if (!isPlaying) return;
+            
+            if (!timestamp) timestamp = performance.now();
+            const elapsed = timestamp - lastFrameTime;
+            
+            if (elapsed >= animationSpeed) {
+                lastFrameTime = timestamp;
+                
+                // 切换到下一帧
+                currentFrameIndex = (currentFrameIndex + 1) % currentAnim.aframeList.length;
+                currentFrame = currentAnim.aframeList[currentFrameIndex].frame;
+                
+                // 更新界面
+                renderTimeline();
+                renderCanvas();
+                
+                document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
+            }
+            
+            animationFrameId = requestAnimationFrame(playAnimation);
+        }
+        
+        // 启动应用
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
