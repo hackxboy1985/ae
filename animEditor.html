@@ -536,6 +536,13 @@
                         <button id="save-module">保存模块</button>
                     </div>
                     
+                    <div class="image-controls mb-2">
+                        <button id="zoom-in" class="mr-2 p-1 bg-gray-200 rounded">放大</button>
+                        <button id="zoom-out" class="mr-2 p-1 bg-gray-200 rounded">缩小</button>
+                        <button id="zoom-reset" class="p-1 bg-gray-200 rounded">重置缩放</button>
+                        <span id="zoom-level" class="ml-2">100%</span>
+                    </div>
+                    
                     <div class="image-canvas-container">
                         <canvas id="image-canvas" width="800" height="600"></canvas>
                         <div id="crop-box" class="crop-box" style="display: none;">
@@ -580,6 +587,7 @@
             <div class="control-section">
                 <div class="control-title">当前图片</div>
                 <div id="current-image-info" style="font-size: 12px; color: #666;">未选择图片</div>
+                <div id="mouse-position" style="font-size: 12px; color: #666;">鼠标位置: (0, 0)</div>
             </div>
         </div>
     </div>
@@ -641,6 +649,18 @@
         let ctx = canvas.getContext('2d');
         let imageCanvas = document.getElementById('image-canvas');
         let imageCtx = imageCanvas.getContext('2d');
+        let cropBox = document.getElementById('crop-box');
+        let moduleInfo = document.getElementById('module-info');
+        let isImageModuleRangeMoving = false;
+        let cropStartX = 0;
+        let cropStartY = 0;
+        let isCropping = false;
+        let currentImage = null;
+        let currentImageId = null;
+        let imageManager = null; // 只声明不初始化
+        let zoomLevel = 1; // 当前缩放级别
+        let zoomCenterX = 0; // 缩放中心点X
+        let zoomCenterY = 0; // 缩放中心点Y
         let currentProject = null;
         let currentSprite = null;
         let currentAnim = null;
@@ -654,13 +674,6 @@
         let animationSpeed = 100;
         let lastFrameTime = 0;
         let animationFrameId = null;
-        let imageManager = null; // 只声明不初始化
-        let currentImage = null;
-        let currentImageId = null;
-        let isCropping = false;
-        let cropStartX = 0;
-        let cropStartY = 0;
-        let cropBox = document.getElementById('crop-box');
         let selectedImageModule = -1;
         let selectedImageModules = []; // 支持多选模块的数组
         let currentTab = 'animation';
@@ -725,6 +738,123 @@
             
             // 监听窗口大小变化
             window.addEventListener('resize', resizeCanvas);
+            
+            // 绑定缩放控件事件
+            document.getElementById('zoom-in').addEventListener('click', handleZoomIn);
+            document.getElementById('zoom-out').addEventListener('click', handleZoomOut);
+            document.getElementById('zoom-reset').addEventListener('click', handleZoomReset);
+            
+            // 绑定鼠标滚轮缩放事件
+            imageCanvas.addEventListener('wheel', handleMouseWheel);
+            
+            // 绑定鼠标移动事件用于显示鼠标位置
+            canvas.addEventListener('mousemove', showMousePosition);
+            imageCanvas.addEventListener('mousemove', showImageMousePosition);
+        }
+        
+        // 绘制当前图片（考虑缩放）
+        function drawCurrentImage() {
+            if (!currentImage) return;
+            
+            imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+            
+            // 计算图片绘制位置（保持图片在画布中心）
+            const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
+            const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+            
+            // 记录缩放中心点
+            zoomCenterX = imageCanvas.width / 2;
+            zoomCenterY = imageCanvas.height / 2;
+            
+            // 绘制缩放后的图片
+            imageCtx.drawImage(
+                currentImage, 
+                0, 0, 
+                currentImage.width, currentImage.height, 
+                drawX, drawY, 
+                currentImage.width * zoomLevel, 
+                currentImage.height * zoomLevel
+            );
+        }
+        
+        // 处理放大
+        function handleZoomIn() {
+            zoomLevel = Math.min(zoomLevel + 0.1, 5); // 最大放大5倍
+            updateZoomLevel();
+            if (currentImage) {
+                drawCurrentImage();
+            }
+        }
+        
+        // 处理缩小
+        function handleZoomOut() {
+            zoomLevel = Math.max(zoomLevel - 0.1, 0.1); // 最小缩小到0.1倍
+            updateZoomLevel();
+            if (currentImage) {
+                drawCurrentImage();
+            }
+        }
+        
+        // 重置缩放
+        function handleZoomReset() {
+            zoomLevel = 1;
+            updateZoomLevel();
+            if (currentImage) {
+                drawCurrentImage();
+            }
+        }
+        
+        // 显示动作编辑区鼠标位置
+        function showMousePosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 计算相对于画布中心的坐标
+            const originX = canvas.width / 2;
+            const originY = canvas.height / 2;
+            const relativeX = Math.round(x - originX);
+            const relativeY = Math.round(originY - y);
+            
+            // 更新鼠标位置显示
+            document.getElementById('mouse-position').textContent = 
+                `动作编辑鼠标位置: 绝对(${Math.round(x)}, ${Math.round(y)}) 相对(${relativeX}, ${relativeY})`;
+        }
+        
+        // 显示图片模块编辑区鼠标位置
+        function showImageMousePosition(e) {
+            const rect = imageCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 计算相对于原始图片的坐标（考虑缩放）
+            const imageX = Math.round(x / zoomLevel);
+            const imageY = Math.round(y / zoomLevel);
+            
+            // 更新鼠标位置显示
+            document.getElementById('mouse-position').textContent = 
+                `图片模块编辑鼠标位置: 画布(${Math.round(x)}, ${Math.round(y)}) 原图(${imageX}, ${imageY})`;
+        }
+        
+        // 更新缩放级别显示
+        function updateZoomLevel() {
+            document.getElementById('zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+        }
+        
+        // 处理鼠标滚轮缩放
+        function handleMouseWheel(e) {
+            e.preventDefault();
+            if (!currentImage) return;
+            
+            // 应用缩放
+            if (e.deltaY < 0) {
+                zoomLevel = Math.min(zoomLevel + 0.05, 5);
+            } else {
+                zoomLevel = Math.max(zoomLevel - 0.05, 0.1);
+            }
+            
+            updateZoomLevel();
+            drawCurrentImage();
         }
         
         // 绑定事件函数
@@ -772,8 +902,9 @@
             
             imageCanvas.addEventListener('mousedown', handleImageMouseDown);
             imageCanvas.addEventListener('mousemove', handleImageMouseMove);
-            imageCanvas.addEventListener('mouseup', handleImageMouseUp);
-            imageCanvas.addEventListener('mouseleave', handleImageMouseUp);
+            cropBox.addEventListener('mousemove', handleImageMouseMove);
+            document.addEventListener('mouseup', handleImageMouseUp);
+            // imageCanvas.addEventListener('mouseleave', handleImageMouseUp);
             
             // 控制面板事件
             document.getElementById('module-x').addEventListener('input', updateModulePosition);
@@ -912,7 +1043,7 @@
             allSelectedModules.forEach(index => {
                 if (index >= 0 && index < imageItem.modulesList.length) {
                     const module = imageItem.modulesList[index];
-                    
+                    console.log('绘制 module:',module);
                     // 绘制选中模块的高亮框
                     imageCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
                     imageCtx.lineWidth = 2;
@@ -1062,8 +1193,12 @@
                     imageCanvas.width = currentImage.width;
                     imageCanvas.height = currentImage.height;
                     
+                    // 重置缩放
+                    zoomLevel = 1;
+                    updateZoomLevel();
+                    
                     // 绘制图片
-                    imageCtx.drawImage(currentImage, 0, 0);
+                    drawCurrentImage();
                     
                     // 更新当前图片信息
                     document.getElementById('current-image-info').textContent = 
@@ -1098,35 +1233,51 @@
             cropButton.textContent = isCropping ? '取消裁剪' : '框选模块';
             
             if (!isCropping) {
+
                 cropBox.style.display = 'none';
             }
         }
         
-        let isImageModuleRangeMoving = false;
+
         // 处理图片画布鼠标按下事件
         function handleImageMouseDown(e) {
             if (!isCropping || !currentImage) return;
 
             isImageModuleRangeMoving = true;
             const rect = imageCanvas.getBoundingClientRect();
-            cropStartX = e.clientX - rect.left;
-            cropStartY = e.clientY - rect.top;
+            const containerRect = imageCanvas.parentElement.getBoundingClientRect();
+            console.log('canvas rect:', rect,'containerRect',containerRect);
+            console.log('鼠标按下位置:', e.clientX - rect.left, e.clientY - rect.top);
+            // 计算实际的点击位置（考虑缩放）
+            cropStartX = (e.clientX - rect.left) / zoomLevel;
+            cropStartY = (e.clientY - rect.top) / zoomLevel;
             
-            // 显示裁剪框并设置初始位置（相对于canvas的位置）
+            // 计算canvas相对于父容器的偏移
+            const canvasOffsetX = rect.left - containerRect.left;
+            const canvasOffsetY = rect.top - containerRect.top;
+            
+            // 显示裁剪框并设置初始位置（相对于父容器的位置）
             cropBox.style.display = 'block';
-            cropBox.style.left = cropStartX + 'px';
-            cropBox.style.top = cropStartY + 'px';
+            // cropBox.style.left = (cropStartX * zoomLevel + canvasOffsetX) + 'px';
+            // cropBox.style.top = (cropStartY * zoomLevel + canvasOffsetY) + 'px';
+            cropBox.style.left = e.clientX + 'px';
+            cropBox.style.top = e.clientY + 'px';
             cropBox.style.width = '0px';
             cropBox.style.height = '0px';
+            // console.log('cropBox style:', cropBox.style);
+            console.log('cropBox down xy:', cropStartX, cropStartY);
+
         }
         
         // 处理图片画布鼠标移动事件
         function handleImageMouseMove(e) {
+            // console.log('handleImageMouseMove');
             if (!isCropping || !currentImage || !isImageModuleRangeMoving) return;
-            
+            // console.log('handleImageMouseMove2');
             const rect = imageCanvas.getBoundingClientRect();
-            const currentX = e.clientX - rect.left;
-            const currentY = e.clientY - rect.top;
+            const containerRect = imageCanvas.parentElement.getBoundingClientRect();
+            const currentX = (e.clientX - rect.left) / zoomLevel;
+            const currentY = (e.clientY - rect.top) / zoomLevel;
             
             // 计算裁剪框的位置和大小
             const x = Math.min(cropStartX, currentX);
@@ -1134,17 +1285,27 @@
             const width = Math.abs(currentX - cropStartX);
             const height = Math.abs(currentY - cropStartY);
             
+            // 计算canvas相对于父容器的偏移
+            const canvasOffsetX = rect.left - containerRect.left;
+            const canvasOffsetY = rect.top - containerRect.top;
+            let startx = x * zoomLevel + canvasOffsetX;
+            let starty = y * zoomLevel + canvasOffsetY;
+            // console.log('cropBox move start xy:',x,y, '+canvasOffset:', startx, starty,'w/h :', width, height);
             // 更新裁剪框样式
-            cropBox.style.left = x + 'px';
-            cropBox.style.top = y + 'px';
-            cropBox.style.width = width + 'px';
-            cropBox.style.height = height + 'px';
+            cropBox.style.left = (x * zoomLevel + canvasOffsetX) + 'px';
+            cropBox.style.top = (y * zoomLevel + canvasOffsetY) + 'px';
+            // cropBox.style.left = x + 'px';
+            // cropBox.style.top = y + 'px';
+            cropBox.style.width = (width * zoomLevel) + 'px';
+            cropBox.style.height = (height * zoomLevel) + 'px';
+            // console.log('cropBox move xy:', x, y,width,height);
         }
         
         // 处理图片画布鼠标释放事件
         function handleImageMouseUp() {
             if (!isCropping || !currentImage) return;
-            
+
+            console.log('handleImageMouseUp');
             isImageModuleRangeMoving = false;
             // 当鼠标释放时，检查裁剪框是否有有效尺寸
             const rect = cropBox.getBoundingClientRect();
@@ -1158,7 +1319,7 @@
                 // 不自动保存模块，让用户点击按钮确认
             } else if (rect.width > 0 && rect.height > 0) {
                 // 如果尺寸太小，重置裁剪框
-                cropBox.style.display = 'none';
+                // cropBox.style.display = 'none';
                 const moduleInfo = document.getElementById('module-info');
                 if (moduleInfo) {
                     moduleInfo.style.display = 'none';
@@ -1176,12 +1337,11 @@
             const rect = cropBox.getBoundingClientRect();
             const canvasRect = imageCanvas.getBoundingClientRect();
             
-            // 计算模块在画布上的实际位置和大小
-            // 注意：这里直接使用rect和canvasRect的相对位置计算，与框选时的计算保持一致
-            const x = rect.left - canvasRect.left;
-            const y = rect.top - canvasRect.top;
-            const width = rect.width;
-            const height = rect.height;
+            // 计算模块在原始图片上的实际位置和大小（考虑缩放）
+            const x = (rect.left - canvasRect.left) / zoomLevel;
+            const y = (rect.top - canvasRect.top) / zoomLevel;
+            const width = rect.width / zoomLevel;
+            const height = rect.height / zoomLevel;
             
             // 检查模块大小是否有效
             if (width < 10 || height < 10) {
@@ -1194,7 +1354,12 @@
                 const imageItem = currentSprite.getImage(currentImageId);
                 if (imageItem) {
                     const moduleId = imageItem.modulesList.length;
-                    imageItem.modulesList.push({ x, y, width, height });
+                    imageItem.modulesList.push({ 
+                        x: Math.round(x), 
+                        y: Math.round(y), 
+                        width: Math.round(width), 
+                        height: Math.round(height) 
+                    });
                     
                     // 重置裁剪框
                     cropBox.style.display = 'none';
