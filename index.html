@@ -91,16 +91,21 @@
       <h3 class="text-2xl font-bold text-primary"></h3>
       <div class="flex space-x-4">
         <div class="flex items-center space-x-1">
+          <!-- 角色编辑按钮 -->
+          <a href="animEditor.html" class="p-2 hover:bg-gray-100 rounded" title="角色编辑">
+            <i class="fa fa-user-plus" title="角色"></i>角色
+          </a>
+          <!-- 场景角色开关 -->
+          <button @click="showRolePreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏场景角色" 
+                  :class="{ 'bg-blue-100': showRolePreview }">
+            <i class="fa fa-users" title="场景角色"></i>
+          </button>
           <!-- 摄像机开关 -->
           <button @click="showCameraPreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏摄像机" 
                   :class="{ 'bg-red-100': showCameraPreview }">
             <i class="fa fa-video-camera" title="摄像机预览"></i>
           </button>
-          <!-- 角色预览开关 -->
-          <button @click="showRolePreviewClick" class="p-2 hover:bg-gray-100 rounded" title="显示/隐藏角色预览" 
-                  :class="{ 'bg-blue-100': showRolePreview }">
-            <i class="fa fa-users" title="角色预览"></i>
-          </button>
+
           <label for="canvasSizeSelect" class="text-sm text-gray-600">画布尺寸:</label>
           <select
             id="canvasSizeSelect"
@@ -177,6 +182,146 @@
           <canvas id="animationCanvas" @click="handleCanvasClick" style="border: 2px dashed #e0e0e0; border-radius: 4px;"></canvas>
           <!-- 摄像机边框，仅在显示摄像机时显示 -->
           <!-- <div v-if="showCamera" class="absolute inset-0 border-2 border-red-500 pointer-events-none"></div> -->
+        </div>
+        
+        <!-- 场景角色管理面板 - 作为canvasContainer的同级元素 -->
+        <div v-if="showRolePreview" id="rolePreview" class="absolute left-0 top-0 h-full bg-white border border-gray-300 shadow-xl z-50 w-72">
+          <div class="bg-gray-800 text-white p-2 rounded-t-lg flex justify-between items-center">
+            <span>场景角色管理</span>
+            <!-- 关闭按钮 -->
+            <button @click="showRolePreview = false" class="text-white hover:text-gray-300">
+              <i class="fa fa-times"></i>
+            </button>
+          </div>
+          
+          <!-- 分页tab标签 -->
+          <div class="flex border-b border-gray-200">
+            <button 
+              @click="activeTab = 'scenes'" 
+              class="flex-1 py-2 px-4 text-sm font-medium transition-colors duration-200" 
+              :class="activeTab === 'scenes' ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500' : 'text-gray-700 hover:bg-gray-50'"
+            >
+              场景
+            </button>
+            <button 
+              @click="activeTab = 'shots'" 
+              class="flex-1 py-2 px-4 text-sm font-medium transition-colors duration-200" 
+              :class="activeTab === 'shots' ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500' : 'text-gray-700 hover:bg-gray-50'"
+            >
+              分镜
+            </button>
+          </div>
+          
+          <!-- 内容区域 -->
+          <div class="p-3 h-[calc(100%-85px)] overflow-y-auto">
+            <!-- 场景tab -->
+            <div v-if="activeTab === 'scenes'">
+              <!-- 场景列表 -->
+              <div class="mb-4">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">场景列表</h4>
+                <div class="space-y-2">
+                  <div 
+                    v-for="scene in timeline.scenes" 
+                    :key="scene.id" 
+                    @click="selectScene(scene)"
+                    class="p-2 rounded bg-white border cursor-pointer transition-all hover:bg-blue-50 hover:border-blue-300"
+                    :class="selectedScene && selectedScene.id === scene.id ? 'border-blue-500 bg-blue-50' : ''"
+                  >
+                    <div class="flex justify-between items-center">
+                      <span class="text-sm">{{ scene.id }}</span>
+                      <span class="text-xs text-gray-500">{{ scene.shots.length }}个分镜</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 角色列表 -->
+              <div class="mt-4">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">角色列表</h4>
+                <div v-if="selectedScene">
+                  <div v-for="role in selectedScene.roles" :key="role.roleId" class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+                    <div class="flex items-center space-x-3">
+                      <!-- 角色缩略图 -->
+                      <div class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                        <canvas :ref="el => setRoleThumbnailRef(role.roleId, el)" width="48" height="48" class="w-full h-full"></canvas>
+                      </div>
+                      <!-- 角色名称 -->
+                      <div class="text-sm font-medium">
+                        {{ getRoleNameById(role.roleId) }}
+                      </div>
+                    </div>
+                    <!-- 显示/隐藏开关 -->
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" v-model="role.visible" @change="toggleRoleVisibility(role.roleId)" class="sr-only peer">
+                      <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  <!-- 设置初始位置和添加角色按钮 -->
+                  <div class="mt-4 pt-3 border-t border-gray-200">
+                    <button @click="addSceneProp" class="w-full py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm">
+                      增加道具
+                    </button>
+                    <!-- <button @click="setSceneInitialPosition" class="w-full py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm">
+                      设置初始位置
+                    </button> -->
+                    
+                    <!-- 添加角色按钮和下拉菜单 -->
+                    <div class="relative mt-2">
+                      <button @click="toggleRoleDropdown" class="w-full py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm flex items-center justify-between">
+                        添加角色
+                        <i class="fa fa-chevron-right" :class="{ 'rotate-90': showRoleDropdown }"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-gray-500 p-2 italic">请选择一个场景</div>
+              </div>
+            </div>
+            
+            <!-- 分镜tab -->
+            <div v-if="activeTab === 'shots'">
+              <h4 class="text-sm font-medium text-gray-700 mb-2">分镜列表</h4>
+              <div class="space-y-2">
+                <div 
+                  v-for="shot in timeline.shots" 
+                  :key="shot.id" 
+                  @click="selectShot(shot)"
+                  class="p-2 rounded bg-white border cursor-pointer transition-all hover:bg-blue-50 hover:border-blue-300"
+                  :class="selectedShot && selectedShot.id === shot.id ? 'border-blue-500 bg-blue-50' : ''"
+                >
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">{{ shot.id }}</span>
+                    <span class="text-xs text-gray-500">{{ formatTime(shot.duration) }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 分镜内角色列表 -->
+              <div class="mt-4">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">角色列表</h4>
+                <div v-if="selectedShot && selectedScene">
+                  <div v-for="role in selectedScene.roles" :key="role.roleId" class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+                    <div class="flex items-center space-x-3">
+                      <!-- 角色缩略图 -->
+                      <div class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                        <canvas :ref="el => setRoleThumbnailRef(role.roleId, el)" width="48" height="48" class="w-full h-full"></canvas>
+                      </div>
+                      <!-- 角色名称 -->
+                      <div class="text-sm font-medium">
+                        {{ getRoleNameById(role.roleId) }}
+                      </div>
+                    </div>
+                    <!-- 显示/隐藏开关 -->
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" v-model="role.visible" @change="toggleRoleVisibility(role.roleId)" class="sr-only peer">
+                      <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-gray-500 p-2 italic">请选择一个分镜</div>
+              </div>
+            </div>
+          </div>
         </div>
         
         <!-- 左侧控制选项 去掉！！！！！！！！！-->
@@ -344,7 +489,7 @@
       </div>
       
       <!-- 相机预览小页面 -->
-      <div v-if="showCameraPreview" id="cameraPreview" class="absolute top-0 left-0 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
+      <div v-if="showCameraPreview" id="cameraPreview" class="absolute top-0 right-0 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
         <div class="bg-gray-800 text-white p-2 rounded-t-lg flex justify-between items-center cursor-move">
           <span>相机预览</span>
           <!-- 关闭按钮 -->
@@ -354,60 +499,6 @@
         </div>
         <div class="p-2 preview-canvas-container" style="min-width: 283px; min-height: 166px;">
           <canvas id="previewCanvas" style="width: 267px; height: 150px;"></canvas>
-        </div>
-      </div>
-
-      <!-- 角色预览小页面 -->
-      <div v-if="showRolePreview" id="rolePreview" class="absolute top-0 left-24 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
-        <div class="bg-gray-800 text-white p-2 rounded-t-lg flex justify-between items-center cursor-move">
-          <span>角色预览</span>
-          <!-- 关闭按钮 -->
-          <button @click="showRolePreview = false" class="text-white hover:text-gray-300">
-            <i class="fa fa-times"></i>
-          </button>
-        </div>
-        <div class="p-3 role-preview-container" style="min-width: 320px; max-height: 400px; overflow-y: auto;">
-          <!-- 角色列表 -->
-          <div v-for="role in currentSceneRoles" :key="role.roleId" class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
-            <div class="flex items-center space-x-3">
-              <!-- 角色缩略图 -->
-              <div class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
-                <canvas :ref="el => setRoleThumbnailRef(role.roleId, el)" width="48" height="48" class="w-full h-full"></canvas>
-              </div>
-              <!-- 角色名称 -->
-              <div class="text-sm font-medium">
-                {{ getRoleNameById(role.roleId) }}
-              </div>
-            </div>
-            <!-- 显示/隐藏开关 -->
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" v-model="role.visible" @change="toggleRoleVisibility(role.roleId)" class="sr-only peer">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <!-- 设置初始位置和添加角色按钮 -->
-          <div class="mt-4 pt-3 border-t border-gray-200">
-            <button @click="setSceneInitialPosition" class="w-full py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm">
-              设置初始位置
-            </button>
-            
-            <!-- 添加角色按钮和下拉菜单 -->
-            <div class="relative mt-2">
-              <button @click="toggleRoleDropdown" class="w-full py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm flex items-center justify-between">
-                添加角色
-                <i class="fa fa-chevron-right" :class="{ 'rotate-90': showRoleDropdown }"></i>
-              </button>
-              
-              <!-- 角色下拉菜单 -->
-              <div v-if="showRoleDropdown" class="absolute top-full left-0 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg z-50 max-h-60 overflow-y-auto">
-                <div v-for="role in mockRoles" :key="role.id" 
-                     @click="addRoleToCurrentScene(role.id)" 
-                     class="px-4 py-2 hover:bg-gray-100 cursor-pointer transition text-sm">
-                  {{ role.name }}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
       
@@ -735,7 +826,8 @@
             x: 150,
             y: 200,
             angle: 0,
-            scale: 1
+            scale: 1,
+            visible: true
           },
           {
             roleId: 'role2',
@@ -743,7 +835,8 @@
             x: 1750,
             y: 200,
             angle: 0,
-            scale: 1
+            scale: 1,
+            visible: true
           },
         ]
       },
@@ -757,7 +850,8 @@
             x: 150,
             y: 200,
             angle: 0,
-            scale: 1
+            scale: 1,
+            visible: true
           },
           {
             roleId: 'role2',
@@ -765,7 +859,8 @@
             x: 350,
             y: 320,
             angle: 0,
-            scale: 1
+            scale: 1,
+            visible: true
           }
         ]
       },
@@ -779,7 +874,8 @@
             x: 150,
             y: 200,
             angle: 0,
-            scale: 1
+            scale: 1,
+            visible: true
           },
           {
             roleId: 'role2',
@@ -787,7 +883,8 @@
             x: 350,
             y: 320,
             angle: 0,
-            scale: 1
+            scale: 1,
+            visible: true
           },
           {
             roleId: 'role3',
@@ -795,7 +892,8 @@
             x: 1000,
             y: 580,
             angle: 0,
-            scale: 1
+            scale: 1,
+            visible: true
           }
         ]
       }
@@ -1019,6 +1117,11 @@
         let getCacheImage = null;
         let CUSTOM_CAMERA_TYPE = null;
         let round = null;
+        
+        // 角色管理面板相关状态
+        const activeTab = ref('scenes'); // 'scenes' 或 'shots'
+        const selectedScene = ref(null);
+        const selectedShot = ref(null);
 
 
         // 添加重试机制
@@ -1357,6 +1460,11 @@
           { deep: true }
         );
 
+        // 监听currentTime变化，更新显示
+        // watch(currentTime, () => {
+        //   updateTimelineDisplay();
+        //   renderFrame(30);
+        // });
         // 确保在主画布渲染完成后也更新预览
         watch([currentTime /*, isPlaying*/], () => {
           // 强制重新绘制时间轴及分镜轨道
@@ -3537,7 +3645,9 @@
           
           // 添加场景中的角色ID
           sceneRoles.forEach(sceneRole => {
-            roleIdsToDraw.add(sceneRole.roleId);
+            if(sceneRole.visible) {
+              roleIdsToDraw.add(sceneRole.roleId);
+            }
           });
           
           // 添加表情轨道中的角色ID
@@ -4875,11 +4985,7 @@
           document.head.appendChild(style);
         });
         
-        // 监听currentTime变化，更新显示
-        // watch(currentTime, () => {
-        //   updateTimelineDisplay();
-        //   renderFrame(30);
-        // });
+
         
         // 监听选中的分镜变化，更新显示
         watch(selectedShotId, () => {
@@ -5058,11 +5164,12 @@
             // 这里可以添加实际的角色显示/隐藏逻辑
             console.log(`角色 ${roleId} 可见性切换为: ${role.visible}`);
             // 触发重新渲染
-            currentSceneRoles.value = [...currentSceneRoles.value];
+            //currentSceneRoles.value = [...currentSceneRoles.value];
+            renderFrame(44);
           }
         }
 
-        // 设置场景初始位置
+        // 设置场景初始位置---无用
         const setSceneInitialPosition = () => {
           // 根据当前时间找到所在的分镜
           const currentShot = timeline.value.shots.find(shot => 
@@ -5086,7 +5193,6 @@
           currentTime.value = firstShot.startTime;
           
           // 滚动时间轴到初始位置
-          //scrollTimelineToTime(initialTime);
           updateTimelineDisplay();
           
           console.log('已将时间指针调整到场景初始位置');
@@ -5154,6 +5260,32 @@
           return saveData;
         }
 
+        // 选择场景并跳转到对应时间
+        const selectScene = (scene) => {
+          selectedScene.value = scene;
+          // 跳转到场景的第一个分镜的开始时间
+          if (scene && scene.shots && scene.shots.length > 0) {
+            const firstShot = scene.shots[0];
+            const firstShotObj = timeline.value.shots.find(shot => shot.id === firstShot);
+            currentTime.value = firstShotObj.startTime;
+            renderFrame();
+          }
+        };
+        
+        // 选择分镜
+        const selectShot = (shot) => {
+          selectedShot.value = shot;
+          // 找到该分镜所属的场景
+          if (shot && timeline.value && timeline.value.scenes) {
+            const scene = timeline.value.scenes.find(scene => 
+              scene.shots && scene.shots.some(shotInScene => shotInScene.id === shot.id)
+            );
+            if (scene) {
+              selectedScene.value = scene;
+            }
+          }
+        };
+        
         return {
           debugInfo,
           canvas,
@@ -5190,6 +5322,12 @@
           timelineZoomOut,
           timelineResetZoom,
           canvasZoomIn,
+          // 角色管理面板相关状态和方法
+          activeTab,
+          selectedScene,
+          selectedShot,
+          selectScene,
+          selectShot,
           canvasZoomOut,
           canvasResetZoom,
           saveProject,

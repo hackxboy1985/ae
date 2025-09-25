@@ -201,7 +201,7 @@ export class RoleExpressionManager {
     if (!currentExpressionTrack) {
       // 获取当前时间点的场景角色配置
       const sceneRoles = this.getSceneRolesByTime(time);
-      const sceneRoleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === roleId) : null;
+      const sceneRoleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === roleId && r.visible) : null;
       
       // 如果场景中找到了角色配置，创建一个临时的表达式轨道用于位置计算
       if (sceneRoleConfig) {
