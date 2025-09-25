@@ -661,6 +661,12 @@
         let zoomLevel = 1; // 当前缩放级别
         let zoomCenterX = 0; // 缩放中心点X
         let zoomCenterY = 0; // 缩放中心点Y
+        // 拖拽操作模式变量
+        let resizeMode = null; // 'move', 'top-left', 'top-right', 'bottom-left', 'bottom-right'
+        let initialLeft = 0;
+        let initialTop = 0;
+        let initialWidth = 0;
+        let initialHeight = 0;
         let currentProject = null;
         let currentSprite = null;
         let currentAnim = null;
@@ -833,7 +839,7 @@
             
             // 更新鼠标位置显示
             document.getElementById('mouse-position').textContent = 
-                `图片模块编辑鼠标位置: 画布(${Math.round(x)}, ${Math.round(y)}) 原图(${imageX}, ${imageY})`;
+                `图片模块编辑鼠标位置: 画布(${Math.round(x)}, ${Math.round(y)}) 原图(${imageX}, ${imageY} 全局(${e.clientX}, ${e.clientY}))`;
         }
         
         // 更新缩放级别显示
@@ -900,8 +906,10 @@
             canvas.addEventListener('mouseup', handleMouseUp);
             canvas.addEventListener('mouseleave', handleMouseUp);
             
+
             imageCanvas.addEventListener('mousedown', handleImageMouseDown);
             imageCanvas.addEventListener('mousemove', handleImageMouseMove);
+            cropBox.addEventListener('mousedown', handleImageMouseDown);
             cropBox.addEventListener('mousemove', handleImageMouseMove);
             document.addEventListener('mouseup', handleImageMouseUp);
             // imageCanvas.addEventListener('mouseleave', handleImageMouseUp);
@@ -1038,21 +1046,27 @@
             if (!imageItem) return;
             
             // 绘制所有选中的模块
-            const allSelectedModules = selectedImageModule !== -1 ? [selectedImageModule] : selectedImageModules;
+            const needDrawModules = selectedImageModule !== -1 ? [selectedImageModule] : selectedImageModules;
             
-            allSelectedModules.forEach(index => {
+            imageItem.modulesList.forEach((module,index) => {
                 if (index >= 0 && index < imageItem.modulesList.length) {
-                    const module = imageItem.modulesList[index];
+                    
+                    // const module = imageItem.modulesList[index];
                     console.log('绘制 module:',module);
-                    // 绘制选中模块的高亮框
-                    imageCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                    if(needDrawModules.includes(index)){
+                        // 绘制选中模块的高亮框
+                        imageCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                    }else{
+                        imageCtx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+                    }
                     imageCtx.lineWidth = 2;
                     imageCtx.strokeRect(module.x, module.y, module.width, module.height);
-                    
                     // 绘制模块索引
                     imageCtx.fillStyle = 'rgba(255, 0, 0, 0.8)';
                     imageCtx.font = '12px Arial';
                     imageCtx.fillText(`${index + 1}`, module.x + 2, module.y + 14);
+                    
+                    
                 }
             });
         }
@@ -1243,62 +1257,201 @@
         function handleImageMouseDown(e) {
             if (!isCropping || !currentImage) return;
 
-            isImageModuleRangeMoving = true;
             const rect = imageCanvas.getBoundingClientRect();
             const containerRect = imageCanvas.parentElement.getBoundingClientRect();
-            console.log('canvas rect:', rect,'containerRect',containerRect);
-            console.log('鼠标按下位置:', e.clientX - rect.left, e.clientY - rect.top);
-            // 计算实际的点击位置（考虑缩放）
-            cropStartX = (e.clientX - rect.left) / zoomLevel;
-            cropStartY = (e.clientY - rect.top) / zoomLevel;
-            
-            // 计算canvas相对于父容器的偏移
             const canvasOffsetX = rect.left - containerRect.left;
             const canvasOffsetY = rect.top - containerRect.top;
             
-            // 显示裁剪框并设置初始位置（相对于父容器的位置）
-            cropBox.style.display = 'block';
-            // cropBox.style.left = (cropStartX * zoomLevel + canvasOffsetX) + 'px';
-            // cropBox.style.top = (cropStartY * zoomLevel + canvasOffsetY) + 'px';
-            cropBox.style.left = e.clientX + 'px';
-            cropBox.style.top = e.clientY + 'px';
-            cropBox.style.width = '0px';
-            cropBox.style.height = '0px';
-            // console.log('cropBox style:', cropBox.style);
-            console.log('cropBox down xy:', cropStartX, cropStartY);
+            // 检查是否点击在现有的裁剪框上
+            const cropRect = cropBox.getBoundingClientRect();
+            const clickX = e.clientX;
+            const clickY = e.clientY;
+            
+            // 判断点击位置，确定调整模式
+            const borderWidth = 10; // 边缘检测宽度
+            if (cropBox.style.display === 'block' && 
+                clickX >= cropRect.left-borderWidth/2 && clickX <= cropRect.right+borderWidth/2 && 
+                clickY >= cropRect.top-borderWidth/2 && clickY <= cropRect.bottom+borderWidth/2) {
+
+                isImageModuleRangeMoving = false;
+                
+                // 记录初始状态
+                initialLeft = cropRect.left;
+                initialTop = cropRect.top;
+                initialWidth = cropRect.width;
+                initialHeight = cropRect.height;
+                
+                // 判断点击的是哪个边缘
+                if (clickX <= cropRect.left + borderWidth) {
+                    // 左边
+                    if (clickY <= cropRect.top + borderWidth) {
+                        resizeMode = 'top-left';
+                    } else if (clickY >= cropRect.bottom - borderWidth) {
+                        resizeMode = 'bottom-left';
+                    } else {
+                        resizeMode = 'left';
+                    }
+                } else if (clickX >= cropRect.right - borderWidth) {
+                    // 右边
+                    if (clickY <= cropRect.top + borderWidth) {
+                        resizeMode = 'top-right';
+                    } else if (clickY >= cropRect.bottom - borderWidth) {
+                        resizeMode = 'bottom-right';
+                    } else {
+                        resizeMode = 'right';
+                    }
+                } else if (clickY <= cropRect.top + borderWidth) {
+                    // 上边
+                    resizeMode = 'top';
+                } else if (clickY >= cropRect.bottom - borderWidth) {
+                    // 底边
+                    resizeMode = 'bottom';
+                } else {
+                    // 点击在主体上，移动模式
+                    resizeMode = 'move';
+                    dragStartX = clickX - initialLeft;
+                    dragStartY = clickY - initialTop;
+                }
+
+                console.log('点击在裁剪框上，resizeMode:',resizeMode,'cropRect:',cropRect,'containerRect.left:',containerRect.left)
+            } else {
+                // 开始新的裁剪
+                isImageModuleRangeMoving = true;
+                resizeMode = null;
+                
+                // 计算实际的点击位置（考虑缩放）
+                cropStartX = (e.clientX - rect.left) / zoomLevel;
+                cropStartY = (e.clientY - rect.top) / zoomLevel;
+                
+                // 显示裁剪框并设置初始位置（相对于父容器的位置）
+                cropBox.style.display = 'block';
+                cropBox.style.left = (cropStartX * zoomLevel + canvasOffsetX) + 'px';
+                cropBox.style.top = (cropStartY * zoomLevel + canvasOffsetY) + 'px';
+                cropBox.style.width = '0px';
+                cropBox.style.height = '0px';
+            }
 
         }
         
         // 处理图片画布鼠标移动事件
         function handleImageMouseMove(e) {
-            // console.log('handleImageMouseMove');
-            if (!isCropping || !currentImage || !isImageModuleRangeMoving) return;
-            // console.log('handleImageMouseMove2');
-            const rect = imageCanvas.getBoundingClientRect();
-            const containerRect = imageCanvas.parentElement.getBoundingClientRect();
-            const currentX = (e.clientX - rect.left) / zoomLevel;
-            const currentY = (e.clientY - rect.top) / zoomLevel;
+            if (!isCropping || !currentImage) return;
             
-            // 计算裁剪框的位置和大小
-            const x = Math.min(cropStartX, currentX);
-            const y = Math.min(cropStartY, currentY);
-            const width = Math.abs(currentX - cropStartX);
-            const height = Math.abs(currentY - cropStartY);
-            
-            // 计算canvas相对于父容器的偏移
-            const canvasOffsetX = rect.left - containerRect.left;
-            const canvasOffsetY = rect.top - containerRect.top;
-            let startx = x * zoomLevel + canvasOffsetX;
-            let starty = y * zoomLevel + canvasOffsetY;
-            // console.log('cropBox move start xy:',x,y, '+canvasOffset:', startx, starty,'w/h :', width, height);
-            // 更新裁剪框样式
-            cropBox.style.left = (x * zoomLevel + canvasOffsetX) + 'px';
-            cropBox.style.top = (y * zoomLevel + canvasOffsetY) + 'px';
-            // cropBox.style.left = x + 'px';
-            // cropBox.style.top = y + 'px';
-            cropBox.style.width = (width * zoomLevel) + 'px';
-            cropBox.style.height = (height * zoomLevel) + 'px';
-            // console.log('cropBox move xy:', x, y,width,height);
+            // 处理调整/移动模式
+            if (resizeMode) {
+                const clickX = e.clientX;
+                const clickY = e.clientY;
+                
+                let newLeft = initialLeft;
+                let newTop = initialTop;
+                let newWidth = initialWidth;
+                let newHeight = initialHeight;
+                
+                console.log('resizeMode:',resizeMode,'clickX:',clickX,'clickY:',clickY,'initialLeft:',initialLeft,'initialTop:',initialTop)
+                // 根据不同的调整模式计算新的位置和大小
+                switch(resizeMode) {
+                    case 'move':
+                        newLeft = clickX - dragStartX;
+                        newTop = clickY - dragStartY;
+                        break;
+                    case 'left':
+                        newLeft = clickX;
+                        newWidth = initialWidth + (initialLeft - clickX);
+                        break;
+                    case 'right':
+                        newWidth = clickX - initialLeft;
+                        console.log('resizeMode:',resizeMode,'newWidth:',newWidth)
+                        break;
+                    case 'top':
+                        newTop = clickY;
+                        newHeight = initialHeight + (initialTop - clickY);
+                        break;
+                    case 'bottom':
+                        newHeight = clickY - initialTop;
+                        break;
+                    case 'top-left':
+                        newLeft = clickX;
+                        newTop = clickY;
+                        newWidth = initialWidth + (initialLeft - clickX);
+                        newHeight = initialHeight + (initialTop - clickY);
+                        break;
+                    case 'top-right':
+                        newTop = clickY;
+                        newWidth = clickX - initialLeft;
+                        newHeight = initialHeight + (initialTop - clickY);
+                        break;
+                    case 'bottom-left':
+                        newLeft = clickX;
+                        newWidth = initialWidth + (initialLeft - clickX);
+                        newHeight = clickY - initialTop;
+                        break;
+                    case 'bottom-right':
+                        newWidth = clickX - initialLeft;
+                        newHeight = clickY - initialTop;
+                        break;
+                }
+                
+                const containerRect = imageCanvas.parentElement.getBoundingClientRect();
+                const rx = newLeft - containerRect.left;
+                const ry = newTop - containerRect.top;
+                
+                // 确保尺寸有效
+                if (newWidth > 0 && newHeight > 0) {
+                    // 根据不同的调整模式，只更新需要的属性
+                    switch(resizeMode) {
+                        case 'move':
+                            cropBox.style.left = rx + 'px';
+                            cropBox.style.top = ry + 'px';
+                            break;
+                        case 'left':
+                            cropBox.style.left = rx + 'px';
+                            cropBox.style.width = newWidth + 'px';
+                            break;
+                        case 'right':
+                            cropBox.style.width = newWidth + 'px';
+                            break;
+                        case 'top':
+                            cropBox.style.top = ry + 'px';
+                            cropBox.style.height = newHeight + 'px';
+                            break;
+                        case 'bottom':
+                            cropBox.style.height = newHeight + 'px';
+                            break;
+                        default: // 对角线调整模式
+                            cropBox.style.left = rx + 'px';
+                            cropBox.style.top = ry + 'px';
+                            cropBox.style.width = newWidth + 'px';
+                            cropBox.style.height = newHeight + 'px';
+                    }
+                }
+                
+                const cropRect2 = cropBox.getBoundingClientRect();
+                console.log('设置后cropRect2:',cropRect2)
+
+            }
+            // 处理新建裁剪
+            else if (isImageModuleRangeMoving) {
+                const rect = imageCanvas.getBoundingClientRect();
+                const containerRect = imageCanvas.parentElement.getBoundingClientRect();
+                const currentX = (e.clientX - rect.left) / zoomLevel;
+                const currentY = (e.clientY - rect.top) / zoomLevel;
+                
+                // 计算裁剪框的位置和大小
+                const x = Math.min(cropStartX, currentX);
+                const y = Math.min(cropStartY, currentY);
+                const width = Math.abs(currentX - cropStartX);
+                const height = Math.abs(currentY - cropStartY);
+                
+                // 计算canvas相对于父容器的偏移
+                const canvasOffsetX = rect.left - containerRect.left;
+                const canvasOffsetY = rect.top - containerRect.top;
+                
+                // 更新裁剪框样式
+                cropBox.style.left = (x * zoomLevel + canvasOffsetX) + 'px';
+                cropBox.style.top = (y * zoomLevel + canvasOffsetY) + 'px';
+                cropBox.style.width = (width * zoomLevel) + 'px';
+                cropBox.style.height = (height * zoomLevel) + 'px';
+            }
         }
         
         // 处理图片画布鼠标释放事件
@@ -1307,6 +1460,7 @@
 
             console.log('handleImageMouseUp');
             isImageModuleRangeMoving = false;
+            resizeMode = null;
             // 当鼠标释放时，检查裁剪框是否有有效尺寸
             const rect = cropBox.getBoundingClientRect();
             if (rect.width > 10 && rect.height > 10) {
@@ -1371,7 +1525,7 @@
                     if (moduleInfo) {
                         moduleInfo.style.display = 'none';
                     }
-                    
+                    console.log('保存模块，并渲染');
                     // 更新模块列表
                     renderModulesList();
                 }
