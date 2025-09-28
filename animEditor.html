@@ -498,45 +498,37 @@
             
             <!-- 动画编辑Tab内容 -->
             <div id="content-animation" class="tab-content active">
-                <div class="animation-editor">
-                    <div class="toolbar">
-                        <button id="add-frame">添加帧</button>
-                        <button id="delete-frame">删除帧</button>
-                        <button id="add-frame-module">添加模块</button>
-                        <button id="delete-frame-module">删除模块</button>
-                        <button id="flip-horizontal">水平翻转</button>
-                        <button id="flip-vertical">垂直翻转</button>
-                        <button id="rotate">旋转</button>
-                        <button id="play-animation">播放</button>
-                    </div>
-                    
-                    <!-- 图片和模块列表区域 -->
-                    <div class="animation-image-browser" style="display: flex; height: 400px; margin-bottom: 10px;">
-                        <!-- 图片列表 -->
-                        <div class="animation-images-list" style="width: 40%; border: 1px solid #ddd; margin-right: 10px; overflow-y: auto;">
-                            <div class="control-title">可用图片</div>
-                            <div id="animation-images-list" class="images-list"></div>
+                <div class="animation-editor" style="display: flex; height: 100%;">
+                    <!-- 左侧区域：工具栏、画布和时间线 -->
+                    <div style="flex: 1; display: flex; flex-direction: column; height: 100%; min-height: 0;">
+                        <div class="toolbar">
+                            <button id="add-frame">添加帧</button>
+                            <button id="delete-frame">删除帧</button>
+                            <button id="add-frame-module">添加模块</button>
+                            <button id="delete-frame-module">删除模块</button>
+                            <button id="flip-horizontal">水平翻转</button>
+                            <button id="flip-vertical">垂直翻转</button>
+                            <button id="rotate">旋转</button>
+                            <button id="play-animation">播放</button>
                         </div>
-                        <!-- 模块列表 -->
-                        <div class="animation-modules-list" style="width: 60%; border: 1px solid #ddd; overflow-y: auto;">
-                            <div class="control-title" id="selected-image-title">选择图片查看模块</div>
-                            <div id="animation-modules-list" class="modules-grid"></div>
+                        
+                        <div class="canvas-container" style="flex: 1; overflow: auto; min-height: 200px;">
+                            <canvas id="animation-canvas" width="1280" height="720" style="max-width: 100%;"></canvas>
                         </div>
-                    </div>
-                    
-                    <div class="canvas-container">
-                        <canvas id="animation-canvas" width="1280" height="720"></canvas>
-                    </div>
-                    
-                    <div class="timeline-container">
-                        <div class="timeline-header">
-                            <div id="current-anim-name">选择一个动作开始编辑</div>
-                            <div class="animation-speed">
-                                速度: <input type="range" id="speed-range" min="50" max="500" value="100">
+                        
+                        <!-- 时间线容器，设置最小高度确保始终可见 -->
+                        <div class="timeline-container" style="min-height: 80px; border-top: 1px solid #ddd; background-color: #fff;">
+                            <div class="timeline-header">
+                                <div id="current-anim-name">选择一个动作开始编辑</div>
+                                <div class="animation-speed">
+                                    速度: <input type="range" id="speed-range" min="50" max="500" value="100">
+                                </div>
                             </div>
+                            <div id="timeline" class="timeline"></div>
                         </div>
-                        <div id="timeline" class="timeline"></div>
                     </div>
+                    
+                    <!-- 右侧区域已移除，内容移到控制面板 -->
                 </div>
             </div>
             
@@ -583,36 +575,53 @@
         
         <!-- 控制面板 -->
         <div class="control-panel">
-            <!-- 图片列表区域 -->
-            <div class="images-list-container mb-2">
-                <div class="control-title">加载的图片</div>
-                <div id="images-list" class="images-list"></div>
-            </div>
-            
-            <div class="control-section">
-                <div class="control-title">模块属性</div>
-                <div class="control-group">
-                    <label for="module-x">X 坐标</label>
-                    <input type="number" id="module-x" value="0">
+            <!-- 动作编辑模式显示区域 -->
+            <div id="animation-control-section" style="display: none;">
+                <!-- 图片列表 -->
+                <div class="animation-images-list mb-2" style="border: 1px solid #ddd; overflow-y: auto; max-height: 150px;">
+                    <div class="control-title">可用图片</div>
+                    <div id="animation-images-list" class="images-list"></div>
                 </div>
-                <div class="control-group">
-                    <label for="module-y">Y 坐标</label>
-                    <input type="number" id="module-y" value="0">
-                </div>
-                <div class="control-group">
-                    <label for="module-width">宽度</label>
-                    <input type="number" id="module-width" value="0" disabled>
-                </div>
-                <div class="control-group">
-                    <label for="module-height">高度</label>
-                    <input type="number" id="module-height" value="0" disabled>
+                <!-- 模块列表 -->
+                <div class="animation-modules-list" style="border: 1px solid #ddd; overflow-y: auto; flex: 1;">
+                    <div class="control-title" id="selected-image-title">选择图片查看模块</div>
+                    <div id="animation-modules-list" class="modules-grid"></div>
                 </div>
             </div>
             
-            <div class="control-section">
-                <div class="control-title">当前图片</div>
-                <div id="current-image-info" style="font-size: 12px; color: #666;">未选择图片</div>
-                <div id="mouse-position" style="font-size: 12px; color: #666;">鼠标位置: (0, 0)</div>
+            <!-- 图片模块编辑模式显示区域 -->
+            <div id="image-control-section">
+                <!-- 图片列表区域 -->
+                <div class="images-list-container mb-2">
+                    <div class="control-title">加载的图片</div>
+                    <div id="images-list" class="images-list"></div>
+                </div>
+                
+                <div class="control-section">
+                    <div class="control-title">模块属性</div>
+                    <div class="control-group">
+                        <label for="module-x">X 坐标</label>
+                        <input type="number" id="module-x" value="0">
+                    </div>
+                    <div class="control-group">
+                        <label for="module-y">Y 坐标</label>
+                        <input type="number" id="module-y" value="0">
+                    </div>
+                    <div class="control-group">
+                        <label for="module-width">宽度</label>
+                        <input type="number" id="module-width" value="0" disabled>
+                    </div>
+                    <div class="control-group">
+                        <label for="module-height">高度</label>
+                        <input type="number" id="module-height" value="0" disabled>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <div class="control-title">当前图片</div>
+                    <div id="current-image-info" style="font-size: 12px; color: #666;">未选择图片</div>
+                    <div id="mouse-position" style="font-size: 12px; color: #666;">鼠标位置: (0, 0)</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1212,16 +1221,41 @@
             
             currentTab = tabName;
             
-            // 根据Tab重新渲染
+            // 根据Tab重新渲染并控制控制面板显示
             if (tabName === 'animation') {
                 renderCanvas();
                 renderAnimationImagesList();
                 document.getElementById('animation-modules-list').innerHTML = '';
                 document.getElementById('selected-image-title').textContent = '选择图片查看模块';
+                
+                // 显示动作编辑控制面板，隐藏图片模块编辑控制面板
+                document.getElementById('animation-control-section').style.display = 'block';
+                document.getElementById('image-control-section').style.display = 'none';
             } else if (tabName === 'image') {
                 renderModulesList();
                 drawCurrentImage();
                 renderImagesList();
+                
+                // // 调整控制面板布局 - 图片模块编辑模式
+                // const controlPanel = document.querySelector('.control-panel');
+                // const imagesListContainer = document.querySelector('.images-list-container');
+                // const modulePropertiesSection = document.querySelector('.control-section:first-of-type');
+                // const currentImageSection = document.querySelector('.control-section:last-of-type');
+                
+                // // 恢复默认布局：图片列表、模块属性、当前图片信息
+                // if (imagesListContainer && controlPanel.contains(imagesListContainer)) {
+                //     controlPanel.insertBefore(imagesListContainer, controlPanel.firstChild);
+                // }
+                // if (modulePropertiesSection && controlPanel.contains(modulePropertiesSection)) {
+                //     const nextElement = imagesListContainer ? imagesListContainer.nextElementSibling : controlPanel.firstChild;
+                //     controlPanel.insertBefore(modulePropertiesSection, nextElement);
+                // }
+                // if (currentImageSection && controlPanel.contains(currentImageSection)) {
+                //     controlPanel.appendChild(currentImageSection);
+                // }
+                // 显示图片模块编辑控制面板，隐藏动作编辑控制面板
+                document.getElementById('animation-control-section').style.display = 'none';
+                document.getElementById('image-control-section').style.display = 'block';
             }
         }
         
