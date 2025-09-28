@@ -36,7 +36,8 @@ class FrameModule {
         
         ctx.save();
         
-        // 移动到原点
+        // 移动到原点 - 与ActionEditor相同的原点逻辑
+        // 将图像中心与原点对齐
         ctx.translate(originX + this.x, originY - this.y);
         
         // 应用变换
@@ -48,27 +49,36 @@ class FrameModule {
         let scaleX = 1;
         let scaleY = 1;
         
+        // 应用用户设置的缩放比例
+        if (this.scale) {
+            scaleX = this.scale.x;
+            scaleY = this.scale.y;
+        }
+        
         // 应用翻转
         if (this.flag & 1) { // 水平翻转
-            scaleX = -1;
+            scaleX = -scaleX;
         }
         if (this.flag & 2) { // 垂直翻转
-            scaleY = -1;
+            scaleY = -scaleY;
         }
         
         ctx.scale(scaleX, scaleY);
         
-        // 绘制图像
+        // 绘制图像 - 与ActionEditor相同的原点逻辑
+        // 将图像中心与原点对齐后绘制
         const width = rectModule.width;
         const height = rectModule.height;
         const drawX = -width / 2;
         const drawY = -height / 2;
-        
+
+        // console.log('drawX:',drawX,drawY);
+        // console.log('drawModule', this.module.imageId, this.module.imageModuleId, this.x, this.y, this.flag, scaleX, scaleY);
         ctx.drawImage(
             imageItem.image,
             rectModule.x, rectModule.y,
             width, height,
-            drawX, drawY,
+            0, 0,
             width, height
         );
         
@@ -76,11 +86,18 @@ class FrameModule {
     }
     
     clone() {
-        return new FrameModule(
+        const cloned = new FrameModule(
             new Module(this.module.imageId, this.module.imageModuleId),
             this.x,
             this.y,
             this.flag
         );
+        
+        // 复制缩放属性
+        if (this.scale) {
+            cloned.scale = { ...this.scale };
+        }
+        
+        return cloned;
     }
 }

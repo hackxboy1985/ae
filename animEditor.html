@@ -113,6 +113,65 @@
             margin-top: 10px;
         }
         
+        /* 动画列表项样式 */
+        .anim-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            margin-bottom: 5px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .anim-item:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .anim-item.active {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .anim-name {
+            flex: 1;
+        }
+        
+        /* 动画操作按钮样式 */
+        .anim-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .anim-item:hover .anim-actions {
+            opacity: 1;
+        }
+        
+        .anim-action-btn {
+            padding: 2px 6px;
+            font-size: 10px;
+            background-color: #fff;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .anim-item.active .anim-action-btn {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            border-color: #90caf9;
+        }
+        
+        .anim-action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
         /* 主编辑区域样式 */
         .editor-container {
             flex: 1;
@@ -503,13 +562,25 @@
                     <div style="flex: 1; display: flex; flex-direction: column; height: 100%; min-height: 0;">
                         <div class="toolbar">
                             <button id="add-frame">添加帧</button>
+                            <button id="clone-frame">克隆帧</button>
                             <button id="delete-frame">删除帧</button>
                             <button id="add-frame-module">添加模块</button>
                             <button id="delete-frame-module">删除模块</button>
+                            <button id="copy-module">复制模块</button>
+                            <button id="paste-module">粘贴模块</button>
                             <button id="flip-horizontal">水平翻转</button>
                             <button id="flip-vertical">垂直翻转</button>
                             <button id="rotate">旋转</button>
                             <button id="play-animation">播放</button>
+                            <button id="toggle-grid">显示网格</button>
+                        </div>
+                        
+                        <div class="image-controls mb-2" style="display: flex; align-items: center;">
+                            <button id="animation-zoom-in" class="mr-2 p-1 bg-gray-200 rounded">放大</button>
+                            <button id="animation-zoom-out" class="mr-2 p-1 bg-gray-200 rounded">缩小</button>
+                            <button id="animation-zoom-reset" class="p-1 bg-gray-200 rounded">重置缩放</button>
+                            <span id="animation-zoom-level" class="ml-2">100%</span>
+                            <div id="mouse-position" style="font-size: 12px; color: #666; margin-left: auto; margin-right: 10px;">鼠标位置: (0, 0)</div>
                         </div>
                         
                         <div class="canvas-container" style="flex: 1; overflow: auto; min-height: 200px;">
@@ -617,10 +688,9 @@
                     </div>
                 </div>
                 
-                <div class="control-section">
+                <div class="control-section" style="position: relative;">
                     <div class="control-title">当前图片</div>
                     <div id="current-image-info" style="font-size: 12px; color: #666;">未选择图片</div>
-                    <div id="mouse-position" style="font-size: 12px; color: #666;">鼠标位置: (0, 0)</div>
                 </div>
             </div>
         </div>
@@ -722,6 +792,17 @@
         let selectedImageModules = []; // 支持多选模块的数组
         let currentTab = 'animation';
         
+        // 存储复制的模块信息，用于跨精灵粘贴
+        let copiedModuleInfo = null;
+        
+        // 网格相关设置
+        let showGrid = true;         // 是否显示网格
+        const gridSize = 20;         // 网格大小（像素）
+        const gridColor = '#e0e0e0'; // 网格颜色
+        
+        // 定义与ActionEditor相同的原点变量
+        let m_imageOriginPos = { x: 0, y: 0 };
+        
         // 命令管理器单例
         CommandManager.instance = new CommandManager();
         
@@ -742,6 +823,9 @@
         // 初始化函数
         function init() {
             imageManager = new LWImageManager(); // 在init函数中初始化
+            
+            // 初始化图像原点位置
+            updateImageOriginPos();
             
             // 尝试加载保存的项目数据
             const projectLoaded = loadProject();
@@ -883,8 +967,9 @@
             zoomLevel = Math.min(zoomLevel + 0.1, 5); // 最大放大5倍
             updateZoomLevel();
             if (currentImage) {
-                console.log('放大',zoomLevel)
                 drawCurrentImage();
+            } else if (currentFrame) {
+                renderCanvas();
             }
         }
         
@@ -893,8 +978,9 @@
             zoomLevel = Math.max(zoomLevel - 0.1, 0.1); // 最小缩小到0.1倍
             updateZoomLevel();
             if (currentImage) {
-                console.log('缩小',zoomLevel)
                 drawCurrentImage();
+            } else if (currentFrame) {
+                renderCanvas();
             }
         }
         
@@ -902,10 +988,39 @@
         function handleZoomReset() {
             zoomLevel = 1;
             updateZoomLevel();
+            // 重置原点到画布中心
+            if (!isDraggingOrigin) {
+                updateImageOriginPos();
+            }
             if (currentImage) {
                 drawCurrentImage();
+            } else if (currentFrame) {
+                renderCanvas();
             }
         }
+        
+        // 更新原点位置
+        function updateImageOriginPos() {
+            m_imageOriginPos.x = canvas.width / 2;
+            m_imageOriginPos.y = canvas.height / 2;
+        }
+        
+        // 跟踪空格键状态
+        let isSpacePressed = false;
+        // 跟踪是否处于拖拽原点模式
+        let isDraggingOrigin = false;
+        // 拖拽原点的起始位置（原有变量，保留以确保兼容性）
+        let originDragStartX = 0;
+        let originDragStartY = 0;
+        // 拖拽原点时的屏幕坐标和原点位置
+        let originDragScreenX = 0;
+        let originDragScreenY = 0;
+        let originDragStartPosX = 0;
+        let originDragStartPosY = 0;
+        
+        // 模块拖拽相关变量
+        let moduleDragStartX = 0;
+        let moduleDragStartY = 0;
         
         // 显示动作编辑区鼠标位置
         function showMousePosition(e) {
@@ -914,10 +1029,8 @@
             const y = e.clientY - rect.top;
             
             // 计算相对于画布中心的坐标
-            const originX = canvas.width / 2;
-            const originY = canvas.height / 2;
-            const relativeX = Math.round(x - originX);
-            const relativeY = Math.round(originY - y);
+            const relativeX = Math.round((x - m_imageOriginPos.x)/zoomLevel);
+            const relativeY = Math.round((m_imageOriginPos.y - y)/zoomLevel);
             
             // 更新鼠标位置显示
             document.getElementById('mouse-position').textContent = 
@@ -942,12 +1055,12 @@
         // 更新缩放级别显示
         function updateZoomLevel() {
             document.getElementById('zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+            document.getElementById('animation-zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
         }
         
         // 处理鼠标滚轮缩放
         function handleMouseWheel(e) {
             e.preventDefault();
-            if (!currentImage) return;
             
             // 应用缩放
             if (e.deltaY < 0) {
@@ -957,7 +1070,13 @@
             }
             
             updateZoomLevel();
-            drawCurrentImage();
+            
+            // 根据当前编辑模式调用相应的绘制函数
+            if (currentImage) {
+                drawCurrentImage();
+            } else if (currentFrame) {
+                renderCanvas();
+            }
         }
         
         // 绑定事件函数
@@ -979,11 +1098,14 @@
             
             // 帧相关事件
             document.getElementById('add-frame').addEventListener('click', addFrame);
+            document.getElementById('clone-frame').addEventListener('click', cloneFrame);
             document.getElementById('delete-frame').addEventListener('click', deleteFrame);
             
             // 模块相关事件
             document.getElementById('add-frame-module').addEventListener('click', showAddModuleModal);
             document.getElementById('delete-frame-module').addEventListener('click', deleteFrameModule);
+            document.getElementById('copy-module').addEventListener('click', copyModule);
+            document.getElementById('paste-module').addEventListener('click', pasteModule);
             document.getElementById('flip-horizontal').addEventListener('click', flipHorizontal);
             document.getElementById('flip-vertical').addEventListener('click', flipVertical);
             document.getElementById('rotate').addEventListener('click', rotateModule);
@@ -991,6 +1113,13 @@
             // 动画播放相关事件
             document.getElementById('play-animation').addEventListener('click', togglePlayAnimation);
             document.getElementById('speed-range').addEventListener('input', changeAnimationSpeed);
+            
+            // 网格显示相关事件
+            document.getElementById('toggle-grid').addEventListener('click', function() {
+                showGrid = !showGrid;
+                this.textContent = showGrid ? '隐藏网格' : '显示网格';
+                renderCanvas();
+            });
             
             // 图片相关事件
             document.getElementById('upload-image').addEventListener('click', showUploadImageModal);
@@ -1007,6 +1136,16 @@
             canvas.addEventListener('mousemove', handleMouseMove);
             canvas.addEventListener('mouseup', handleMouseUp);
             canvas.addEventListener('mouseleave', handleMouseUp);
+            canvas.addEventListener('wheel', handleMouseWheel);
+            
+            // 动作编辑模式缩放控制
+            document.getElementById('animation-zoom-in').addEventListener('click', handleZoomIn);
+            document.getElementById('animation-zoom-out').addEventListener('click', handleZoomOut);
+            document.getElementById('animation-zoom-reset').addEventListener('click', handleZoomReset);
+            
+            // 添加键盘事件监听
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
             
 
             imageCanvas.addEventListener('dblclick', function(e) {
@@ -1039,6 +1178,8 @@
             // 控制面板事件
             document.getElementById('module-x').addEventListener('input', updateModulePosition);
             document.getElementById('module-y').addEventListener('input', updateModulePosition);
+            document.getElementById('module-width').addEventListener('input', updateModuleSize);
+            document.getElementById('module-height').addEventListener('input', updateModuleSize);
         }
         
         // 保存项目函数
@@ -1436,6 +1577,81 @@
         function hideNewSpriteModal() {
             document.getElementById('new-sprite-modal').style.display = 'none';
             document.getElementById('sprite-name').value = '';
+        }
+        
+        // 重命名动画
+        function renameAnimation() {
+            if (!currentAnim) return;
+            
+            const newName = prompt('请输入新的动画名称:', currentAnim.name);
+            if (newName && newName.trim()) {
+                currentAnim.name = newName.trim();
+                renderAnimList();
+                document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
+                saveProject();
+            }
+        }
+        
+        // 上移动画
+        function moveAnimationUp() {
+            if (!currentSprite || !currentAnim) return;
+            
+            const currentIndex = currentSprite.mAnimList.indexOf(currentAnim);
+            if (currentIndex > 0) {
+                // 交换位置
+                [currentSprite.mAnimList[currentIndex - 1], currentSprite.mAnimList[currentIndex]] = 
+                [currentSprite.mAnimList[currentIndex], currentSprite.mAnimList[currentIndex - 1]];
+                
+                renderAnimList();
+                saveProject();
+            }
+        }
+        
+        // 下移动画
+        function moveAnimationDown() {
+            if (!currentSprite || !currentAnim) return;
+            
+            const currentIndex = currentSprite.mAnimList.indexOf(currentAnim);
+            if (currentIndex < currentSprite.mAnimList.length - 1) {
+                // 交换位置
+                [currentSprite.mAnimList[currentIndex], currentSprite.mAnimList[currentIndex + 1]] = 
+                [currentSprite.mAnimList[currentIndex + 1], currentSprite.mAnimList[currentIndex]];
+                
+                renderAnimList();
+                saveProject();
+            }
+        }
+        
+        // 置顶动画
+        function moveAnimationToTop() {
+            if (!currentSprite || !currentAnim) return;
+            
+            const currentIndex = currentSprite.mAnimList.indexOf(currentAnim);
+            if (currentIndex > 0) {
+                // 移除当前动画
+                currentSprite.mAnimList.splice(currentIndex, 1);
+                // 添加到数组开头
+                currentSprite.mAnimList.unshift(currentAnim);
+                
+                renderAnimList();
+                saveProject();
+            }
+        }
+        
+        // 置底动画
+        function moveAnimationToBottom() {
+            if (!currentSprite || !currentAnim) return;
+            
+            const currentIndex = currentSprite.mAnimList.indexOf(currentAnim);
+            if (currentIndex < currentSprite.mAnimList.length - 1) {
+                // 移除当前动画
+                currentSprite.mAnimList.splice(currentIndex, 1);
+                // 添加到数组末尾
+                currentSprite.mAnimList.push(currentAnim);
+                
+                renderAnimList();
+                saveProject();
+            }
         }
         
         // 创建角色
@@ -2072,6 +2288,12 @@
             
             // 更新界面
             renderCanvas();
+            
+            // 清空控制面板
+            document.getElementById('module-x').value = 0;
+            document.getElementById('module-y').value = 0;
+            document.getElementById('module-width').value = 0;
+            document.getElementById('module-height').value = 0;
         }
         
         // 添加帧
@@ -2081,19 +2303,36 @@
                 return;
             }
             
-            // 创建新帧
-            let newFrame;
-            if (currentFrame) {
-                // 复制当前帧
-                newFrame = currentFrame.clone();
-            } else {
-                newFrame = new Frame();
-            }
+            // 创建新的空帧，不复制原有的fm数据
+            const newFrame = new Frame();
             
             const newAnimFrame = new AnimFrame(newFrame, true);
             
             // 插入到当前帧之后
             currentAnim.aframeList.splice(currentFrameIndex + 1, 0, newAnimFrame);
+        }
+
+        // 克隆帧
+        function cloneFrame() {
+            if (!currentAnim || !currentFrame) {
+                alert('请先选择一个帧');
+                return;
+            }
+            
+            // 创建当前帧的克隆
+            const clonedFrame = currentFrame.clone();
+            
+            // 创建新的动画帧对象
+            const newAnimFrame = new AnimFrame(clonedFrame, currentAnim.aframeList[currentFrameIndex].KeyFrameState);
+            
+            // 插入到当前帧之后
+            currentAnim.aframeList.splice(currentFrameIndex + 1, 0, newAnimFrame);
+            
+            // 选择新克隆的帧
+            selectFrame(currentFrameIndex + 1);
+            
+            // 显示克隆成功提示
+            showNotification('帧已克隆');
             
             // 选择新创建的帧
             selectFrame(currentFrameIndex + 1);
@@ -2126,14 +2365,121 @@
             if (!currentFrame || selectedModuleIndex < 0) return;
             
             const frameModule = currentFrame.fmList[selectedModuleIndex];
-            CommandManager.instance.addCommand(new AddFmCommand(currentFrame, frameModule));
+            // 创建一个自定义的删除命令，记录删除前的状态
+            const deleteCommand = {
+                execute: function() {
+                    // 已在外部执行删除操作
+                },
+                undo: function() {
+                    // 撤销删除时，将模块添加回原位置
+                    currentFrame.fmList.splice(selectedModuleIndex, 0, frameModule);
+                    selectedModuleIndex = selectedModuleIndex;
+                    renderCanvas();
+                    updateModuleProperties(frameModule);
+                }
+            };
             
+            CommandManager.instance.addCommand(deleteCommand);
+            console.log('delete fm:', selectedModuleIndex);
             // 从当前帧中删除模块
             currentFrame.fmList.splice(selectedModuleIndex, 1);
             selectedModuleIndex = -1;
             
             // 更新界面
             renderCanvas();
+            
+            // 清空控制面板
+            document.getElementById('module-x').value = 0;
+            document.getElementById('module-y').value = 0;
+            document.getElementById('module-width').value = 0;
+            document.getElementById('module-height').value = 0;
+        }
+        
+        // 复制选中的模块
+        function copyModule() {
+            if (!currentFrame || selectedModuleIndex < 0) return;
+            
+            const fm = currentFrame.fmList[selectedModuleIndex];
+            
+            // 保存模块信息，包括模块对象、位置、翻转/旋转标志和缩放信息
+            copiedModuleInfo = {
+                module: fm.module,  // 模块对象
+                x: fm.x,            // X坐标
+                y: fm.y,            // Y坐标
+                flag: fm.flag,      // 翻转/旋转标志
+                scale: fm.scale ? { ...fm.scale } : null  // 缩放信息
+            };
+            
+            // 显示复制成功提示
+            showNotification('模块已复制，可以跨精灵粘贴');
+        }
+        
+        // 粘贴模块
+        function pasteModule() {
+            if (!copiedModuleInfo || !currentFrame) return;
+            
+            // 从复制的信息创建新的FrameModule
+            const newFm = new FrameModule(
+                copiedModuleInfo.module,  // 使用相同的模块
+                copiedModuleInfo.x + 10,  // 稍微偏移一点，避免重叠
+                copiedModuleInfo.y + 10,  // 稍微偏移一点，避免重叠
+                copiedModuleInfo.flag     // 使用相同的翻转/旋转标志
+            );
+            
+            // 复制缩放信息（如果有）
+            if (copiedModuleInfo.scale) {
+                newFm.scale = { ...copiedModuleInfo.scale };
+            }
+            
+            // 添加新模块到当前帧
+            CommandManager.instance.addCommand(new AddFmCommand(currentFrame, newFm));
+            
+            // 更新显示
+            renderCanvas();
+            
+            // 选中新添加的模块
+            selectedModuleIndex = currentFrame.fmList.length - 1;
+            
+            // 更新控制面板属性
+            updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+            
+            // 显示粘贴成功提示
+            showNotification('模块已粘贴');
+        }
+        
+        // 显示通知提示
+        function showNotification(message) {
+            // 检查是否已存在通知元素
+            let notification = document.getElementById('notification');
+            if (!notification) {
+                // 创建通知元素
+                notification = document.createElement('div');
+                notification.id = 'notification';
+                document.body.appendChild(notification);
+            }
+            
+            // 设置通知内容和样式
+            notification.textContent = message;
+            notification.style.position = 'fixed';
+            notification.style.bottom = '20px';
+            notification.style.right = '20px';
+            notification.style.padding = '10px 20px';
+            notification.style.backgroundColor = '#333';
+            notification.style.color = 'white';
+            notification.style.borderRadius = '4px';
+            notification.style.zIndex = '1000';
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.3s';
+            
+            // 显示通知
+            setTimeout(() => {
+                notification.style.opacity = '1';
+            }, 10);
+            
+            // 3秒后隐藏通知
+            setTimeout(() => {
+                notification.style.opacity = '0';
+            }, 3000);
         }
         
         // 水平翻转
@@ -2176,6 +2522,7 @@
             
             // 更新界面
             renderCanvas();
+            updateModuleProperties(fm);
         }
         
         // 改变动画速度
@@ -2183,18 +2530,85 @@
             animationSpeed = 550 - document.getElementById('speed-range').value;
         }
         
+        // 记录当前拖拽的控制点
+        let resizeControlPoint = -1;
+        let originalWidth = 0;
+        let originalHeight = 0;
+        let originalX = 0;
+        let originalY = 0;
+        
         // 处理鼠标按下事件
         function handleMouseDown(e) {
+            // 如果空格键按下且没有选中模块，进入拖拽原点模式
+            if (isSpacePressed && selectedModuleIndex === -1) {
+                isDraggingOrigin = true;
+                const rect = canvas.getBoundingClientRect();
+                // 记录点击时的屏幕坐标和当前原点位置
+                originDragScreenX = e.clientX;
+                originDragScreenY = e.clientY;
+                originDragStartPosX = m_imageOriginPos.x;
+                originDragStartPosY = m_imageOriginPos.y;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            
             if (!currentFrame) return;
             
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            let x = (e.clientX - rect.left );
+            let y = (e.clientY - rect.top );
+
+            // 计算相对于画布中心的坐标
+            x = Math.round((x - m_imageOriginPos.x)/zoomLevel);
+            y = Math.round((m_imageOriginPos.y - y)/zoomLevel);
+            // const relativeY = Math.round((m_imageOriginPos.y - y)/zoomLevel);
+            console.log('click:',x, y);
+            
+            // 检查是否点击到了选中模块的控制点
+            if (selectedModuleIndex >= 0) {
+                const fm = currentFrame.fmList[selectedModuleIndex];
+                const module = fm.module;
+                if (module) {
+                    const imageItem = currentSprite.getImage(module.imageId);
+                    if (imageItem && imageItem.modulesList[module.imageModuleId]) {
+                        const rectModule = imageItem.modulesList[module.imageModuleId];
+                        let width = rectModule.width;
+                        let height = rectModule.height;
+                        
+                        // 应用变换后的尺寸
+                        if (fm.flag & 4) { // 90度旋转
+                            [width, height] = [height, width];
+                        }
+                        
+                        // 计算控制点位置 左上、右上、右下、左下
+                        const points = [
+                            { x: (m_imageOriginPos.x + fm.x) , y: m_imageOriginPos.y - fm.y },
+                            { x: m_imageOriginPos.x + fm.x + width, y: m_imageOriginPos.y - fm.y  },
+                            { x: m_imageOriginPos.x + fm.x + width, y: m_imageOriginPos.y - fm.y + height },
+                            { x: m_imageOriginPos.x + fm.x , y: m_imageOriginPos.y - fm.y + height }
+                        ];
+                        
+                        // 检查是否点击到了控制点
+                        for (let i = 0; i < points.length; i++) {
+                            const dx = x - points[i].x;
+                            const dy = y - points[i].y;
+                            if (dx * dx + dy * dy <= 16) { // 4px的点击范围
+                                resizeControlPoint = i;
+                                isDragging = true;
+                                dragStartX = x;
+                                dragStartY = y;
+                                originalWidth = width;
+                                originalHeight = height;
+                                originalX = fm.x;
+                                originalY = fm.y;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
             
             // 检查是否点击了某个模块
-            const originX = canvas.width / 2;
-            const originY = canvas.height / 2;
-            
             // 从后往前检查，确保上层的模块先被选中
             for (let i = currentFrame.fmList.length - 1; i >= 0; i--) {
                 const fm = currentFrame.fmList[i];
@@ -2208,29 +2622,39 @@
                 let width = rectModule.width;
                 let height = rectModule.height;
                 
+                // 应用缩放
+                if (fm.scale) {
+                    width *= fm.scale.x;
+                    height *= fm.scale.y;
+                }
+                
                 // 应用变换后的尺寸
                 if (fm.flag & 4) { // 90度旋转
                     [width, height] = [height, width];
                 }
                 
                 // 计算模块的边界框
-                let left = originX + fm.x - width / 2;
-                let top = originY - fm.y - height / 2;
+                let left = fm.x ;
+                let top =  fm.y;
                 let right = left + width;
-                let bottom = top + height;
+                let bottom = top - height;
                 
+                // left /= zoomLevel;
+                // top /= zoomLevel;
+                // right /= zoomLevel;
+                // bottom /= zoomLevel;
+
                 // 检查点击是否在模块内
-                if (x >= left && x <= right && y >= top && y <= bottom) {
+                console.log('click:',x, y, left, top, right, bottom);
+                if (x >= left && x <= right && y <= top && y >= bottom) {
                     selectedModuleIndex = i;
                     isDragging = true;
-                    dragStartX = x - (originX + fm.x);
-                    dragStartY = y - (originY - fm.y);
+                    dragStartX = x;
+                    dragStartY = y;
                     
-                    // 更新控制面板
-                    document.getElementById('module-x').value = Math.round(fm.x);
-                    document.getElementById('module-y').value = Math.round(fm.y);
-                    document.getElementById('module-width').value = width;
-                    document.getElementById('module-height').value = height;
+                    console.log('选中',selectedModuleIndex);
+                    // 更新控制面板属性
+                    updateModuleProperties(fm);
                     
                     renderCanvas();
                     return;
@@ -2249,34 +2673,217 @@
             renderCanvas();
         }
         
+        // 处理空格键按下事件
+        function handleKeyDown(e) {
+            if (e.code === 'Space') {
+                isSpacePressed = true;
+                // 当按下空格键且鼠标在画布上时，将鼠标变为手形
+                if (canvas.matches(':hover')) {
+                    canvas.style.cursor = 'grab';
+                }
+                e.preventDefault();
+            }
+        }
+        
+        // 处理空格键释放事件
+        function handleKeyUp(e) {
+            if (e.code === 'Space') {
+                isSpacePressed = false;
+                isDraggingOrigin = false;
+                // 恢复鼠标形状
+                canvas.style.cursor = 'default';
+            }
+        }
+        
+        // 原始鼠标事件处理函数引用
+        const originalHandleMouseDown = handleMouseDown;
+        const originalHandleMouseMove = handleMouseMove;
+        const originalHandleMouseUp = handleMouseUp;
+        
         // 处理鼠标移动事件
         function handleMouseMove(e) {
+            // 如果处于拖拽原点模式
+            if (isDraggingOrigin) {
+                // 计算鼠标移动的屏幕偏移量
+                const deltaX = e.clientX - originDragScreenX;
+                const deltaY = e.clientY - originDragScreenY;
+                
+                // 根据当前缩放比例计算原点应该移动的距离
+                m_imageOriginPos.x = originDragStartPosX + deltaX;// / zoomLevel;
+                m_imageOriginPos.y = originDragStartPosY + deltaY;// / zoomLevel;
+                renderCanvas();
+                return;
+            }
+            
             if (!isDragging || !currentFrame || selectedModuleIndex < 0) return;
             
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            let x = (e.clientX - rect.left);// / zoomLevel;
+            let y = (e.clientY - rect.top);// / zoomLevel;
             
-            const originX = canvas.width / 2;
-            const originY = canvas.height / 2;
+            // 计算相对于画布中心的坐标
+            x = Math.round((x - m_imageOriginPos.x)/zoomLevel);
+            y = Math.round((m_imageOriginPos.y - y)/zoomLevel);
+            // const relativeY = Math.round((m_imageOriginPos.y - y)/zoomLevel);
+            console.log('move:',x, y);
             
             const fm = currentFrame.fmList[selectedModuleIndex];
-            const command = new TransformFmCommand(fm, fm.x, fm.y, fm.flag);
+            // 先保存当前状态
+            const oldX = fm.x;
+            const oldY = fm.y;
+            const oldFlag = fm.flag;
             
-            fm.x = x - originX - dragStartX;
-            fm.y = originY - y + dragStartY;
+            if (resizeControlPoint !== -1) {
+                // 处理缩放
+                const deltaX = x - dragStartX;
+                const deltaY = y - dragStartY;
+                
+                let newWidth = originalWidth;
+                let newHeight = originalHeight;
+                let newX = originalX;
+                let newY = originalY;
+                
+                switch (resizeControlPoint) {
+                    case 0: // 左上
+                        newWidth = originalWidth - deltaX;
+                        newHeight = originalHeight + deltaY;
+                        newX = originalX + deltaX / 2;
+                        newY = originalY - deltaY / 2;
+                        break;
+                    case 1: // 右上
+                        newWidth = originalWidth + deltaX;
+                        newHeight = originalHeight + deltaY;
+                        newX = originalX - deltaX / 2;
+                        newY = originalY - deltaY / 2;
+                        break;
+                    case 2: // 右下
+                        newWidth = originalWidth + deltaX;
+                        newHeight = originalHeight - deltaY;
+                        newX = originalX - deltaX / 2;
+                        newY = originalY + deltaY / 2;
+                        break;
+                    case 3: // 左下
+                        newWidth = originalWidth - deltaX;
+                        newHeight = originalHeight - deltaY;
+                        newX = originalX + deltaX / 2;
+                        newY = originalY + deltaY / 2;
+                        break;
+                }
+                
+                // 确保尺寸不为负数
+                newWidth = Math.max(1, newWidth);
+                newHeight = Math.max(1, newHeight);
+                
+                // 保存原始模块尺寸
+                const module = fm.module;
+                if (module) {
+                    const imageItem = currentSprite.getImage(module.imageId);
+                    if (imageItem && imageItem.modulesList[module.imageModuleId]) {
+                        // 计算缩放比例
+                        const rectModule = imageItem.modulesList[module.imageModuleId];
+                        
+                        // 获取原始尺寸（不考虑之前的缩放）
+                        let baseWidth = rectModule.width;
+                        let baseHeight = rectModule.height;
+                        
+                        // 应用旋转变换
+                        if (fm.flag & 4) { // 90度旋转
+                            [baseWidth, baseHeight] = [baseHeight, baseWidth];
+                        }
+                        
+                        // 计算新的缩放比例
+                        const scaleX = newWidth / baseWidth;
+                        const scaleY = newHeight / baseHeight;
+                        
+                        // 更新模块位置和缩放
+                        fm.x = newX;
+                        fm.y = newY;
+                        
+                        // 保存缩放比例
+                        if (!fm.scale) fm.scale = { x: 1, y: 1 };
+                        fm.scale.x = scaleX;
+                        fm.scale.y = scaleY;
+                        
+                        // 更新控制面板
+                        document.getElementById('module-x').value = Math.round(fm.x);
+                        document.getElementById('module-y').value = Math.round(fm.y);
+                        document.getElementById('module-width').value = Math.round(newWidth);
+                        document.getElementById('module-height').value = Math.round(newHeight);
+                    }
+                }
+            } else {
+                const deltaX = x - dragStartX;
+                const deltaY = y - dragStartY;
+
+                // 处理拖拽移动
+                fm.x = fm.x + deltaX;
+                fm.y = fm.y + deltaY;
+                dragStartX = x;
+                dragStartY = y;
+
+                // 更新控制面板
+                document.getElementById('module-x').value = Math.round(fm.x);
+                document.getElementById('module-y').value = Math.round(fm.y);
+            }
             
-            // 更新控制面板
-            document.getElementById('module-x').value = Math.round(fm.x);
-            document.getElementById('module-y').value = Math.round(fm.y);
-            
+            // 在修改完成后创建命令
+            const command = new TransformFmCommand(fm, oldX, oldY, oldFlag);
             CommandManager.instance.addCommand(command);
             renderCanvas();
+            updateModuleProperties(fm);
         }
         
         // 处理鼠标释放事件
         function handleMouseUp() {
+            // 结束拖拽原点模式
+            if (isDraggingOrigin) {
+                isDraggingOrigin = false;
+                if (isSpacePressed) {
+                    canvas.style.cursor = 'grab';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+                return;
+            }
+            
             isDragging = false;
+            resizeControlPoint = -1;
+        }
+        
+        // 更新模块属性显示
+        function updateModuleProperties(fm) {
+            if (!fm) return;
+            
+            // 获取模块信息
+            const module = fm.module;
+            let width = 0;
+            let height = 0;
+            
+            if (module) {
+                const imageItem = currentSprite.getImage(module.imageId);
+                if (imageItem && imageItem.modulesList[module.imageModuleId]) {
+                    const rectModule = imageItem.modulesList[module.imageModuleId];
+                    width = rectModule.width;
+                    height = rectModule.height;
+                    
+                    // 应用变换后的尺寸
+                    if (fm.flag & 4) { // 90度旋转
+                        [width, height] = [height, width];
+                    }
+                    
+                    // 应用缩放
+                    if (fm.scale) {
+                        width *= fm.scale.x;
+                        height *= fm.scale.y;
+                    }
+                }
+            }
+            
+            // 更新控制面板
+            document.getElementById('module-x').value = Math.round(fm.x);
+            document.getElementById('module-y').value = Math.round(fm.y);
+            document.getElementById('module-width').value = Math.round(width);
+            document.getElementById('module-height').value = Math.round(height);
         }
         
         // 更新模块位置
@@ -2291,6 +2898,47 @@
             
             CommandManager.instance.addCommand(command);
             renderCanvas();
+        }
+        
+        // 更新模块尺寸
+        function updateModuleSize() {
+            if (!currentFrame || selectedModuleIndex < 0) return;
+            
+            const fm = currentFrame.fmList[selectedModuleIndex];
+            const module = fm.module;
+            
+            if (module) {
+                const imageItem = currentSprite.getImage(module.imageId);
+                if (imageItem && imageItem.modulesList[module.imageModuleId]) {
+                    const rectModule = imageItem.modulesList[module.imageModuleId];
+                    let origWidth = rectModule.width;
+                    let origHeight = rectModule.height;
+                    
+                    // 应用变换后的尺寸
+                    if (fm.flag & 4) { // 90度旋转
+                        [origWidth, origHeight] = [origHeight, origWidth];
+                    }
+                    
+                    const width = parseInt(document.getElementById('module-width').value) || origWidth;
+                    const height = parseInt(document.getElementById('module-height').value) || origHeight;
+                    
+                    // 创建缩放命令
+                    const command = new TransformFmCommand(fm, fm.x, fm.y, fm.flag);
+                    
+                    // 计算缩放比例
+                    const scaleX = width / origWidth;
+                    const scaleY = height / origHeight;
+                    
+                    // 保存缩放比例到frameModule对象，以便在draw时使用
+                    if (!fm.scale) fm.scale = { x: 1, y: 1 };
+                    fm.scale.x = scaleX;
+                    fm.scale.y = scaleY;
+                    
+                    CommandManager.instance.addCommand(command);
+                    renderCanvas();
+                    updateModuleProperties(fm);
+                }
+            }
         }
         
         // 渲染角色列表
@@ -2320,13 +2968,102 @@
             
             currentSprite.mAnimList.forEach((anim, index) => {
                 const li = document.createElement('li');
-                li.textContent = anim.name;
-                if (currentAnim === anim) {
-                    li.classList.add('active');
-                }
-                li.addEventListener('click', () => {
+                li.className = 'anim-item' + (currentAnim === anim ? ' active' : '');
+                
+                // 动画名称
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'anim-name';
+                nameSpan.textContent = anim.name;
+                nameSpan.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     selectAnim(index);
                 });
+                
+                // 操作按钮容器
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'anim-actions';
+                
+                // 重命名按钮
+                const renameBtn = document.createElement('button');
+                renameBtn.className = 'anim-action-btn';
+                renameBtn.textContent = '重命名';
+                renameBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (currentAnim === anim) {
+                        renameAnimation();
+                    } else {
+                        selectAnim(index);
+                        setTimeout(renameAnimation, 100);
+                    }
+                });
+                
+                // 上移按钮
+                const upBtn = document.createElement('button');
+                upBtn.className = 'anim-action-btn';
+                upBtn.textContent = '上移';
+                upBtn.disabled = index === 0;
+                upBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (currentAnim === anim) {
+                        moveAnimationUp();
+                    } else {
+                        selectAnim(index);
+                        setTimeout(moveAnimationUp, 100);
+                    }
+                });
+                
+                // 下移按钮
+                const downBtn = document.createElement('button');
+                downBtn.className = 'anim-action-btn';
+                downBtn.textContent = '下移';
+                downBtn.disabled = index === currentSprite.mAnimList.length - 1;
+                downBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (currentAnim === anim) {
+                        moveAnimationDown();
+                    } else {
+                        selectAnim(index);
+                        setTimeout(moveAnimationDown, 100);
+                    }
+                });
+                
+                // 置顶按钮
+                const topBtn = document.createElement('button');
+                topBtn.className = 'anim-action-btn';
+                topBtn.textContent = '置顶';
+                topBtn.disabled = index === 0;
+                topBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (currentAnim === anim) {
+                        moveAnimationToTop();
+                    } else {
+                        selectAnim(index);
+                        setTimeout(moveAnimationToTop, 100);
+                    }
+                });
+                
+                // 置底按钮
+                const bottomBtn = document.createElement('button');
+                bottomBtn.className = 'anim-action-btn';
+                bottomBtn.textContent = '置底';
+                bottomBtn.disabled = index === currentSprite.mAnimList.length - 1;
+                bottomBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (currentAnim === anim) {
+                        moveAnimationToBottom();
+                    } else {
+                        selectAnim(index);
+                        setTimeout(moveAnimationToBottom, 100);
+                    }
+                });
+                
+                // 添加按钮到容器 - 只保留重命名按钮
+                actionsDiv.appendChild(renameBtn);
+                
+                // 添加元素到li
+                li.appendChild(nameSpan);
+                li.appendChild(actionsDiv);
+                
                 animListEl.appendChild(li);
             });
         }
@@ -2357,12 +3094,77 @@
             // 清空画布
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            if (!currentFrame) return;
+            // 先不应用缩放，绘制网格线和坐标轴
+            // 如果需要显示网格
+            if (showGrid) {
+                ctx.strokeStyle = gridColor;
+                ctx.lineWidth = 1; // 线宽固定
+                
+                // 绘制垂直网格线
+                ctx.beginPath();
+                for (let x = 0; x <= canvas.width; x += gridSize) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                }
+                ctx.stroke();
+                
+                // 绘制水平网格线
+                ctx.beginPath();
+                for (let y = 0; y <= canvas.height; y += gridSize) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                }
+                ctx.stroke();
+            }
             
+            // 绘制原点
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(m_imageOriginPos.x, m_imageOriginPos.y, 4, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 绘制原点十字线
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(m_imageOriginPos.x - 8, m_imageOriginPos.y);
+            ctx.lineTo(m_imageOriginPos.x + 8, m_imageOriginPos.y);
+            ctx.moveTo(m_imageOriginPos.x, m_imageOriginPos.y - 8);
+            ctx.lineTo(m_imageOriginPos.x, m_imageOriginPos.y + 8);
+            ctx.stroke();
+            
+            // 绘制X轴和Y轴
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            
+            // X轴
+            ctx.beginPath();
+            ctx.moveTo(0, m_imageOriginPos.y);
+            ctx.lineTo(canvas.width, m_imageOriginPos.y);
+            ctx.stroke();
+            
+            // Y轴
+            ctx.beginPath();
+            ctx.moveTo(m_imageOriginPos.x, 0);
+            ctx.lineTo(m_imageOriginPos.x, canvas.height);
+            ctx.stroke();
+            
+            // 重置线条样式
+            ctx.setLineDash([]);
+            
+            // 应用缩放
+            ctx.save();
+            ctx.scale(zoomLevel, zoomLevel);
+            
+            if (!currentFrame) {
+                ctx.restore();
+                return;
+            }
+            
+            console.log('draw currentFrame')
             // 绘制当前帧
-            const originX = canvas.width / 2;
-            const originY = canvas.height / 2;
-            currentFrame.draw(ctx, currentSprite, originX, originY);
+            currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
             
             // 如果有选中的模块，绘制选中框
             if (selectedModuleIndex >= 0 && selectedModuleIndex < currentFrame.fmList.length) {
@@ -2382,37 +3184,44 @@
                         
                         // 绘制选中框
                         ctx.strokeStyle = 'blue';
-                        ctx.lineWidth = 2;
+                        ctx.lineWidth = 2 / zoomLevel;
                         ctx.strokeRect(
-                            originX + fm.x - width / 2 - 2,
-                            originY - fm.y - height / 2 - 2,
-                            width + 4,
-                            height + 4
+                            m_imageOriginPos.x / zoomLevel + fm.x /*- width / 2 */- 2 / zoomLevel,
+                            m_imageOriginPos.y / zoomLevel - fm.y /*- height / 2 */- 2 / zoomLevel,
+                            width + 4 / zoomLevel,
+                            height + 4 / zoomLevel
                         );
                         
                         // 绘制控制点
                         const points = [
-                            { x: originX + fm.x - width / 2, y: originY - fm.y - height / 2 },
-                            { x: originX + fm.x + width / 2, y: originY - fm.y - height / 2 },
-                            { x: originX + fm.x + width / 2, y: originY - fm.y + height / 2 },
-                            { x: originX + fm.x - width / 2, y: originY - fm.y + height / 2 }
+                            // { x: m_imageOriginPos.x / zoomLevel + fm.x - width / 2, y: m_imageOriginPos.y / zoomLevel - fm.y - height / 2 },
+                            // { x: m_imageOriginPos.x / zoomLevel + fm.x + width / 2, y: m_imageOriginPos.y / zoomLevel - fm.y - height / 2 },
+                            // { x: m_imageOriginPos.x / zoomLevel + fm.x + width / 2, y: m_imageOriginPos.y / zoomLevel - fm.y + height / 2 },
+                            // { x: m_imageOriginPos.x / zoomLevel + fm.x - width / 2, y: m_imageOriginPos.y / zoomLevel - fm.y + height / 2 }
+                            { x: m_imageOriginPos.x/zoomLevel + fm.x , y: m_imageOriginPos.y/zoomLevel - fm.y },
+                            { x: m_imageOriginPos.x/zoomLevel + fm.x + width, y: m_imageOriginPos.y/zoomLevel - fm.y  },
+                            { x: m_imageOriginPos.x/zoomLevel + fm.x + width, y: m_imageOriginPos.y/zoomLevel - fm.y + height },
+                            { x: m_imageOriginPos.x/zoomLevel + fm.x , y: m_imageOriginPos.y/zoomLevel - fm.y + height }
                         ];
                         
                         ctx.fillStyle = 'blue';
                         points.forEach(point => {
                             ctx.beginPath();
-                            ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+                            ctx.arc(point.x, point.y, 4 / zoomLevel, 0, 2 * Math.PI);
                             ctx.fill();
                         });
                         
                         // 绘制坐标信息
                         ctx.fillStyle = 'black';
-                        ctx.font = '12px Arial';
-                        ctx.fillText(`X: ${Math.round(fm.x)}`, originX + fm.x + width / 2 + 10, originY - fm.y - height / 2 - 10);
-                        ctx.fillText(`Y: ${Math.round(fm.y)}`, originX + fm.x + width / 2 + 10, originY - fm.y - height / 2);
+                        ctx.font = (12 / zoomLevel) + 'px Arial';
+                        ctx.fillText(`X: ${Math.round(fm.x)}`, m_imageOriginPos.x / zoomLevel + fm.x + width / 2 + 10 / zoomLevel, m_imageOriginPos.y / zoomLevel - fm.y - height / 2 - 10 / zoomLevel);
+                        ctx.fillText(`Y: ${Math.round(fm.y)}`, m_imageOriginPos.x / zoomLevel + fm.x + width / 2 + 10 / zoomLevel, m_imageOriginPos.y / zoomLevel - fm.y - height / 2);
                     }
                 }
             }
+            
+            // 恢复缩放
+            ctx.restore();
         }
         
         // 选择角色
@@ -2467,6 +3276,12 @@
             renderCanvas();
             
             document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
+            
+            // 清空控制面板
+            document.getElementById('module-x').value = 0;
+            document.getElementById('module-y').value = 0;
+            document.getElementById('module-width').value = 0;
+            document.getElementById('module-height').value = 0;
         }
         
         // 切换播放动画
