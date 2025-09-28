@@ -510,6 +510,20 @@
                         <button id="play-animation">播放</button>
                     </div>
                     
+                    <!-- 图片和模块列表区域 -->
+                    <div class="animation-image-browser" style="display: flex; height: 400px; margin-bottom: 10px;">
+                        <!-- 图片列表 -->
+                        <div class="animation-images-list" style="width: 40%; border: 1px solid #ddd; margin-right: 10px; overflow-y: auto;">
+                            <div class="control-title">可用图片</div>
+                            <div id="animation-images-list" class="images-list"></div>
+                        </div>
+                        <!-- 模块列表 -->
+                        <div class="animation-modules-list" style="width: 60%; border: 1px solid #ddd; overflow-y: auto;">
+                            <div class="control-title" id="selected-image-title">选择图片查看模块</div>
+                            <div id="animation-modules-list" class="modules-grid"></div>
+                        </div>
+                    </div>
+                    
                     <div class="canvas-container">
                         <canvas id="animation-canvas" width="1280" height="720"></canvas>
                     </div>
@@ -528,7 +542,7 @@
             
             <!-- 图片模块编辑Tab内容 -->
             <div id="content-image" class="tab-content">
-                <div class="image-editor">
+                <div class="image-editor" style="display: flex; flex-direction: column; height: 100%;">
                     <div class="toolbar">
                         <button id="upload-image">上传图片</button>
                         <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
@@ -539,6 +553,8 @@
                         </label>
                     </div>
                     
+
+                    
                     <div class="image-controls mb-2">
                         <button id="zoom-in" class="mr-2 p-1 bg-gray-200 rounded">放大</button>
                         <button id="zoom-out" class="mr-2 p-1 bg-gray-200 rounded">缩小</button>
@@ -546,8 +562,8 @@
                         <span id="zoom-level" class="ml-2">100%</span>
                     </div>
                     
-                    <div class="image-canvas-container">
-                        <canvas id="image-canvas" width="800" height="600"></canvas>
+                    <div class="image-canvas-container" style="flex: 1; overflow-y: auto; border: 1px solid #ddd; margin-bottom: 10px;">
+                        <canvas id="image-canvas" width="800" height="600" style="max-width: 100%; height: auto;"></canvas>
                         <div id="crop-box" class="crop-box" style="display: none;">
                             <div class="crop-handle top-left"></div>
                             <div class="crop-handle top-right"></div>
@@ -557,7 +573,7 @@
                         <div id="module-info" class="module-info" style="display: none;"></div>
                     </div>
                     
-                    <div class="modules-container">
+                    <div class="modules-container" style="position: sticky; bottom: 0; background-color: #fff; border-top: 1px solid #ddd; padding: 10px 0; z-index: 100;">
                         <div class="control-title">已选模块</div>
                         <div id="modules-list" class="modules-list"></div>
                     </div>
@@ -567,6 +583,12 @@
         
         <!-- 控制面板 -->
         <div class="control-panel">
+            <!-- 图片列表区域 -->
+            <div class="images-list-container mb-2">
+                <div class="control-title">加载的图片</div>
+                <div id="images-list" class="images-list"></div>
+            </div>
+            
             <div class="control-section">
                 <div class="control-title">模块属性</div>
                 <div class="control-group">
@@ -745,12 +767,14 @@
             renderAnimList();
             renderTimeline();
             renderCanvas();
+            renderImagesList();
+            renderAnimationImagesList();
             
             // 绑定事件
             bindEvents();
             
             // 为显示所有模块复选框添加事件监听
-            document.getElementById('show-all-modules').addEventListener('change', drawSelectedModules);
+            document.getElementById('show-all-modules').addEventListener('change', drawCurrentImage);
             
             // 监听窗口大小变化
             window.addEventListener('resize', resizeCanvas);
@@ -939,6 +963,11 @@
             document.getElementById('create-anim').addEventListener('click', createAnim);
             document.getElementById('cancel-create-anim').addEventListener('click', hideNewAnimModal);
             
+            // 上传图片相关事件
+            document.getElementById('upload-image').addEventListener('click', showUploadImageModal);
+            document.getElementById('confirm-upload').addEventListener('click', uploadImage);
+            document.getElementById('cancel-upload').addEventListener('click', hideUploadImageModal);
+            
             // 帧相关事件
             document.getElementById('add-frame').addEventListener('click', addFrame);
             document.getElementById('delete-frame').addEventListener('click', deleteFrame);
@@ -1057,7 +1086,7 @@
                 }
                 
                 const projectData = JSON.parse(savedData);
-                
+                console.log('load projectData', projectData);
                 // 重建图像管理器和所有图片
                 imageManager = new LWImageManager();
                 projectData.images.forEach(savedImage => {
@@ -1186,10 +1215,181 @@
             // 根据Tab重新渲染
             if (tabName === 'animation') {
                 renderCanvas();
+                renderAnimationImagesList();
+                document.getElementById('animation-modules-list').innerHTML = '';
+                document.getElementById('selected-image-title').textContent = '选择图片查看模块';
             } else if (tabName === 'image') {
                 renderModulesList();
                 drawCurrentImage();
+                renderImagesList();
             }
+        }
+        
+        // 渲染图片模块编辑中的图片列表
+        function renderImagesList() {
+            const imagesListContainer = document.getElementById('images-list');
+            imagesListContainer.innerHTML = '';
+            
+            if (!currentSprite || currentSprite.m_imageList.length === 0) {
+                imagesListContainer.innerHTML = '<div class="empty-message">暂无加载的图片</div>';
+                return;
+            }
+            
+            currentSprite.m_imageList.forEach(imageItem => {
+                const imageNameEl = document.createElement('div');
+                imageNameEl.className = 'image-name-item' + (currentImageId === imageItem.id ? ' selected' : '');
+                imageNameEl.textContent = imageItem.name;
+                imageNameEl.style.cssText = `
+                    padding: 5px 10px;
+                    margin: 2px 0;
+                    cursor: pointer;
+                    background-color: ${currentImageId === imageItem.id ? '#e0e0e0' : '#f0f0f0'};
+                    border-radius: 3px;
+                `;
+                
+                imageNameEl.addEventListener('click', () => {
+                    // 加载选中的图片作为当前编辑图片
+                    currentImage = imageItem.image;
+                    currentImageId = imageItem.id;
+                    
+                    // 调整画布大小以适应图片
+                    imageCanvas.width = currentImage.width;
+                    imageCanvas.height = currentImage.height;
+                    
+                    // 重置缩放
+                    zoomLevel = 1;
+                    updateZoomLevel();
+                    
+                    // 绘制图片
+                    drawCurrentImage();
+                    
+                    // 更新当前图片信息
+                    document.getElementById('current-image-info').textContent = 
+                        `${imageItem.name} (${currentImage.width}x${currentImage.height})`;
+                    
+                    // 重新渲染模块列表
+                    renderModulesList();
+                    
+                    // 重新渲染图片列表以更新选中状态
+                    renderImagesList();
+                });
+                
+                imagesListContainer.appendChild(imageNameEl);
+            });
+        }
+        
+        // 渲染动作编辑中的图片列表
+        function renderAnimationImagesList() {
+            const imagesListContainer = document.getElementById('animation-images-list');
+            imagesListContainer.innerHTML = '';
+            
+            if (!currentSprite || currentSprite.m_imageList.length === 0) {
+                imagesListContainer.innerHTML = '<div class="empty-message">暂无可用图片</div>';
+                return;
+            }
+            
+            currentSprite.m_imageList.forEach(imageItem => {
+                const imageNameEl = document.createElement('div');
+                imageNameEl.className = 'image-name-item';
+                imageNameEl.textContent = imageItem.name;
+                imageNameEl.style.cssText = `
+                    padding: 5px 10px;
+                    margin: 2px 0;
+                    cursor: pointer;
+                    background-color: #f0f0f0;
+                    border-radius: 3px;
+                `;
+                
+                imageNameEl.addEventListener('click', () => {
+                    // 显示选中图片的所有模块
+                    renderAnimationModulesList(imageItem);
+                });
+                
+                imagesListContainer.appendChild(imageNameEl);
+            });
+        }
+        
+        // 渲染动作编辑中选中图片的模块列表
+        function renderAnimationModulesList(imageItem) {
+            const modulesListContainer = document.getElementById('animation-modules-list');
+            modulesListContainer.innerHTML = '';
+            
+            document.getElementById('selected-image-title').textContent = `${imageItem.name} 的模块`;
+            
+            if (!imageItem.modulesList || imageItem.modulesList.length === 0) {
+                modulesListContainer.innerHTML = '<div class="empty-message">该图片暂无模块</div>';
+                return;
+            }
+            
+            imageItem.modulesList.forEach((module, index) => {
+                const moduleItem = document.createElement('div');
+                moduleItem.className = 'animation-module-item';
+                moduleItem.style.cssText = `
+                    display: inline-block;
+                    width: 80px;
+                    height: 80px;
+                    margin: 5px;
+                    padding: 5px;
+                    border: 1px solid #ddd;
+                    cursor: pointer;
+                    text-align: center;
+                    position: relative;
+                `;
+                
+                // 创建一个小画布来显示模块预览
+                const previewCanvas = document.createElement('canvas');
+                previewCanvas.width = 70;
+                previewCanvas.height = 70;
+                const previewCtx = previewCanvas.getContext('2d');
+                
+                // 计算缩放比例
+                const scale = Math.min(70 / module.width, 70 / module.height);
+                const scaledWidth = module.width * scale;
+                const scaledHeight = module.height * scale;
+                
+                // 绘制预览
+                previewCtx.drawImage(
+                    imageItem.image,
+                    module.x, module.y,
+                    module.width, module.height,
+                    (70 - scaledWidth) / 2, (70 - scaledHeight) / 2,
+                    scaledWidth, scaledHeight
+                );
+                
+                moduleItem.appendChild(previewCanvas);
+                
+                // 添加模块索引
+                const indexText = document.createElement('div');
+                indexText.style.position = 'absolute';
+                indexText.style.bottom = '2px';
+                indexText.style.right = '2px';
+                indexText.style.fontSize = '12px';
+                indexText.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+                indexText.style.padding = '1px 3px';
+                indexText.style.borderRadius = '2px';
+                indexText.textContent = `${index + 1}`;
+                
+                moduleItem.appendChild(indexText);
+                
+                // 添加点击事件
+                moduleItem.addEventListener('click', () => {
+                    if (!currentFrame) {
+                        alert('请先选择一个帧');
+                        return;
+                    }
+                    
+                    // 创建模块并添加到当前帧
+                    const moduleObj = new Module(imageItem.id, index);
+                    const frameModule = new FrameModule(moduleObj, 0, 0, 0);
+                    
+                    CommandManager.instance.addCommand(new AddFmCommand(currentFrame, frameModule));
+                    
+                    // 更新界面
+                    renderCanvas();
+                });
+                
+                modulesListContainer.appendChild(moduleItem);
+            });
         }
         
         // 显示新建角色模态框
@@ -1326,6 +1526,7 @@
                     }
                     
                     renderModulesList();
+                    renderImagesList();
                 };
             };
             
@@ -2195,6 +2396,8 @@
             renderAnimList();
             renderTimeline();
             renderCanvas();
+            renderImagesList();
+            renderAnimationImagesList();
             
             document.getElementById('current-anim-name').textContent = '选择一个动作开始编辑';
         }
@@ -2212,6 +2415,7 @@
             renderAnimList();
             renderTimeline();
             renderCanvas();
+            renderAnimationImagesList();
             
             document.getElementById('current-anim-name').textContent = currentAnim.name + (currentFrame ? ` - 帧${currentFrameIndex + 1}` : ' - 无帧');
         }
