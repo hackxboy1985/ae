@@ -534,6 +534,9 @@
                         <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
                         <button id="crop-module">框选模块</button>
                         <button id="save-module">保存模块</button>
+                        <label for="show-all-modules" style="margin-left: 10px; display: inline-flex; align-items: center;">
+                            <input type="checkbox" id="show-all-modules" checked>显示
+                        </label>
                     </div>
                     
                     <div class="image-controls mb-2">
@@ -746,6 +749,9 @@
             // 绑定事件
             bindEvents();
             
+            // 为显示所有模块复选框添加事件监听
+            document.getElementById('show-all-modules').addEventListener('change', drawSelectedModules);
+            
             // 监听窗口大小变化
             window.addEventListener('resize', resizeCanvas);
             
@@ -766,26 +772,33 @@
         function drawCurrentImage() {
             if (!currentImage) return;
             
+            
             imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
             
             // 计算图片绘制位置（保持图片在画布中心）
             const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
             const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+            const drawWidth = currentImage.width * zoomLevel;
+            const drawHeight = currentImage.height * zoomLevel;
             
             // 记录缩放中心点
             zoomCenterX = imageCanvas.width / 2;
             zoomCenterY = imageCanvas.height / 2;
             
+            // console.log('缩放中心点',zoomCenterX,zoomCenterY);
+
             // 绘制缩放后的图片
             imageCtx.drawImage(
                 currentImage, 
                 0, 0, 
                 currentImage.width, currentImage.height, 
                 drawX, drawY, 
-                currentImage.width * zoomLevel, 
-                currentImage.height * zoomLevel
+                drawWidth, drawHeight
             );
-            
+            //console.log('图片绘制区域：',drawX,drawY,drawWidth,drawHeight);
+
+            drawSelectedModules();
+
             // 绘制虚拟裁剪框
             if (isCropping && cropWidth > 0 && cropHeight > 0) {
                 const canvasX = drawX + cropLeft * zoomLevel;
@@ -837,6 +850,7 @@
             zoomLevel = Math.min(zoomLevel + 0.1, 5); // 最大放大5倍
             updateZoomLevel();
             if (currentImage) {
+                console.log('放大',zoomLevel)
                 drawCurrentImage();
             }
         }
@@ -846,6 +860,7 @@
             zoomLevel = Math.max(zoomLevel - 0.1, 0.1); // 最小缩小到0.1倍
             updateZoomLevel();
             if (currentImage) {
+                console.log('缩小',zoomLevel)
                 drawCurrentImage();
             }
         }
@@ -963,11 +978,15 @@
                 e.stopPropagation();
                 console.log('dblclick2');
 
-                const rect = imageCanvas.getBoundingClientRect();
                 
+                const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
+                const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+                // console.log('图片在画布上的绘制位置：',drawX,drawY);
+                
+                const rect = imageCanvas.getBoundingClientRect();
                 // 计算相对于图片的坐标（考虑缩放）
-                const imageX = (e.clientX - rect.left) / zoomLevel;
-                const imageY = (e.clientY - rect.top) / zoomLevel;
+                const imageX = (e.clientX - rect.left - drawX) / zoomLevel;
+                const imageY = (e.clientY - rect.top - drawY) / zoomLevel;
 
                 console.log('imageX', imageX, 'imageY', imageY, 'cropRange:',cropLeft,cropTop,cropWidth,cropHeight);
                 if (isCropping && imageX >= cropLeft && imageX <= cropLeft+cropWidth && imageY >= cropTop && imageY <= cropTop+cropHeight) {
@@ -1103,37 +1122,52 @@
         function drawSelectedModules() {
             if (!currentImage || !currentSprite || !currentImageId) return;
             
-            // 清空画布并重绘原图
-            imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
-            imageCtx.drawImage(currentImage, 0, 0);
+            // // 清空画布并重绘原图
+            // imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+            // imageCtx.drawImage(currentImage, 0, 0);
             
             const imageItem = currentSprite.getImage(currentImageId);
             if (!imageItem) return;
             
+            // 检查是否显示所有模块
+            const showAllModules = document.getElementById('show-all-modules').checked;
+            const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
+            const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+            // console.log('图片在画布上的绘制位置：',drawX,drawY);
+
+            if (showAllModules) {
+
+                // 绘制所有模块
+                imageItem.modulesList.forEach((module, index) => {
+                    if (index >= 0 && index < imageItem.modulesList.length) {
+                        // 绘制模块边框
+                        imageCtx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+                        imageCtx.lineWidth = 2;
+                        imageCtx.strokeRect(drawX + module.x * zoomLevel, drawY + module.y * zoomLevel, module.width * zoomLevel, module.height * zoomLevel);
+                        // 绘制模块索引
+                        imageCtx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                        imageCtx.font = '12px Arial';
+                        imageCtx.fillText(`${index + 1}`, drawX + module.x * zoomLevel + 2, drawY + module.y * zoomLevel + 14);
+                    }
+                });
+            }
+            //else {
             // 绘制所有选中的模块
             const needDrawModules = selectedImageModule !== -1 ? [selectedImageModule] : selectedImageModules;
             
             imageItem.modulesList.forEach((module,index) => {
-                if (index >= 0 && index < imageItem.modulesList.length) {
-                    
-                    // const module = imageItem.modulesList[index];
-                    console.log('绘制 module:',module);
-                    if(needDrawModules.includes(index)){
-                        // 绘制选中模块的高亮框
-                        imageCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-                    }else{
-                        imageCtx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
-                    }
+                if (index >= 0 && index < imageItem.modulesList.length && needDrawModules.includes(index)) {
+                    // 绘制选中模块的高亮框
+                    imageCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
                     imageCtx.lineWidth = 2;
-                    imageCtx.strokeRect(module.x, module.y, module.width, module.height);
+                    imageCtx.strokeRect(drawX + module.x * zoomLevel, drawY + module.y * zoomLevel, module.width * zoomLevel, module.height * zoomLevel);
                     // 绘制模块索引
                     imageCtx.fillStyle = 'rgba(255, 0, 0, 0.8)';
                     imageCtx.font = '12px Arial';
-                    imageCtx.fillText(`${index + 1}`, module.x + 2, module.y + 14);
-                    
-                    
+                    imageCtx.fillText(`${index + 1}`, drawX + module.x * zoomLevel + 2, drawY + module.y * zoomLevel + 14);
                 }
             });
+            // }
         }
         
         // 切换Tab函数
@@ -1154,7 +1188,7 @@
                 renderCanvas();
             } else if (tabName === 'image') {
                 renderModulesList();
-                drawSelectedModules(); // 绘制选中的模块
+                drawCurrentImage();
             }
         }
         
@@ -1292,7 +1326,6 @@
                     }
                     
                     renderModulesList();
-                    drawSelectedModules();
                 };
             };
             
@@ -1335,15 +1368,17 @@
         function handleImageMouseDown(e) {
             if (!isCropping || !currentImage) return;
 
-            const rect = imageCanvas.getBoundingClientRect();
-            
-            // 计算相对于图片的坐标（考虑缩放）
-            const imageX = (e.clientX - rect.left) / zoomLevel;
-            const imageY = (e.clientY - rect.top) / zoomLevel;
-            
             // 计算图片在画布上的绘制位置
             const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
             const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+            // console.log('图片在画布上的绘制位置：',drawX,drawY);
+
+            const rect = imageCanvas.getBoundingClientRect();
+            
+            // 计算相对于图片的坐标（考虑缩放）
+            const imageX = (e.clientX - rect.left - drawX) / zoomLevel;
+            const imageY = (e.clientY - rect.top - drawY) / zoomLevel;
+            console.log('点击在图片上的坐标（考虑缩放）：',e.clientX - rect.left, e.clientY - rect.top, 'imageX:',imageX,imageY);
             
             // 检查是否点击在虚拟裁剪框上
             const clickX = e.clientX - rect.left;
@@ -1352,7 +1387,7 @@
             const canvasTop = drawY + cropTop * zoomLevel;
             const canvasWidth = cropWidth * zoomLevel;
             const canvasHeight = cropHeight * zoomLevel;
-            
+            console.log('虚拟裁剪框位置：',canvasLeft,canvasTop,canvasWidth,canvasHeight,',click:',clickX,clickY);
             // 判断点击位置，确定调整模式
             const borderWidth = 15; // 边缘检测宽度，扩大以便于操作
             if (cropWidth > 0 && cropHeight > 0 &&
@@ -1405,9 +1440,12 @@
                 isImageModuleRangeMoving = true;
                 resizeMode = null;
                 
+                console.log('点击在图片上，开始新的裁剪');
+
                 // 计算实际的点击位置（考虑缩放）
                 cropStartX = imageX;
                 cropStartY = imageY;
+                console.log('点击在图片上的坐标（考虑缩放），作为裁剪框的起始点：',cropStartX,cropStartY);
                 
                 // 重置裁剪参数
                 cropLeft = cropStartX;
@@ -1509,8 +1547,14 @@
             }
             // 处理新建裁剪
             else if (isImageModuleRangeMoving) {
-                const currentX = (e.clientX - rect.left) / zoomLevel;
-                const currentY = (e.clientY - rect.top) / zoomLevel;
+                // 计算图片在画布上的绘制位置
+                const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
+                const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+                console.log('图片在画布上的绘制位置：',drawX,drawY);
+                
+                const currentX = (e.clientX - rect.left - drawX) / zoomLevel;
+                const currentY = (e.clientY - rect.top - drawY) / zoomLevel;
+                console.log('当前鼠标位置（考虑图片偏移）：',currentX,currentY);
                 
                 // 计算裁剪框的位置和大小
                 const x = Math.min(cropStartX, currentX);
@@ -1550,7 +1594,7 @@
                 // 显示提示信息，告知用户可以点击"保存模块"按钮确认
                 const moduleInfo = document.getElementById('module-info');
                 if (moduleInfo) {
-                    moduleInfo.textContent = `已选择区域: ${Math.round(scaledWidth)}x${Math.round(scaledHeight)} - 点击"保存模块"确认`;
+                    moduleInfo.textContent = `已选择区域: ${Math.round(scaledWidth)}x${Math.round(scaledHeight)} - 双击区域确认`;
                     moduleInfo.style.display = 'block';
                 }
                 // 不自动保存模块，让用户点击按钮确认
@@ -1609,13 +1653,13 @@
                     cropHeight = 0;
                     
                     // 更新按钮文本
-                    document.getElementById('crop-module').textContent = '框选模块';
+                    // document.getElementById('crop-module').textContent = '框选模块';
                     
-                    // 隐藏模块信息提示
-                    const moduleInfo = document.getElementById('module-info');
-                    if (moduleInfo) {
-                        moduleInfo.style.display = 'none';
-                    }
+                    // // 隐藏模块信息提示
+                    // const moduleInfo = document.getElementById('module-info');
+                    // if (moduleInfo) {
+                    //     moduleInfo.style.display = 'none';
+                    // }
                     
                     // 重新绘制画布以清除裁剪框
                     drawCurrentImage();
@@ -1667,7 +1711,7 @@
                 const indexText = document.createElement('div');
                 indexText.style.position = 'absolute';
                 indexText.style.bottom = '5px';
-                indexText.style.right = '5px';
+                indexText.style.right = '25px';
                 indexText.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
                 indexText.style.color = 'white';
                 indexText.style.padding = '2px 5px';
@@ -1675,6 +1719,37 @@
                 indexText.style.fontSize = '12px';
                 indexText.textContent = index + 1;
                 moduleItem.appendChild(indexText);
+                
+                // 添加删除按钮
+                const deleteBtn = document.createElement('button');
+                deleteBtn.style.position = 'absolute';
+                deleteBtn.style.top = '5px';
+                deleteBtn.style.right = '5px';
+                deleteBtn.style.width = '16px';
+                deleteBtn.style.height = '16px';
+                deleteBtn.style.backgroundColor = '#ff4444';
+                deleteBtn.style.color = 'white';
+                deleteBtn.style.border = 'none';
+                deleteBtn.style.borderRadius = '3px';
+                deleteBtn.style.fontSize = '10px';
+                deleteBtn.style.lineHeight = '14px';
+                deleteBtn.style.textAlign = 'center';
+                deleteBtn.style.cursor = 'pointer';
+                deleteBtn.style.display = 'flex';
+                deleteBtn.style.alignItems = 'center';
+                deleteBtn.style.justifyContent = 'center';
+                deleteBtn.textContent = '×';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 阻止冒泡，避免触发模块选择
+                    if (confirm('确定要删除这个模块吗？')) {
+                        // 从模块列表中删除该项
+                        imageItem.modulesList.splice(index, 1);
+                        // 重新渲染模块列表
+                        renderModulesList();
+                        drawCurrentImage();
+                    }
+                });
+                moduleItem.appendChild(deleteBtn);
                 
                 // 添加点击事件
                 moduleItem.addEventListener('click', (e) => {
@@ -1695,7 +1770,7 @@
                     }
                     
                     renderModulesList();
-                    drawSelectedModules(); // 绘制选中的模块
+                    drawCurrentImage();
                 });
                 
                 modulesListEl.appendChild(moduleItem);
