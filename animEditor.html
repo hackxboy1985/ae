@@ -11,6 +11,7 @@
     <script src="js/project.js"></script>
     <script src="js/image.js"></script>
     <script src="js/commands.js"></script>
+    <script src="js/moduleMove.js"></script>
     <style>
         /* 基础样式 */
         * {
@@ -568,6 +569,8 @@
                             <button id="paste-module" title="粘贴模块 (Ctrl+V)">粘贴模块</button>
                             <button id="flip-horizontal">水平翻转</button>
                             <button id="flip-vertical">垂直翻转</button>
+                            <button id="move-module-up" title="向上移动一层 (Ctrl+↑)">向上</button>
+                            <button id="move-module-down" title="向下移动一层 (Ctrl+↓)">向下</button>
                             <button id="rotate">旋转</button>
                             <button id="play-animation">播放</button>
                             <button id="toggle-grid">显示网格</button>
@@ -889,10 +892,12 @@
             imageCanvas.addEventListener('mousemove', showImageMousePosition);
         }
         
+        // 图片模块编辑的原点位置
+        let imageModuleOriginPos = { x: 0, y: 0 };
+        
         // 绘制当前图片（考虑缩放）
         function drawCurrentImage() {
             if (!currentImage) return;
-            
             
             imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
             
@@ -906,8 +911,62 @@
             zoomCenterX = imageCanvas.width / 2;
             zoomCenterY = imageCanvas.height / 2;
             
-            // console.log('缩放中心点',zoomCenterX,zoomCenterY);
+            // 设置图片模块编辑的原点位置（画布中心）
+            imageModuleOriginPos.x = imageCanvas.width / 2;
+            imageModuleOriginPos.y = imageCanvas.height / 2;
+            
+            // 如果需要显示网格，先绘制网格
+            if (showGrid) {
+                imageCtx.strokeStyle = gridColor;
+                imageCtx.lineWidth = 1; // 线宽固定
+                
+                // 绘制垂直网格线
+                imageCtx.beginPath();
+                for (let x = 0; x <= imageCanvas.width; x += gridSize) {
+                    imageCtx.moveTo(x, 0);
+                    imageCtx.lineTo(x, imageCanvas.height);
+                }
+                imageCtx.stroke();
+                
+                // 绘制水平网格线
+                imageCtx.beginPath();    
+                for (let y = 0; y <= imageCanvas.height; y += gridSize) {
+                    imageCtx.moveTo(0, y);
+                    imageCtx.lineTo(imageCanvas.width, y);
+                }
+                imageCtx.stroke();
+            }
+            
+            // 绘制X轴和Y轴
+            imageCtx.strokeStyle = '#999';
+            imageCtx.lineWidth = 1;
+            imageCtx.setLineDash([5, 5]);
 
+            // X轴
+            imageCtx.beginPath();
+            imageCtx.moveTo(0, imageModuleOriginPos.y);
+            imageCtx.lineTo(imageCanvas.width, imageModuleOriginPos.y);
+            imageCtx.stroke();
+            
+            // Y轴
+            imageCtx.beginPath();
+            imageCtx.moveTo(imageModuleOriginPos.x, 0);
+            imageCtx.lineTo(imageModuleOriginPos.x, imageCanvas.height);
+            imageCtx.stroke();
+            
+            // 重置线条样式
+            imageCtx.setLineDash([]);
+            
+            // 绘制原点十字线
+            imageCtx.strokeStyle = 'red';
+            imageCtx.lineWidth = 1;
+            imageCtx.beginPath();
+            imageCtx.moveTo((imageModuleOriginPos.x) - 8, imageModuleOriginPos.y);
+            imageCtx.lineTo((imageModuleOriginPos.x) + 8, imageModuleOriginPos.y); 
+            imageCtx.moveTo(imageModuleOriginPos.x, (imageModuleOriginPos.y) - 8);
+            imageCtx.lineTo(imageModuleOriginPos.x, (imageModuleOriginPos.y) + 8);
+            imageCtx.stroke();
+            
             // 绘制缩放后的图片
             imageCtx.drawImage(
                 currentImage, 
@@ -1161,6 +1220,8 @@
             });
             document.getElementById('flip-horizontal').addEventListener('click', flipHorizontal);
             document.getElementById('flip-vertical').addEventListener('click', flipVertical);
+            document.getElementById('move-module-up').addEventListener('click', moveModuleUp);
+            document.getElementById('move-module-down').addEventListener('click', moveModuleDown);
             document.getElementById('rotate').addEventListener('click', rotateModule);
             
             // 动画播放相关事件
