@@ -859,7 +859,7 @@
                 currentFrame = defaultFrame;
             }
             
-
+            switchTab("animation");
             
             // 渲染界面
             renderSpriteList();
@@ -1464,7 +1464,7 @@
             // }
         }
         
-        // 切换Tab函数
+        // 切换Tab函数 switchTab("animation")
         function switchTab(tabName) {
             // 更新Tab状态
             document.getElementById('tab-animation').classList.remove('active');
@@ -1528,7 +1528,7 @@
             currentSprite.m_imageList.forEach(imageItem => {
                 const imageNameEl = document.createElement('div');
                 imageNameEl.className = 'image-name-item' + (currentImageId === imageItem.id ? ' selected' : '');
-                imageNameEl.textContent = imageItem.name;
+                // imageNameEl.textContent = imageItem.name;
                 imageNameEl.style.cssText = `
                     padding: 5px 10px;
                     margin: 2px 0;
@@ -1536,6 +1536,55 @@
                     background-color: ${currentImageId === imageItem.id ? '#e0e0e0' : '#f0f0f0'};
                     border-radius: 3px;
                 `;
+                
+                // 创建图片名称和操作按钮容器
+                const imageNameContainer = document.createElement('div');
+                imageNameContainer.style.display = 'flex';
+                imageNameContainer.style.alignItems = 'center';
+                imageNameContainer.style.justifyContent = 'space-between';
+                imageNameEl.appendChild(imageNameContainer);
+                
+                // 图片名称文本节点
+                const nameText = document.createTextNode(imageItem.name);
+                imageNameContainer.appendChild(nameText);
+                
+                // 创建操作按钮容器
+                const actionButtons = document.createElement('div');
+                actionButtons.style.display = 'flex';
+                actionButtons.style.gap = '3px';
+                imageNameContainer.appendChild(actionButtons);
+                
+                // 删除按钮
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '删除';
+                deleteButton.style.padding = '2px 5px';
+                deleteButton.style.fontSize = '10px';
+                deleteButton.style.backgroundColor = '#ff6b6b';
+                deleteButton.style.color = 'white';
+                deleteButton.style.border = 'none';
+                deleteButton.style.borderRadius = '2px';
+                deleteButton.style.cursor = 'pointer';
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 阻止事件冒泡
+                    deleteImage(imageItem);
+                });
+                actionButtons.appendChild(deleteButton);
+                
+                // 替换按钮
+                const replaceButton = document.createElement('button');
+                replaceButton.textContent = '替换';
+                replaceButton.style.padding = '2px 5px';
+                replaceButton.style.fontSize = '10px';
+                replaceButton.style.backgroundColor = '#4ecdc4';
+                replaceButton.style.color = 'white';
+                replaceButton.style.border = 'none';
+                replaceButton.style.borderRadius = '2px';
+                replaceButton.style.cursor = 'pointer';
+                replaceButton.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 阻止事件冒泡
+                    replaceImage(imageItem);
+                });
+                actionButtons.appendChild(replaceButton);
                 
                 imageNameEl.addEventListener('click', () => {
                     // 加载选中的图片作为当前编辑图片
@@ -3113,6 +3162,143 @@
                     updateModuleProperties(fm);
                 }
             }
+        }
+        
+        // 检查图片在动作帧中的使用情况
+        function checkImageUsage(imageId) {
+            const usageInfo = [];
+            
+            if (!currentSprite) return usageInfo;
+            
+            // 遍历所有动作
+            currentSprite.mAnimList.forEach((anim, animIndex) => {
+                // 遍历所有动画帧
+                anim.aframeList.forEach((aframe, frameIndex) => {
+                    const frame = aframe.frame;
+                    // 检查帧中是否使用了该图片的模块
+                    const usesImage = frame.fmList.some(fm => 
+                        fm.module && fm.module.imageId === imageId
+                    );
+                    
+                    if (usesImage) {
+                        usageInfo.push({
+                            animName: anim.name,
+                            animIndex: animIndex,
+                            frameIndex: frameIndex
+                        });
+                    }
+                });
+            });
+            
+            return usageInfo;
+        }
+        
+        // 删除图片功能
+        function deleteImage(imageItem) {
+            // 检查图片是否在动作帧中被使用
+            const usageInfo = checkImageUsage(imageItem.id);
+            
+            // 如果有使用，提示用户
+            if (usageInfo.length > 0) {
+                let message = '该图片在以下动作帧中被使用：\n';
+                usageInfo.forEach(info => {
+                    message += `- 动作 ${info.animName} (第 ${info.frameIndex + 1} 帧)\n`;
+                });
+                message += '删除后，这些帧中使用该图片的模块也将被删除。\n确认要删除吗？';
+                
+                if (!confirm(message)) {
+                    return; // 用户取消删除
+                }
+                
+                // 删除所有使用该图片的帧模块
+                usageInfo.forEach(info => {
+                    const anim = currentSprite.mAnimList[info.animIndex];
+                    const aframe = anim.aframeList[info.frameIndex];
+                    const frame = aframe.frame;
+                    
+                    // 过滤掉使用该图片的模块
+                    frame.fmList = frame.fmList.filter(fm => 
+                        !fm.module || fm.module.imageId !== imageItem.id
+                    );
+                });
+            }
+            
+            // 从角色中删除图片
+            const imageIndex = currentSprite.m_imageList.findIndex(img => img.id === imageItem.id);
+            if (imageIndex !== -1) {
+                currentSprite.m_imageList.splice(imageIndex, 1);
+            }
+            
+            // 从图像管理器中删除图片
+            imageManager.removeImage(imageItem.id);
+            
+            // 如果删除的是当前选中的图片，重置当前图片
+            if (currentImageId === imageItem.id) {
+                currentImageId = null;
+                currentImage = null;
+                
+                // 清空画布
+                imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+                document.getElementById('current-image-info').textContent = '未选择图片';
+                renderModulesList(); // 清空模块列表
+            }
+            
+            // 重新渲染图片列表
+            renderImagesList();
+            
+            // 如果当前在动作编辑模式，也需要重新渲染动画画布
+            if (currentTab === 'animation' && currentFrame) {
+                renderCanvas();
+            }
+        }
+        
+        // 替换图片功能
+        function replaceImage(imageItem) {
+            // 创建文件选择对话框
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const newImage = new Image();
+                    newImage.onload = function() {
+                        // 检查新图片尺寸是否与原图片一致
+                        if (newImage.width !== imageItem.image.width || 
+                            newImage.height !== imageItem.image.height) {
+                            alert(`新图片尺寸 (${newImage.width}x${newImage.height}) 必须与原图片尺寸 (${imageItem.image.width}x${imageItem.image.height}) 一致，否则会出现未知错误。`);
+                            return;
+                        }
+                        
+                        // 替换图片，但保持模块不变
+                        imageItem.image = newImage;
+                        imageItem.src = event.target.result;
+                        
+                        // 如果替换的是当前选中的图片，重新绘制
+                        if (currentImageId === imageItem.id) {
+                            currentImage = newImage;
+                            drawCurrentImage();
+                        }
+                        
+                        // 重新渲染图片列表
+                        renderImagesList();
+                        
+                        // 如果当前在动作编辑模式，也需要重新渲染动画画布
+                        if (currentTab === 'animation' && currentFrame) {
+                            renderCanvas();
+                        }
+                    };
+                    newImage.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
+            
+            // 触发文件选择对话框
+            fileInput.click();
         }
         
         // 渲染角色列表
