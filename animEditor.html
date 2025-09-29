@@ -600,6 +600,7 @@
                                 </div>
                                 <div class="animation-speed">
                                     速度(ms): <input type="range" id="speed-range" min="50" max="500" value="370">
+                                    <span id="speed-value" style="margin-left: 10px;">370</span>
                                 </div>
                             </div>
                             <div id="timeline" class="timeline"></div>
@@ -2737,6 +2738,8 @@
         function changeAnimationSpeed() {
             // 直接使用滑块的值作为毫秒间隔
             animationSpeed = parseInt(document.getElementById('speed-range').value);
+            // 更新显示的毫秒值
+            document.getElementById('speed-value').textContent = animationSpeed;
         }
         
         // 记录当前拖拽的控制点
