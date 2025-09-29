@@ -69,16 +69,19 @@ class FrameModule {
         // 将图像中心与原点对齐后绘制
         const width = rectModule.width;
         const height = rectModule.height;
-        const drawX = -width / 2;
-        const drawY = -height / 2;
-
-        // console.log('drawX:',drawX,drawY);
-        // console.log('drawModule', this.module.imageId, this.module.imageModuleId, this.x, this.y, this.flag, scaleX, scaleY);
+        
+        // 计算绘制位置，考虑翻转效果
+        // 当应用水平翻转时，需要调整x坐标以保持图像位置不变
+        // 当应用垂直翻转时，需要调整y坐标以保持图像位置不变
+        let drawX = 0;
+        let drawY = 0;
+        
         ctx.drawImage(
             imageItem.image,
             rectModule.x, rectModule.y,
             width, height,
-            0, 0,
+            (this.flag & 1) ? -width : 0, // 水平翻转时，调整x坐标
+            (this.flag & 2) ? -height : 0, // 垂直翻转时，调整y坐标
             width, height
         );
         

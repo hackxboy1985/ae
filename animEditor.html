@@ -561,13 +561,11 @@
                     <!-- 左侧区域：工具栏、画布和时间线 -->
                     <div style="flex: 1; display: flex; flex-direction: column; height: 100%; min-height: 0;">
                         <div class="toolbar">
-                            <button id="add-frame">添加帧</button>
-                            <button id="clone-frame">克隆帧</button>
-                            <button id="delete-frame">删除帧</button>
-                            <button id="add-frame-module">添加模块</button>
-                            <button id="delete-frame-module">删除模块</button>
-                            <button id="copy-module">复制模块</button>
-                            <button id="paste-module">粘贴模块</button>
+                            <button id="undo" title="撤销 (Ctrl+Z)">撤销</button>
+                            <button id="redo" title="重做 (Ctrl+Y)">重做</button>
+                            <button id="delete-frame-module" title="删除模块 (Ctrl+D)">✕</button>
+                            <button id="copy-module" title="复制模块 (Ctrl+C)">复制模块</button>
+                            <button id="paste-module" title="粘贴模块 (Ctrl+V)">粘贴模块</button>
                             <button id="flip-horizontal">水平翻转</button>
                             <button id="flip-vertical">垂直翻转</button>
                             <button id="rotate">旋转</button>
@@ -590,9 +588,15 @@
                         <!-- 时间线容器，设置最小高度确保始终可见 -->
                         <div class="timeline-container" style="min-height: 80px; border-top: 1px solid #ddd; background-color: #fff;">
                             <div class="timeline-header">
-                                <div id="current-anim-name">选择一个动作开始编辑</div>
+                                <div style="display: flex; align-items: center;">
+                                    <button id="add-frame">插入帧</button>
+                                    <button id="add-frame-end">添加帧</button>
+                                    <button id="clone-frame">克隆帧</button>
+                                    <button id="delete-frame">删除帧</button>
+                                    <div id="current-anim-name" style="margin-left: 10px;">选择一个动作开始编辑</div>
+                                </div>
                                 <div class="animation-speed">
-                                    速度: <input type="range" id="speed-range" min="50" max="500" value="100">
+                                    速度(ms): <input type="range" id="speed-range" min="50" max="500" value="370">
                                 </div>
                             </div>
                             <div id="timeline" class="timeline"></div>
@@ -817,7 +821,7 @@
             canvas.height = containerHeight;
             
             // 重新渲染画布
-            renderCanvas();
+            renderCanvas(20);
         }
         
         // 初始化函数
@@ -852,17 +856,17 @@
                 currentFrame = defaultFrame;
             }
             
-            // 调整canvas大小
-            resizeCanvas();
+
             
             // 渲染界面
             renderSpriteList();
             renderAnimList();
             renderTimeline();
-            renderCanvas();
             renderImagesList();
             renderAnimationImagesList();
-            
+            // 调整canvas大小, 触发renderCanvas
+            resizeCanvas();
+
             // 绑定事件
             bindEvents();
             
@@ -966,10 +970,11 @@
         function handleZoomIn() {
             zoomLevel = Math.min(zoomLevel + 0.1, 5); // 最大放大5倍
             updateZoomLevel();
-            if (currentImage) {
-                drawCurrentImage();
-            } else if (currentFrame) {
+            // 根据当前标签页更新对应的画布
+            if (currentTab === 'animation') {
                 renderCanvas();
+            } else {
+                drawCurrentImage();
             }
         }
         
@@ -977,10 +982,11 @@
         function handleZoomOut() {
             zoomLevel = Math.max(zoomLevel - 0.1, 0.1); // 最小缩小到0.1倍
             updateZoomLevel();
-            if (currentImage) {
-                drawCurrentImage();
-            } else if (currentFrame) {
+            // 根据当前标签页更新对应的画布
+            if (currentTab === 'animation') {
                 renderCanvas();
+            } else {
+                drawCurrentImage();
             }
         }
         
@@ -992,10 +998,11 @@
             if (!isDraggingOrigin) {
                 updateImageOriginPos();
             }
-            if (currentImage) {
-                drawCurrentImage();
-            } else if (currentFrame) {
+            // 根据当前标签页更新对应的画布
+            if (currentTab === 'animation') {
                 renderCanvas();
+            } else {
+                drawCurrentImage();
             }
         }
         
@@ -1031,7 +1038,8 @@
             // 计算相对于画布中心的坐标
             const relativeX = Math.round((x - m_imageOriginPos.x)/zoomLevel);
             const relativeY = Math.round((m_imageOriginPos.y - y)/zoomLevel);
-            
+            //console.log('scaledX:',x - m_imageOriginPos.x, relativeX, 'scaledY:',m_imageOriginPos.y - y,relativeY);
+
             // 更新鼠标位置显示
             document.getElementById('mouse-position').textContent = 
                 `动作编辑鼠标位置: 绝对(${Math.round(x)}, ${Math.round(y)}) 相对(${relativeX}, ${relativeY})`;
@@ -1071,12 +1079,19 @@
             
             updateZoomLevel();
             
+            console.log('currentTab=',currentTab);
             // 根据当前编辑模式调用相应的绘制函数
-            if (currentImage) {
-                drawCurrentImage();
-            } else if (currentFrame) {
+            if (currentTab === 'animation') {
                 renderCanvas();
+            }else{
+                drawCurrentImage();
             }
+
+            // if (currentImage) {
+            //     drawCurrentImage();
+            // } else if (currentFrame) {
+            //      renderCanvas();
+            // }
         }
         
         // 绑定事件函数
@@ -1098,14 +1113,52 @@
             
             // 帧相关事件
             document.getElementById('add-frame').addEventListener('click', addFrame);
+            document.getElementById('add-frame-end').addEventListener('click', addFrameToEnd);
             document.getElementById('clone-frame').addEventListener('click', cloneFrame);
             document.getElementById('delete-frame').addEventListener('click', deleteFrame);
             
             // 模块相关事件
-            document.getElementById('add-frame-module').addEventListener('click', showAddModuleModal);
             document.getElementById('delete-frame-module').addEventListener('click', deleteFrameModule);
             document.getElementById('copy-module').addEventListener('click', copyModule);
             document.getElementById('paste-module').addEventListener('click', pasteModule);
+            
+            // 撤销和重做
+            document.getElementById('undo').addEventListener('click', undoAction);
+            document.getElementById('redo').addEventListener('click', redoAction);
+            
+            // 快捷键支持
+            document.addEventListener('keydown', function(event) {
+                // 检查是否按下Ctrl键
+                const isCtrl = event.ctrlKey || event.metaKey; // metaKey for Mac
+                
+                if (isCtrl && !event.shiftKey && !event.altKey) {
+                    // Ctrl+C 复制模块
+                    if (event.key === 'c' || event.key === 'C') {
+                        event.preventDefault(); // 阻止默认的复制行为
+                        copyModule();
+                    }
+                    // Ctrl+V 粘贴模块
+                    else if (event.key === 'v' || event.key === 'V') {
+                        event.preventDefault(); // 阻止默认的粘贴行为
+                        pasteModule();
+                    }
+                    // Ctrl+D 删除模块
+                    else if (event.key === 'd' || event.key === 'D') {
+                        event.preventDefault(); // 阻止默认行为
+                        deleteFrameModule();
+                    }
+                    // Ctrl+Z 撤销
+                    else if (event.key === 'z' || event.key === 'Z') {
+                        event.preventDefault(); // 阻止默认的撤销行为
+                        undoAction();
+                    }
+                    // Ctrl+Y 重做
+                    else if (event.key === 'y' || event.key === 'Y') {
+                        event.preventDefault(); // 阻止默认的重做行为
+                        redoAction();
+                    }
+                }
+            });
             document.getElementById('flip-horizontal').addEventListener('click', flipHorizontal);
             document.getElementById('flip-vertical').addEventListener('click', flipVertical);
             document.getElementById('rotate').addEventListener('click', rotateModule);
@@ -1118,7 +1171,7 @@
             document.getElementById('toggle-grid').addEventListener('click', function() {
                 showGrid = !showGrid;
                 this.textContent = showGrid ? '隐藏网格' : '显示网格';
-                renderCanvas();
+                renderCanvas(2);
             });
             
             // 图片相关事件
@@ -1289,6 +1342,7 @@
                 }
                 
                 console.log('项目加载成功！');
+                // renderCanvas(0);
                 return true;
             } catch (error) {
                 console.error('加载项目失败:', error);
@@ -1364,7 +1418,7 @@
             
             // 根据Tab重新渲染并控制控制面板显示
             if (tabName === 'animation') {
-                renderCanvas();
+                renderCanvas(1);
                 renderAnimationImagesList();
                 document.getElementById('animation-modules-list').innerHTML = '';
                 document.getElementById('selected-image-title').textContent = '选择图片查看模块';
@@ -1560,7 +1614,7 @@
                     CommandManager.instance.addCommand(new AddFmCommand(currentFrame, frameModule));
                     
                     // 更新界面
-                    renderCanvas();
+                    renderCanvas(2);
                 });
                 
                 modulesListContainer.appendChild(moduleItem);
@@ -2287,7 +2341,7 @@
             CommandManager.instance.addCommand(new AddFmCommand(currentFrame, frameModule));
             
             // 更新界面
-            renderCanvas();
+            renderCanvas(3);
             
             // 清空控制面板
             document.getElementById('module-x').value = 0;
@@ -2296,7 +2350,7 @@
             document.getElementById('module-height').value = 0;
         }
         
-        // 添加帧
+        // 在当前帧后插入新帧
         function addFrame() {
             if (!currentAnim) {
                 alert('请先选择一个动作');
@@ -2310,6 +2364,34 @@
             
             // 插入到当前帧之后
             currentAnim.aframeList.splice(currentFrameIndex + 1, 0, newAnimFrame);
+
+            // 更新界面
+            renderTimeline();
+            
+            // 选中新插入的帧
+            selectFrame(currentFrameIndex + 1);
+        }
+        
+        // 在动画末尾添加新帧
+        function addFrameToEnd() {
+            if (!currentAnim) {
+                alert('请先选择一个动作');
+                return;
+            }
+            
+            // 创建新的空帧，不复制原有的fm数据
+            const newFrame = new Frame();
+            
+            const newAnimFrame = new AnimFrame(newFrame, true);
+            
+            // 添加到动画的最后
+            currentAnim.aframeList.push(newAnimFrame);
+
+            // 更新界面
+            renderTimeline();
+            
+            // 选中新添加的帧（最后一帧）
+            selectFrame(currentAnim.aframeList.length - 1);
         }
 
         // 克隆帧
@@ -2355,9 +2437,25 @@
             
             // 更新界面
             renderTimeline();
-            renderCanvas();
+            renderCanvas(4);
             
             document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
+        }
+        
+        // 撤销操作
+        function undoAction() {
+            CommandManager.instance.undo();
+            renderCanvas(7); // 使用特定类型重新渲染画布以显示更新后的状态
+            renderModulesList(); // 如果涉及模块列表变化，重新渲染
+            renderTimeline(); // 如果涉及时间线变化，重新渲染
+        }
+        
+        // 重做操作
+        function redoAction() {
+            CommandManager.instance.redo();
+            renderCanvas(7); // 使用特定类型重新渲染画布以显示更新后的状态
+            renderModulesList(); // 如果涉及模块列表变化，重新渲染
+            renderTimeline(); // 如果涉及时间线变化，重新渲染
         }
         
         // 删除帧模块
@@ -2374,7 +2472,7 @@
                     // 撤销删除时，将模块添加回原位置
                     currentFrame.fmList.splice(selectedModuleIndex, 0, frameModule);
                     selectedModuleIndex = selectedModuleIndex;
-                    renderCanvas();
+                    renderCanvas(5);
                     updateModuleProperties(frameModule);
                 }
             };
@@ -2386,7 +2484,7 @@
             selectedModuleIndex = -1;
             
             // 更新界面
-            renderCanvas();
+            renderCanvas(6);
             
             // 清空控制面板
             document.getElementById('module-x').value = 0;
@@ -2435,7 +2533,7 @@
             CommandManager.instance.addCommand(new AddFmCommand(currentFrame, newFm));
             
             // 更新显示
-            renderCanvas();
+            renderCanvas(7);
             
             // 选中新添加的模块
             selectedModuleIndex = currentFrame.fmList.length - 1;
@@ -2493,7 +2591,7 @@
             fm.flag ^= 1;
             
             // 更新界面
-            renderCanvas();
+            renderCanvas(8);
         }
         
         // 垂直翻转
@@ -2507,7 +2605,7 @@
             fm.flag ^= 2;
             
             // 更新界面
-            renderCanvas();
+            renderCanvas(9);
         }
         
         // 旋转模块
@@ -2521,13 +2619,14 @@
             fm.flag ^= 4;
             
             // 更新界面
-            renderCanvas();
+            renderCanvas(10);
             updateModuleProperties(fm);
         }
         
         // 改变动画速度
         function changeAnimationSpeed() {
-            animationSpeed = 550 - document.getElementById('speed-range').value;
+            // 直接使用滑块的值作为毫秒间隔
+            animationSpeed = parseInt(document.getElementById('speed-range').value);
         }
         
         // 记录当前拖拽的控制点
@@ -2652,11 +2751,18 @@
                     dragStartX = x;
                     dragStartY = y;
                     
+                    // 保存拖拽开始时的模块状态
+                    dragStartModuleState = {
+                        x: fm.x,
+                        y: fm.y,
+                        flag: fm.flag
+                    };
+                    
                     console.log('选中',selectedModuleIndex);
                     // 更新控制面板属性
                     updateModuleProperties(fm);
                     
-                    renderCanvas();
+                    renderCanvas(11);
                     return;
                 }
             }
@@ -2670,7 +2776,7 @@
             document.getElementById('module-width').value = 0;
             document.getElementById('module-height').value = 0;
             
-            renderCanvas();
+            renderCanvas(12);
         }
         
         // 处理空格键按下事件
@@ -2700,6 +2806,9 @@
         const originalHandleMouseMove = handleMouseMove;
         const originalHandleMouseUp = handleMouseUp;
         
+        // 保存模块拖拽开始时的状态
+        let dragStartModuleState = null;
+        
         // 处理鼠标移动事件
         function handleMouseMove(e) {
             // 如果处于拖拽原点模式
@@ -2711,7 +2820,7 @@
                 // 根据当前缩放比例计算原点应该移动的距离
                 m_imageOriginPos.x = originDragStartPosX + deltaX;// / zoomLevel;
                 m_imageOriginPos.y = originDragStartPosY + deltaY;// / zoomLevel;
-                renderCanvas();
+                renderCanvas(13);
                 return;
             }
             
@@ -2728,10 +2837,6 @@
             console.log('move:',x, y);
             
             const fm = currentFrame.fmList[selectedModuleIndex];
-            // 先保存当前状态
-            const oldX = fm.x;
-            const oldY = fm.y;
-            const oldFlag = fm.flag;
             
             if (resizeControlPoint !== -1) {
                 // 处理缩放
@@ -2826,10 +2931,7 @@
                 document.getElementById('module-y').value = Math.round(fm.y);
             }
             
-            // 在修改完成后创建命令
-            const command = new TransformFmCommand(fm, oldX, oldY, oldFlag);
-            CommandManager.instance.addCommand(command);
-            renderCanvas();
+            renderCanvas(13);
             updateModuleProperties(fm);
         }
         
@@ -2844,6 +2946,17 @@
                     canvas.style.cursor = 'default';
                 }
                 return;
+            }
+            
+            // 如果是拖拽模块结束，创建变换命令
+            if (isDragging && currentFrame && selectedModuleIndex >= 0 && dragStartModuleState) {
+                const fm = currentFrame.fmList[selectedModuleIndex];
+                // 检查是否有保存的起始状态
+                if (dragStartModuleState) {
+                    const command = new TransformFmCommand(fm, dragStartModuleState.x, dragStartModuleState.y, dragStartModuleState.flag);
+                    CommandManager.instance.addCommand(command);
+                }
+                dragStartModuleState = null;
             }
             
             isDragging = false;
@@ -2897,7 +3010,7 @@
             fm.y = parseInt(document.getElementById('module-y').value) || 0;
             
             CommandManager.instance.addCommand(command);
-            renderCanvas();
+            renderCanvas(14);
         }
         
         // 更新模块尺寸
@@ -2935,7 +3048,7 @@
                     fm.scale.y = scaleY;
                     
                     CommandManager.instance.addCommand(command);
-                    renderCanvas();
+                    renderCanvas(15);
                     updateModuleProperties(fm);
                 }
             }
@@ -3075,6 +3188,10 @@
             
             if (!currentAnim) return;
             
+            // 允许拖放操作
+            timelineEl.setAttribute('ondragover', 'event.preventDefault()');
+            timelineEl.setAttribute('ondrop', 'handleTimelineDrop(event)');
+            
             currentAnim.aframeList.forEach((animFrame, index) => {
                 const frameEl = document.createElement('div');
                 frameEl.className = 'timeline-frame' + (index === currentFrameIndex ? ' active' : '');
@@ -3082,6 +3199,17 @@
                     frameEl.classList.add('keyframe');
                 }
                 frameEl.textContent = index + 1;
+                
+                // 添加拖拽属性和事件监听
+                frameEl.setAttribute('draggable', 'true');
+                frameEl.setAttribute('data-index', index);
+                frameEl.setAttribute('ondragstart', 'handleFrameDragStart(event)');
+                frameEl.setAttribute('ondragend', 'handleFrameDragEnd(event)');
+                frameEl.setAttribute('ondragover', 'event.preventDefault()');
+                frameEl.setAttribute('ondrop', 'handleFrameDrop(event)');
+                frameEl.setAttribute('ondragenter', 'handleFrameDragEnter(event)');
+                frameEl.setAttribute('ondragleave', 'handleFrameDragLeave(event)');
+                
                 frameEl.addEventListener('click', () => {
                     selectFrame(index);
                 });
@@ -3089,14 +3217,119 @@
             });
         }
         
+        // 处理帧拖拽开始
+        let draggedFrameIndex = -1;
+        function handleFrameDragStart(event) {
+            draggedFrameIndex = parseInt(event.target.getAttribute('data-index'));
+            event.dataTransfer.effectAllowed = 'move';
+            
+            // 设置拖拽时的视觉效果
+            event.target.style.opacity = '0.5';
+        }
+        
+        // 处理帧拖拽结束
+        function handleFrameDragEnd(event) {
+            // 恢复样式
+            event.target.style.opacity = '1';
+            
+            // 清除所有帧的高亮状态
+            const frames = document.querySelectorAll('.timeline-frame');
+            frames.forEach(frame => {
+                frame.style.backgroundColor = '';
+            });
+        }
+        
+        // 处理鼠标进入拖拽目标
+        function handleFrameDragEnter(event) {
+            if (event.target.classList.contains('timeline-frame')) {
+                // 添加高亮效果
+                event.target.style.backgroundColor = '#e0e0e0';
+            }
+        }
+        
+        // 处理鼠标离开拖拽目标
+        function handleFrameDragLeave(event) {
+            if (event.target.classList.contains('timeline-frame')) {
+                // 移除高亮效果
+                event.target.style.backgroundColor = '';
+            }
+        }
+        
+        // 处理帧拖放
+        function handleFrameDrop(event) {
+            event.preventDefault();
+            
+            if (!currentAnim || draggedFrameIndex === -1) return;
+            
+            // 获取目标帧的索引
+            const targetFrame = event.target.closest('.timeline-frame');
+            if (!targetFrame) return;
+            
+            const targetIndex = parseInt(targetFrame.getAttribute('data-index'));
+            
+            // 如果拖拽到自己身上，不做任何操作
+            if (draggedFrameIndex === targetIndex) {
+                draggedFrameIndex = -1;
+                return;
+            }
+            
+            // 保存被拖拽的帧
+            const draggedFrame = currentAnim.aframeList[draggedFrameIndex];
+            
+            // 从原位置移除
+            currentAnim.aframeList.splice(draggedFrameIndex, 1);
+            
+            // 如果拖拽到原位置前面，插入位置不变
+            // 如果拖拽到原位置后面，插入位置减一（因为原位置的元素已经被移除）
+            const insertIndex = targetIndex > draggedFrameIndex ? targetIndex : targetIndex;
+            
+            // 插入到新位置
+            currentAnim.aframeList.splice(insertIndex, 0, draggedFrame);
+            
+            // 更新当前帧索引
+            if (currentFrameIndex === draggedFrameIndex) {
+                currentFrameIndex = insertIndex;
+            } else if (currentFrameIndex > draggedFrameIndex && currentFrameIndex <= insertIndex) {
+                currentFrameIndex--;
+            } else if (currentFrameIndex < draggedFrameIndex && currentFrameIndex >= insertIndex) {
+                currentFrameIndex++;
+            }
+            
+            // 重新选择当前帧
+            currentFrame = currentAnim.aframeList[currentFrameIndex].frame;
+            
+            // 重新渲染时间轴
+            renderTimeline();
+            
+            // 保存项目
+            saveProject();
+            
+            // 重置拖拽状态
+            draggedFrameIndex = -1;
+        }
+        
+        // 处理时间轴区域拖放（用于添加新位置）
+        function handleTimelineDrop(event) {
+            event.preventDefault();
+            
+            // 这个功能暂时不实现，主要通过拖放帧到其他帧上实现排序
+        }
+        
         // 渲染画布
-        function renderCanvas() {
+        function renderCanvas(i = -1) {
+            if(i !== -1){
+                console.log('renderCanvas:',i);
+            }
             // 清空画布
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+
+
             // 先不应用缩放，绘制网格线和坐标轴
             // 如果需要显示网格
-            if (showGrid) {
+            if (showGrid) { 
+
+
                 ctx.strokeStyle = gridColor;
                 ctx.lineWidth = 1; // 线宽固定
                 
@@ -3109,35 +3342,19 @@
                 ctx.stroke();
                 
                 // 绘制水平网格线
-                ctx.beginPath();
+                ctx.beginPath();    
                 for (let y = 0; y <= canvas.height; y += gridSize) {
                     ctx.moveTo(0, y);
                     ctx.lineTo(canvas.width, y);
                 }
                 ctx.stroke();
             }
-            
-            // 绘制原点
-            ctx.fillStyle = 'red';
-            ctx.beginPath();
-            ctx.arc(m_imageOriginPos.x, m_imageOriginPos.y, 4, 0, 2 * Math.PI);
-            ctx.fill();
-            
-            // 绘制原点十字线
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(m_imageOriginPos.x - 8, m_imageOriginPos.y);
-            ctx.lineTo(m_imageOriginPos.x + 8, m_imageOriginPos.y);
-            ctx.moveTo(m_imageOriginPos.x, m_imageOriginPos.y - 8);
-            ctx.lineTo(m_imageOriginPos.x, m_imageOriginPos.y + 8);
-            ctx.stroke();
-            
+        
             // 绘制X轴和Y轴
             ctx.strokeStyle = '#999';
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
-            
+
             // X轴
             ctx.beginPath();
             ctx.moveTo(0, m_imageOriginPos.y);
@@ -3153,15 +3370,30 @@
             // 重置线条样式
             ctx.setLineDash([]);
             
-            // 应用缩放
-            ctx.save();
-            ctx.scale(zoomLevel, zoomLevel);
+            // 绘制原点
+            // ctx.fillStyle = 'red';
+            // ctx.beginPath();
+            // ctx.arc(m_imageOriginPos.x, m_imageOriginPos.y, 4, 0, 2 * Math.PI);
+            // ctx.fill();
             
+            // 绘制原点十字线
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo((m_imageOriginPos.x) - 8, m_imageOriginPos.y);
+            ctx.lineTo((m_imageOriginPos.x) + 8, m_imageOriginPos.y); 
+            ctx.moveTo(m_imageOriginPos.x, (m_imageOriginPos.y) - 8);
+            ctx.lineTo(m_imageOriginPos.x, (m_imageOriginPos.y) + 8);
+            ctx.stroke();
+ 
             if (!currentFrame) {
                 ctx.restore();
                 return;
             }
-            
+            ctx.restore();
+            // 应用缩放
+            ctx.save();
+            ctx.scale(zoomLevel, zoomLevel);
             console.log('draw currentFrame')
             // 绘制当前帧
             currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
@@ -3238,7 +3470,7 @@
             renderSpriteList();
             renderAnimList();
             renderTimeline();
-            renderCanvas();
+            renderCanvas(16);
             renderImagesList();
             renderAnimationImagesList();
             
@@ -3257,7 +3489,7 @@
             // 更新界面
             renderAnimList();
             renderTimeline();
-            renderCanvas();
+            renderCanvas(17);
             renderAnimationImagesList();
             
             document.getElementById('current-anim-name').textContent = currentAnim.name + (currentFrame ? ` - 帧${currentFrameIndex + 1}` : ' - 无帧');
@@ -3273,7 +3505,7 @@
             
             // 更新界面
             renderTimeline();
-            renderCanvas();
+            renderCanvas(18);
             
             document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
             
@@ -3319,7 +3551,7 @@
                 
                 // 更新界面
                 renderTimeline();
-                renderCanvas();
+                renderCanvas(19);
                 
                 document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
             }
