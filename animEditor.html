@@ -373,10 +373,15 @@
         
         /* 控制面板样式 */
         .control-panel {
-            width: 200px;
+            min-width: 350px;
+            max-width: 500px;
             background-color: #f0f0f0;
             padding: 10px;
             border-left: 1px solid #ddd;
+        }
+        
+        .image-selection-container {
+            width: 100%;
         }
         
         .control-section {
@@ -653,9 +658,50 @@
         </div>
         
         <!-- 控制面板 -->
-        <div class="control-panel">
+        <div class="control-panel" style="min-width: 350px;">
+
             <!-- 动作编辑模式显示区域 -->
             <div id="animation-control-section" style="display: none;">
+                
+                <div class="control-section" style="position: relative;">
+                    <div class="control-title">当前图片</div>
+                    <!-- 上半部分：图片选择下拉列表和显示完整图片的canvas -->
+                    <div class="image-selection-container">
+                        <select id="image-dropdown" style="width: 100%; padding: 8px; margin-bottom: 12px; ">
+                            <option value="">请选择图片</option>
+                        </select>
+                    </div>
+                    <!-- 上半部分canvas容器 -->
+                    <div class="image-preview-container" style="border: 1px solid #ddd; margin: 10px 0; overflow: auto;">
+                        <canvas id="image-preview-canvas" style="background-color: white;"></canvas>
+                    </div>
+                    <!-- 缩放控制按钮 -->
+                    <div class="zoom-controls" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <button id="zoom-in-btn" style="padding: 5px 10px;">放大</button>
+                        <button id="zoom-out-btn" style="padding: 5px 10px;">缩小</button>
+                        <button id="reset-zoom-btn" style="padding: 5px 10px;">重置缩放</button>
+                    </div>
+                </div>
+                
+                <!-- 下半部分：变形预览区域 -->
+                <div class="control-section">
+                    <div class="control-title">变形选项</div>
+                    <div id="transformation-preview" class="transformation-preview" style="display: none;">
+                        <div class="transformation-item" data-type="original">
+                            <canvas id="original-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                            <span>原图</span>
+                        </div>
+                        <div class="transformation-item" data-type="flip-horizontal">
+                            <canvas id="flip-horizontal-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                            <span>水平翻转</span>
+                        </div>
+                        <div class="transformation-item" data-type="flip-vertical">
+                            <canvas id="flip-vertical-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                            <span>垂直翻转</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 图片列表 -->
                 <div class="animation-images-list mb-2" style="border: 1px solid #ddd; overflow-y: auto; max-height: 150px;">
                     <div class="control-title">可用图片</div>
@@ -676,30 +722,12 @@
                     <div id="images-list" class="images-list"></div>
                 </div>
                 
-                <div class="control-section">
+                <!-- <div class="control-section">
                     <div class="control-title">模块属性</div>
-                    <div class="control-group">
-                        <label for="module-x">X 坐标</label>
-                        <input type="number" id="module-x" value="0">
-                    </div>
-                    <div class="control-group">
-                        <label for="module-y">Y 坐标</label>
-                        <input type="number" id="module-y" value="0">
-                    </div>
-                    <div class="control-group">
-                        <label for="module-width">宽度</label>
-                        <input type="number" id="module-width" value="0" disabled>
-                    </div>
-                    <div class="control-group">
-                        <label for="module-height">高度</label>
-                        <input type="number" id="module-height" value="0" disabled>
-                    </div>
-                </div>
+                    
+                </div> -->
                 
-                <div class="control-section" style="position: relative;">
-                    <div class="control-title">当前图片</div>
-                    <div id="current-image-info" style="font-size: 12px; color: #666;">未选择图片</div>
-                </div>
+                
             </div>
         </div>
     </div>
@@ -761,6 +789,17 @@
         let ctx = canvas.getContext('2d');
         let imageCanvas = document.getElementById('image-canvas');
         let imageCtx = imageCanvas.getContext('2d');
+        // 新增：图片预览canvas
+        let imagePreviewCanvas = document.getElementById('image-preview-canvas');
+        let imagePreviewCtx = imagePreviewCanvas ? imagePreviewCanvas.getContext('2d') : null;
+        // 变形预览canvas
+        let originalPreviewCanvas = document.getElementById('original-preview');
+        let originalPreviewCtx = originalPreviewCanvas ? originalPreviewCanvas.getContext('2d') : null;
+        let flipHorizontalPreviewCanvas = document.getElementById('flip-horizontal-preview');
+        let flipHorizontalPreviewCtx = flipHorizontalPreviewCanvas ? flipHorizontalPreviewCanvas.getContext('2d') : null;
+        let flipVerticalPreviewCanvas = document.getElementById('flip-vertical-preview');
+        let flipVerticalPreviewCtx = flipVerticalPreviewCanvas ? flipVerticalPreviewCanvas.getContext('2d') : null;
+        
         let moduleInfo = document.getElementById('module-info');
         let isImageModuleRangeMoving = false;
         let cropStartX = 0;
@@ -773,10 +812,19 @@
         let cropHeight = 0;
         let currentImage = null;
         let currentImageId = null;
+        let previewImage = null; // 专门用于canvas渲染的图片变量
+        let previewImageId = null; // 预览图片的ID
         let imageManager = null; // 只声明不初始化
         let zoomLevel = 1; // 当前缩放级别
         let zoomCenterX = 0; // 缩放中心点X
         let zoomCenterY = 0; // 缩放中心点Y
+        // 新增：图片预览相关变量
+        let previewZoomLevel = 1; // 预览canvas的缩放级别
+        let selectedImageModule = -1; // 当前选中的图片模块
+        let showPreviewWithMouse = false; // 是否显示跟随鼠标的预览
+        let selectedTransformation = 'original'; // 当前选中的变形方式
+        let mouseXOnCanvas = 0; // 鼠标在canvas上的X坐标
+        let mouseYOnCanvas = 0; // 鼠标在canvas上的Y坐标
         // 拖拽操作模式变量
         let resizeMode = null; // 'move', 'top-left', 'top-right', 'bottom-left', 'bottom-right'
         let initialLeft = 0;
@@ -796,7 +844,6 @@
         let animationSpeed = 100;
         let lastFrameTime = 0;
         let animationFrameId = null;
-        let selectedImageModule = -1;
         let selectedImageModules = []; // 支持多选模块的数组
         let currentTab = 'animation';
         
@@ -891,10 +938,475 @@
             // 绑定鼠标移动事件用于显示鼠标位置
             canvas.addEventListener('mousemove', showMousePosition);
             imageCanvas.addEventListener('mousemove', showImageMousePosition);
+            
+            // 初始化图片预览相关元素
+            if (!imagePreviewCanvas) {
+                imagePreviewCanvas = document.getElementById('image-preview-canvas');
+                imagePreviewCtx = imagePreviewCanvas.getContext('2d');
+            }
+            
+            // 初始化变形预览canvas
+            if (!originalPreviewCanvas) {
+                originalPreviewCanvas = document.getElementById('original-preview');
+                originalPreviewCtx = originalPreviewCanvas.getContext('2d');
+            }
+            if (!flipHorizontalPreviewCanvas) {
+                flipHorizontalPreviewCanvas = document.getElementById('flip-horizontal-preview');
+                flipHorizontalPreviewCtx = flipHorizontalPreviewCanvas.getContext('2d');
+            }
+            if (!flipVerticalPreviewCanvas) {
+                flipVerticalPreviewCanvas = document.getElementById('flip-vertical-preview');
+                flipVerticalPreviewCtx = flipVerticalPreviewCanvas.getContext('2d');
+            }
+            
+            // 添加调试按钮
+            const debugBtn = document.createElement('button');
+            debugBtn.textContent = '检查Canvas状态';
+            debugBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1001; padding: 8px; background-color: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer;';
+            debugBtn.addEventListener('click', function() {
+                // 在页面加载完成后添加调试面板功能
+                // window.addEventListener('load', showDebugInfo);
+                showDebugInfo();
+                debugCanvasState();
+                if (currentImage && imagePreviewCanvas) {
+                    console.log('强制渲染预览');
+                    renderImagePreview();
+                }
+            });
+            document.body.appendChild(debugBtn);
+            
+            // 绑定图片选择下拉列表事件
+            const imageDropdown = document.getElementById('image-dropdown');
+            if (imageDropdown) {
+                imageDropdown.addEventListener('change', function() {
+                    const imageId = this.value;
+                    console.log('Image dropdown changed to:', imageId);
+                    
+                    if (imageId && currentSprite) {
+                        console.log('Current sprite exists, getting image with id:', imageId);
+                        for (let img of currentSprite.m_imageList) {
+                            console.log('Image item:', img.id, img.name);
+                        }
+                        // console.log('Current sprite image list:', currentSprite.m_imageList);
+                        const imageItem = currentSprite.getImage(imageId);
+                        
+                        if (imageItem) {
+                            console.log('Found image item:', imageItem.name);
+                            previewImageId = imageId;
+                            previewImage = imageItem.image; // 设置专门用于canvas渲染的图片
+                            console.log('Set currentImage and previewImageId:', previewImageId);
+                            
+                            // 确保imagePreviewCanvas和imagePreviewCtx已初始化
+                            if (!imagePreviewCanvas) {
+                                imagePreviewCanvas = document.getElementById('image-preview-canvas');
+                                if (imagePreviewCanvas) {
+                                    imagePreviewCtx = imagePreviewCanvas.getContext('2d');
+                                }
+                            }
+                            
+                            // 确保canvas有正确的尺寸
+                            if (imagePreviewCanvas && previewImage) {
+                                // imagePreviewCanvas.width = previewImage.width;
+                                // imagePreviewCanvas.height = previewImage.height;
+                            }
+                            
+                            console.log('About to call renderImagePreview');
+                            renderImagePreview();
+                        } else {
+                            console.warn('Image item not found for id:', imageId);
+                        }
+                    } else {
+                        console.warn('No imageId or currentSprite not available');
+                    }
+                });
+            }
+            
+            // 绑定缩放控制按钮事件
+            document.getElementById('zoom-in-btn').addEventListener('click', function() {
+                previewZoomLevel = Math.min(previewZoomLevel + 0.1, 5);
+                renderImagePreview();
+            });
+            document.getElementById('zoom-out-btn').addEventListener('click', function() {
+                previewZoomLevel = Math.max(previewZoomLevel - 0.1, 0.1);
+                renderImagePreview();
+            });
+            document.getElementById('reset-zoom-btn').addEventListener('click', function() {
+                previewZoomLevel = 1;
+                renderImagePreview();
+            });
+            
+            // 绑定变形选项点击事件
+            const transformationItems = document.querySelectorAll('.transformation-item');
+            transformationItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    selectedTransformation = this.dataset.type;
+                    // 高亮选中的变形选项
+                    transformationItems.forEach(i => i.style.border = 'none');
+                    this.style.border = '2px solid #4CAF50';
+                });
+            });
+            
+            // 绑定图片预览canvas的点击事件
+            if (imagePreviewCanvas) {
+                imagePreviewCanvas.addEventListener('click', handlePreviewCanvasClick);
+                imagePreviewCanvas.addEventListener('mousemove', updateMousePosition);
+            }
+            
+            // 绑定动画canvas的点击事件，用于添加模块
+            canvas.addEventListener('click', function(e) {
+                if (showPreviewWithMouse && selectedImageModule !== -1 && currentFrame) {
+                    addModuleToFrame(e.offsetX, e.offsetY);
+                }
+            });
+            
+            // 绑定动画canvas的鼠标移动事件，用于显示预览
+            canvas.addEventListener('mousemove', function(e) {
+                if (showPreviewWithMouse && selectedImageModule !== -1) {
+                    mouseXOnCanvas = e.offsetX;
+                    mouseYOnCanvas = e.offsetY;
+                    renderCanvas(); // 触发重绘以显示预览
+                }
+            });
+            
+            // 绑定动画canvas的鼠标离开事件，隐藏预览
+            canvas.addEventListener('mouseleave', function() {
+                if (showPreviewWithMouse) {
+                    showPreviewWithMouse = false;
+                    renderCanvas();
+                }
+            });
         }
         
         // 图片模块编辑的原点位置
         let imageModuleOriginPos = { x: 0, y: 0 };
+        
+        // 调试函数：检查canvas和相关变量的状态
+        function debugCanvasState() {
+            console.log('==== Canvas状态检查 ====');
+            console.log('currentSprite:', currentSprite ? '存在' : '不存在');
+            console.log('currentImageId:', currentImageId);
+            console.log('currentImage:', currentImage ? (currentImage.src || '图片对象存在但无src') : '不存在');
+            console.log('imagePreviewCanvas:', imagePreviewCanvas ? '存在' : '不存在');
+            console.log('imagePreviewCtx:', imagePreviewCtx ? '存在' : '不存在');
+            
+            // 检查DOM元素
+            const dropdownEl = document.getElementById('image-dropdown');
+            console.log('image-dropdown元素:', dropdownEl ? '存在' : '不存在');
+            
+            const canvasEl = document.getElementById('image-preview-canvas');
+            console.log('image-preview-canvas DOM元素:', canvasEl ? '存在' : '不存在');
+            if (canvasEl) {
+                console.log('canvas尺寸:', canvasEl.width + 'x' + canvasEl.height);
+            }
+            
+            // 检查sprite中的图片列表
+            if (currentSprite && currentSprite.m_imageList) {
+                console.log('sprite中的图片数量:', currentSprite.m_imageList.length);
+                if (currentSprite.m_imageList.length > 0) {
+                    console.log('第一张图片信息:', currentSprite.m_imageList[0].name + ' (id: ' + currentSprite.m_imageList[0].id + ')');
+                }
+            }
+            console.log('========================');
+        }
+        
+        // 渲染图片预览
+        function renderImagePreview() {
+            // debugCanvasState();
+            if (!previewImage || !imagePreviewCanvas || !imagePreviewCtx) {
+                console.warn('Cannot render preview: missing required elements');
+                return;
+            }
+            
+            // 检查图片是否已加载完成
+            if (!previewImage.complete || previewImage.naturalWidth === 0) {
+                console.log('图片尚未加载完成，等待加载...');
+                previewImage.onload = function() {
+                    console.log('图片加载完成，重新渲染');
+                    renderImagePreview();
+                };
+                
+                // 如果图片已经有src但未加载，尝试重新加载
+                if (previewImage.src) {
+                    console.log('尝试重新加载图片');
+                    previewImage.src = previewImage.src;
+                }
+                return;
+            }
+            
+            // 设置canvas大小以适应容器（只在初始化或图片改变时设置，不随缩放变化）
+            const container = imagePreviewCanvas.parentElement;
+            // 保持canvas尺寸固定，只改变绘制时的缩放比例
+            if (!imagePreviewCanvas.dataset.initialized) {
+                // 首次加载或图片改变时设置canvas尺寸
+                console.log('首次设置canvas尺寸为适应容器');
+                imagePreviewCanvas.width = container.clientWidth - 20; // 减去边距
+                imagePreviewCanvas.height = 300; // 设置固定高度
+                imagePreviewCanvas.dataset.initialized = 'true';
+            }
+            
+            // 清空画布
+            // console.log('清空画布，尺寸:', imagePreviewCanvas.width + 'x' + imagePreviewCanvas.height);
+            imagePreviewCtx.clearRect(0, 0, imagePreviewCanvas.width, imagePreviewCanvas.height);
+            
+            // 设置canvas样式使其可见
+            // console.log('设置canvas样式以确保可见');
+            imagePreviewCanvas.style.border = '2px solid #4CAF50';
+            imagePreviewCanvas.style.display = 'block';
+            imagePreviewCanvas.style.backgroundColor = '#f0f0f0';
+            imagePreviewCanvas.style.margin = '10px 0';
+            imagePreviewCanvas.style.visibility = 'visible';
+            imagePreviewCanvas.style.opacity = '1';
+            
+            // 计算图片绘制位置（居中）
+            const drawX = (imagePreviewCanvas.width - previewImage.width * previewZoomLevel) / 2;
+            const drawY = 20; // 顶部留出一些空间
+            const drawWidth = previewImage.width * previewZoomLevel;
+            const drawHeight = previewImage.height * previewZoomLevel;
+            
+            // 绘制图片
+            // console.log('开始绘制图片:');
+            console.log('  图片尺寸:', previewImage.width + 'x' + previewImage.height);
+            console.log('  绘制位置:', drawX + ', ' + drawY);
+            console.log('  绘制尺寸:', drawWidth + 'x' + drawHeight);
+            console.log('  缩放级别:', previewZoomLevel);
+            
+            imagePreviewCtx.drawImage(
+                previewImage, 
+                0, 0, 
+                previewImage.width, previewImage.height, 
+                drawX, drawY, 
+                drawWidth, drawHeight
+            );
+            
+            // 绘制所有模块矩形
+            if (currentSprite && previewImageId) {
+                const imageItem = currentSprite.getImage(previewImageId);
+                if (imageItem) {
+                    if (imageItem.modulesList) {
+                        imageItem.modulesList.forEach((module, index) => {
+                            // 绘制模块边框
+                            imagePreviewCtx.strokeStyle = index === selectedImageModule ? 'rgba(255, 0, 0, 0.8)' : 'rgba(0, 255, 0, 0.8)';
+                            imagePreviewCtx.lineWidth = index === selectedImageModule ? 3 : 2;
+                            imagePreviewCtx.strokeRect(
+                                drawX + module.x * previewZoomLevel, 
+                                drawY + module.y * previewZoomLevel, 
+                                module.width * previewZoomLevel, 
+                                module.height * previewZoomLevel
+                            );
+                            // 绘制模块索引
+                            imagePreviewCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                            imagePreviewCtx.fillRect(
+                                drawX + module.x * previewZoomLevel, 
+                                drawY + module.y * previewZoomLevel, 
+                                20, 
+                                20
+                            );
+                            imagePreviewCtx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                            imagePreviewCtx.font = '14px Arial';
+                            imagePreviewCtx.fillText(
+                                `${index + 1}`, 
+                                drawX + module.x * previewZoomLevel + 5, 
+                                drawY + module.y * previewZoomLevel + 16
+                            );
+                        });
+                        console.log('模块绘制完成');
+                    } else {
+                        console.log('模块列表不存在或为空');
+                    }
+                } else {
+                    console.log('未找到对应的imageItem');
+                }
+            } else {
+                console.log('currentSprite或currentImageId不存在');
+            }
+            
+            // 显示渲染成功通知
+            const notification = document.createElement('div');
+            notification.textContent = '图片预览渲染成功！检查调试面板查看详细信息';
+            notification.style.cssText = 'position: fixed; top: 10px; left: 10px; background-color: #4CAF50; color: white; padding: 10px; border-radius: 4px; z-index: 1001;';
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // 处理图片预览canvas的点击事件
+        function handlePreviewCanvasClick(e) {
+            if (!currentSprite || !previewImage || !currentImageId) return;
+            
+            const rect = imagePreviewCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const imageItem = currentSprite.getImage(parseInt(currentImageId));
+            if (!imageItem || !imageItem.modulesList) return;
+            
+            // 计算图片在canvas上的位置
+            const drawX = (imagePreviewCanvas.width - previewImage.width * previewZoomLevel) / 2;
+            const drawY = 20;
+            
+            // 检查是否点击了某个模块
+            let clickedModuleIndex = -1;
+            for (let i = imageItem.modulesList.length - 1; i >= 0; i--) {
+                const module = imageItem.modulesList[i];
+                const moduleX = drawX + module.x * previewZoomLevel;
+                const moduleY = drawY + module.y * previewZoomLevel;
+                const moduleWidth = module.width * previewZoomLevel;
+                const moduleHeight = module.height * previewZoomLevel;
+                
+                if (mouseX >= moduleX && mouseX <= moduleX + moduleWidth && 
+                    mouseY >= moduleY && mouseY <= moduleY + moduleHeight) {
+                    clickedModuleIndex = i;
+                    break;
+                }
+            }
+            
+            if (clickedModuleIndex !== -1) {
+                selectedImageModule = clickedModuleIndex;
+                showPreviewWithMouse = true;
+                
+                // 显示变形预览区域
+                document.getElementById('transformation-preview').style.display = 'block';
+                
+                // 渲染变形预览
+                renderTransformationPreviews(imageItem, clickedModuleIndex);
+            } else {
+                // 如果点击了canvas其他区域，取消选中
+                selectedImageModule = -1;
+                showPreviewWithMouse = false;
+                document.getElementById('transformation-preview').style.display = 'none';
+            }
+            
+            // 重新渲染图片预览
+            renderImagePreview();
+        }
+        
+        // 更新鼠标位置
+        function updateMousePosition(e) {
+            const rect = imagePreviewCanvas.getBoundingClientRect();
+            mouseXOnCanvas = e.clientX - rect.left;
+            mouseYOnCanvas = e.clientY - rect.top;
+        }
+        
+        // 渲染变形预览
+        function renderTransformationPreviews(imageItem, moduleIndex) {
+            if (!imageItem || !imageItem.image || moduleIndex < 0 || moduleIndex >= imageItem.modulesList.length) return;
+            
+            const module = imageItem.modulesList[moduleIndex];
+            const scale = Math.min(60 / module.width, 60 / module.height);
+            const scaledWidth = module.width * scale;
+            const scaledHeight = module.height * scale;
+            
+            // 清空所有变形预览canvas
+            if (originalPreviewCtx) {
+                originalPreviewCtx.clearRect(0, 0, 60, 60);
+            }
+            if (flipHorizontalPreviewCtx) {
+                flipHorizontalPreviewCtx.clearRect(0, 0, 60, 60);
+            }
+            if (flipVerticalPreviewCtx) {
+                flipVerticalPreviewCtx.clearRect(0, 0, 60, 60);
+            }
+            
+            // 计算居中位置
+            const offsetX = (60 - scaledWidth) / 2;
+            const offsetY = (60 - scaledHeight) / 2;
+            
+            // 绘制原图预览
+            if (originalPreviewCtx) {
+                originalPreviewCtx.drawImage(
+                    imageItem.image,
+                    module.x, module.y, module.width, module.height,
+                    offsetX, offsetY, scaledWidth, scaledHeight
+                );
+            }
+            
+            // 绘制水平翻转预览
+            if (flipHorizontalPreviewCtx) {
+                flipHorizontalPreviewCtx.save();
+                flipHorizontalPreviewCtx.translate(60, 0);
+                flipHorizontalPreviewCtx.scale(-1, 1);
+                flipHorizontalPreviewCtx.drawImage(
+                    imageItem.image,
+                    module.x, module.y, module.width, module.height,
+                    offsetX, offsetY, scaledWidth, scaledHeight
+                );
+                flipHorizontalPreviewCtx.restore();
+            }
+            
+            // 绘制垂直翻转预览
+            if (flipVerticalPreviewCtx) {
+                flipVerticalPreviewCtx.save();
+                flipVerticalPreviewCtx.translate(0, 60);
+                flipVerticalPreviewCtx.scale(1, -1);
+                flipVerticalPreviewCtx.drawImage(
+                    imageItem.image,
+                    module.x, module.y, module.width, module.height,
+                    offsetX, offsetY, scaledWidth, scaledHeight
+                );
+                flipVerticalPreviewCtx.restore();
+            }
+        }
+        
+        // 将选中的模块添加到动作编辑的当前帧
+        function addModuleToFrame(x, y) {
+            if (!currentFrame || !currentSprite || !currentImageId || selectedImageModule === -1) return;
+            
+            const imageItem = currentSprite.getImage(parseInt(currentImageId));
+            if (!imageItem || !imageItem.modulesList || selectedImageModule >= imageItem.modulesList.length) return;
+            
+            // 创建新模块
+            const module = new Module(currentImageId, selectedImageModule);
+            
+            // 添加到当前帧
+            const frameModule = new FrameModule(module, x, y);
+            
+            // 应用选中的变形
+            if (selectedTransformation === 'flip-horizontal') {
+                frameModule.flipHorizontal = true;
+            } else if (selectedTransformation === 'flip-vertical') {
+                frameModule.flipVertical = true;
+            }
+            
+            currentFrame.addModule(frameModule);
+            
+            // 更新界面
+            renderCanvas();
+        }
+        
+        // 绘制跟随鼠标的预览
+        function drawMouseFollowPreview(ctx) {
+            // 只在动作编辑标签页显示预览
+            if (currentTab !== 'animation' || !showPreviewWithMouse || !currentSprite || !currentImageId || selectedImageModule === -1) return;
+            
+            const imageItem = currentSprite.getImage(parseInt(currentImageId));
+            if (!imageItem || !imageItem.image || selectedImageModule >= imageItem.modulesList.length) return;
+            
+            const module = imageItem.modulesList[selectedImageModule];
+            
+            ctx.save();
+            
+            // 移动到鼠标位置
+            ctx.translate(mouseXOnCanvas, mouseYOnCanvas);
+            
+            // 应用变形
+            if (selectedTransformation === 'flip-horizontal') {
+                ctx.scale(-1, 1);
+            } else if (selectedTransformation === 'flip-vertical') {
+                ctx.scale(1, -1);
+            }
+            
+            // 绘制模块预览（半透明）
+            ctx.globalAlpha = 0.7;
+            ctx.drawImage(
+                imageItem.image,
+                module.x, module.y, module.width, module.height,
+                -module.width / 2, -module.height / 2, module.width, module.height
+            );
+            
+            ctx.restore();
+        }
         
         // 绘制当前图片（考虑缩放）
         function drawCurrentImage() {
@@ -999,6 +1511,9 @@
                 // 绘制裁剪手柄
                 drawCropHandles(canvasX, canvasY, canvasWidth, canvasHeight);
             }
+            
+            // 绘制跟随鼠标的预览
+            drawMouseFollowPreview(imageCtx);
         }
         
         // 绘制裁剪手柄
@@ -1290,11 +1805,6 @@
             document.addEventListener('mouseup', handleImageMouseUp);
             // imageCanvas.addEventListener('mouseleave', handleImageMouseUp);
             
-            // 控制面板事件
-            document.getElementById('module-x').addEventListener('input', updateModulePosition);
-            document.getElementById('module-y').addEventListener('input', updateModulePosition);
-            document.getElementById('module-width').addEventListener('input', updateModuleSize);
-            document.getElementById('module-height').addEventListener('input', updateModuleSize);
         }
         
         // 保存项目函数
@@ -1482,37 +1992,116 @@
             if (tabName === 'animation') {
                 renderCanvas(1);
                 renderAnimationImagesList();
-                document.getElementById('animation-modules-list').innerHTML = '';
-                document.getElementById('selected-image-title').textContent = '选择图片查看模块';
+                // document.getElementById('animation-modules-list').innerHTML = '';
+                // document.getElementById('selected-image-title').textContent = '选择图片查看模块';
                 
                 // 显示动作编辑控制面板，隐藏图片模块编辑控制面板
                 document.getElementById('animation-control-section').style.display = 'block';
                 document.getElementById('image-control-section').style.display = 'none';
+
+                // 重新初始化图片预览相关元素
+                console.log('Initializing image preview elements in switchTab(animation)');
+                if (!imagePreviewCanvas) {
+                    console.log('Looking for image-preview-canvas element');
+                    imagePreviewCanvas = document.getElementById('image-preview-canvas');
+                    if (imagePreviewCanvas) {
+                        imagePreviewCtx = imagePreviewCanvas.getContext('2d');
+                        console.log('Successfully initialized canvas and context');
+                    } else {
+                        console.warn('image-preview-canvas element not found');
+                    }
+                }
+
+                // 填充图片选择下拉列表
+                console.log('Calling populateImageDropdown from switchTab');
+                populateImageDropdown();
+
+                // 如果已有选中的图片，立即渲染预览
+                console.log('Checking if currentImage and imagePreviewCanvas are available for render');
+                console.log({ hasCurrentImage: !!currentImage, hasCanvas: !!imagePreviewCanvas });
+                if (currentImage && imagePreviewCanvas) {
+                    console.log('Calling renderImagePreview from switchTab');
+                    renderImagePreview();
+                } else {
+                    console.log('Skipping renderImagePreview: missing required elements');
+                }
             } else if (tabName === 'image') {
                 renderModulesList();
                 drawCurrentImage();
                 renderImagesList();
                 
-                // // 调整控制面板布局 - 图片模块编辑模式
-                // const controlPanel = document.querySelector('.control-panel');
-                // const imagesListContainer = document.querySelector('.images-list-container');
-                // const modulePropertiesSection = document.querySelector('.control-section:first-of-type');
-                // const currentImageSection = document.querySelector('.control-section:last-of-type');
-                
-                // // 恢复默认布局：图片列表、模块属性、当前图片信息
-                // if (imagesListContainer && controlPanel.contains(imagesListContainer)) {
-                //     controlPanel.insertBefore(imagesListContainer, controlPanel.firstChild);
-                // }
-                // if (modulePropertiesSection && controlPanel.contains(modulePropertiesSection)) {
-                //     const nextElement = imagesListContainer ? imagesListContainer.nextElementSibling : controlPanel.firstChild;
-                //     controlPanel.insertBefore(modulePropertiesSection, nextElement);
-                // }
-                // if (currentImageSection && controlPanel.contains(currentImageSection)) {
-                //     controlPanel.appendChild(currentImageSection);
-                // }
                 // 显示图片模块编辑控制面板，隐藏动作编辑控制面板
                 document.getElementById('animation-control-section').style.display = 'none';
                 document.getElementById('image-control-section').style.display = 'block';
+            }
+        }
+        
+        // 填充图片选择下拉列表
+        function populateImageDropdown() {
+            console.log('populateImageDropdown called');
+            const imageDropdown = document.getElementById('image-dropdown');
+            if (!imageDropdown) {
+                console.warn('Cannot populate dropdown: image-dropdown element not found');
+                return;
+            }
+            
+            // 清空现有选项
+            imageDropdown.innerHTML = '<option value="">请选择图片</option>';
+            
+            // 如果没有当前角色或图片列表为空，直接返回
+            if (!currentSprite) {
+                console.warn('Cannot populate dropdown: currentSprite is null');
+                return;
+            }
+            
+            if (currentSprite.m_imageList.length === 0) {
+                console.log('No images available in currentSprite');
+                return;
+            }
+            
+            console.log('Adding', currentSprite.m_imageList.length, 'images to dropdown');
+            // 添加图片选项
+            currentSprite.m_imageList.forEach(imageItem => {
+                const option = document.createElement('option');
+                option.value = imageItem.id;
+                option.textContent = imageItem.name;
+                imageDropdown.appendChild(option);
+            });
+            
+            // 如果有当前选中的图片，设置为默认选中并立即渲染预览
+            if (currentImageId) {
+                console.log('Setting default selected image:', currentImageId);
+                imageDropdown.value = currentImageId;
+                
+                // 确保currentImage已设置
+                if (!currentImage) {
+                    console.log('currentImage not set, trying to get from sprite');
+                    const imageItem = currentSprite.getImage(parseInt(currentImageId));
+                    if (imageItem) {
+                        console.log('Found image item:', imageItem.name);
+                        currentImage = imageItem.image;
+                        previewImage = imageItem.image; // 设置专门用于canvas渲染的图片
+                        console.log('Set currentImage and previewImage:', currentImage ? currentImage.src : 'null');
+                    } else {
+                        console.warn('Image item not found for id:', currentImageId);
+                    }
+                }
+                
+                // 确保imagePreviewCanvas和imagePreviewCtx已初始化
+                if (!imagePreviewCanvas) {
+                    console.log('Initializing imagePreviewCanvas');
+                    imagePreviewCanvas = document.getElementById('image-preview-canvas');
+                    if (imagePreviewCanvas) {
+                        imagePreviewCtx = imagePreviewCanvas.getContext('2d');
+                        console.log('Successfully initialized canvas and context');
+                    } else {
+                        console.warn('image-preview-canvas element not found');
+                    }
+                }
+                
+                // 立即渲染图片预览
+                console.log('About to call renderImagePreview from populateImageDropdown');
+                renderImagePreview();
             }
         }
         
@@ -2454,11 +3043,6 @@
             // 更新界面
             renderCanvas(3);
             
-            // 清空控制面板
-            document.getElementById('module-x').value = 0;
-            document.getElementById('module-y').value = 0;
-            document.getElementById('module-width').value = 0;
-            document.getElementById('module-height').value = 0;
         }
         
         // 在当前帧后插入新帧
@@ -2597,11 +3181,6 @@
             // 更新界面
             renderCanvas(6);
             
-            // 清空控制面板
-            document.getElementById('module-x').value = 0;
-            document.getElementById('module-y').value = 0;
-            document.getElementById('module-width').value = 0;
-            document.getElementById('module-height').value = 0;
         }
         
         // 复制选中的模块
@@ -2883,12 +3462,6 @@
             // 如果没有点击到任何模块，取消选择
             selectedModuleIndex = -1;
             
-            // 清空控制面板
-            document.getElementById('module-x').value = 0;
-            document.getElementById('module-y').value = 0;
-            document.getElementById('module-width').value = 0;
-            document.getElementById('module-height').value = 0;
-            
             renderCanvas(12);
         }
         
@@ -3022,11 +3595,7 @@
                         fm.scale.x = scaleX;
                         fm.scale.y = scaleY;
                         
-                        // 更新控制面板
-                        document.getElementById('module-x').value = Math.round(fm.x);
-                        document.getElementById('module-y').value = Math.round(fm.y);
-                        document.getElementById('module-width').value = Math.round(newWidth);
-                        document.getElementById('module-height').value = Math.round(newHeight);
+
                     }
                 }
             } else {
@@ -3039,9 +3608,6 @@
                 dragStartX = x;
                 dragStartY = y;
 
-                // 更新控制面板
-                document.getElementById('module-x').value = Math.round(fm.x);
-                document.getElementById('module-y').value = Math.round(fm.y);
             }
             
             renderCanvas(13);
@@ -3104,12 +3670,6 @@
                     }
                 }
             }
-            
-            // 更新控制面板
-            document.getElementById('module-x').value = Math.round(fm.x);
-            document.getElementById('module-y').value = Math.round(fm.y);
-            document.getElementById('module-width').value = Math.round(width);
-            document.getElementById('module-height').value = Math.round(height);
         }
         
         // 更新模块位置
@@ -3119,8 +3679,8 @@
             const fm = currentFrame.fmList[selectedModuleIndex];
             const command = new TransformFmCommand(fm, fm.x, fm.y, fm.flag);
             
-            fm.x = parseInt(document.getElementById('module-x').value) || 0;
-            fm.y = parseInt(document.getElementById('module-y').value) || 0;
+            // fm.x = parseInt(document.getElementById('module-x').value) || 0;
+            // fm.y = parseInt(document.getElementById('module-y').value) || 0;
             
             CommandManager.instance.addCommand(command);
             renderCanvas(14);
@@ -3759,11 +4319,6 @@
             
             document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
             
-            // 清空控制面板
-            document.getElementById('module-x').value = 0;
-            document.getElementById('module-y').value = 0;
-            document.getElementById('module-width').value = 0;
-            document.getElementById('module-height').value = 0;
         }
         
         // 切换播放动画
@@ -3809,8 +4364,89 @@
             animationFrameId = requestAnimationFrame(playAnimation);
         }
         
+        let hidDebug = false;
+        function showDebugInfo() {
+            let debugInfo = document.getElementById('debug-info');
+            if (debugInfo) {
+                debugInfo.hidden = hidDebug;
+                hidDebug = !hidDebug;
+                return;
+            }
+            // 创建调试信息显示区域
+            debugInfo = document.createElement('div');
+            debugInfo.id = 'debug-info';
+            debugInfo.style.cssText = 'position: fixed; bottom: 0; left: 0; width: 100%; height: 150px; background-color: #000; color: #fff; overflow-y: auto; font-size: 12px; z-index: 1000; border-top: 2px solid #333;';
+            
+            const debugContent = document.createElement('div');
+            debugContent.style.padding = '10px';
+            
+            const debugTitle = document.createElement('h4');
+            debugTitle.style.marginTop = '0';
+            debugTitle.style.color = '#fff';
+            debugTitle.textContent = '控制台调试信息';
+            
+            const debugLogs = document.createElement('div');
+            debugLogs.id = 'debug-logs';
+            
+            debugContent.appendChild(debugTitle);
+            debugContent.appendChild(debugLogs);
+            debugInfo.appendChild(debugContent);
+            
+            document.body.appendChild(debugInfo);
+            
+            // 重写console.log以同时显示在调试面板
+            window.oldConsoleLog = console.log;
+            window.oldConsoleWarn = console.warn;
+            window.oldConsoleError = console.error;
+            
+            console.log = function() {
+                oldConsoleLog.apply(console, arguments);
+                const logEl = document.createElement('div');
+                logEl.textContent = 'LOG: ' + Array.from(arguments).join(' ');
+                logEl.style.color = '#fff';
+                logEl.style.marginBottom = '2px';
+                
+                // 检查并移除复杂对象的显示
+                if (logEl.textContent.includes('{') || logEl.textContent.includes('[')) {
+                    try {
+                        const parsed = JSON.parse(logEl.textContent.substring(4));
+                        logEl.textContent = 'LOG: ' + JSON.stringify(parsed, null, 2);
+                    } catch (e) {
+                        // 不是有效的JSON，保持原样
+                    }
+                }
+                
+                document.getElementById('debug-logs').appendChild(logEl);
+                document.getElementById('debug-info').scrollTop = document.getElementById('debug-info').scrollHeight;
+            };
+            
+            console.warn = function() {
+                oldConsoleWarn.apply(console, arguments);
+                const logEl = document.createElement('div');
+                logEl.textContent = 'WARN: ' + Array.from(arguments).join(' ');
+                logEl.style.color = '#ffaa00';
+                logEl.style.marginBottom = '2px';
+                document.getElementById('debug-logs').appendChild(logEl);
+                document.getElementById('debug-info').scrollTop = document.getElementById('debug-info').scrollHeight;
+            };
+            
+            console.error = function() {
+                oldConsoleError.apply(console, arguments);
+                const logEl = document.createElement('div');
+                logEl.textContent = 'ERROR: ' + Array.from(arguments).join(' ');
+                logEl.style.color = '#ff4444';
+                logEl.style.marginBottom = '2px';
+                document.getElementById('debug-logs').appendChild(logEl);
+                document.getElementById('debug-info').scrollTop = document.getElementById('debug-info').scrollHeight;
+            };
+            
+            console.log('调试面板已初始化');
+        }
+
         // 启动应用
         window.addEventListener('load', init);
+        
+        
     </script>
 </body>
 </html>
