@@ -1079,8 +1079,8 @@
             
             // 绑定动画canvas的点击事件，用于添加模块
             canvas.addEventListener('click', function(e) {
-                console.log('showPreviewWithMouse',showPreviewWithMouse);
-                console.log('selectedImageModule',selectedImageModule);
+                // console.log('showPreviewWithMouse',showPreviewWithMouse);
+                // console.log('selectedImageModule',selectedImageModule);
                 if (showPreviewWithMouse && selectedImageModule !== -1 && currentFrame) {
                     addModuleToFrame(e);
                 }
@@ -3266,13 +3266,7 @@
                 
                 for (const index of selectedModuleIndices) {
                     const fm = currentFrame.fmList[index];
-                    copiedModuleInfos.push({
-                        module: fm.module,
-                        x: fm.x,
-                        y: fm.y,
-                        flag: fm.flag,
-                        scale: fm.scale ? { ...fm.scale } : null
-                    });
+                    copiedModuleInfos.push(fm.clone());
                 }
                 
                 // 清除单个模块的复制信息
@@ -3285,13 +3279,15 @@
                 const fm = currentFrame.fmList[selectedModuleIndex];
                 
                 // 保存模块信息，包括模块对象、位置、翻转/旋转标志和缩放信息
-                copiedModuleInfo = {
-                    module: fm.module,  // 模块对象
-                    x: fm.x,            // X坐标
-                    y: fm.y,            // Y坐标
-                    flag: fm.flag,      // 翻转/旋转标志
-                    scale: fm.scale ? { ...fm.scale } : null  // 缩放信息
-                };
+                copiedModuleInfo = fm.clone();
+                // {
+                //     module: fm.module,  // 模块对象
+                //     x: fm.x,            // X坐标
+                //     y: fm.y,            // Y坐标
+                //     flag: fm.flag,      // 翻转/旋转标志
+                //     angle: fm.angle ? fm.angle : 0,  // 角度信息
+                //     scale: fm.scale ? fm.scale : 1  // 缩放信息
+                // };
                 
                 // 清除多个模块的复制信息
                 copiedModuleInfos = null;
@@ -3320,13 +3316,10 @@
                         copiedInfo.module,  // 使用相同的模块
                         copiedInfo.x + 10,  // 稍微偏移一点，避免重叠
                         copiedInfo.y + 10,  // 稍微偏移一点，避免重叠
-                        copiedInfo.flag     // 使用相同的翻转/旋转标志
+                        copiedInfo.flag,    // 使用相同的翻转/旋转标志
+                        copiedInfo.angle ? copiedInfo.angle : 0,  // 角度信息
+                        copiedInfo.scale ? copiedInfo.scale : 1  // 缩放信息
                     );
-                    
-                    // 复制缩放信息（如果有）
-                    if (copiedInfo.scale) {
-                        newFm.scale = copiedInfo.scale;
-                    }
                     
                     // 创建添加模块命令并添加到组合命令
                     compositeCommand.addCommand(new AddFmCommand(currentFrame, newFm));
@@ -4712,6 +4705,7 @@
             if (selectedModuleIndices.length > 0 && currentFrame) {
                 for (const index of selectedModuleIndices) {
                     const fm = currentFrame.fmList[index];
+                    if(!fm) continue;
                     const module = fm.module;
                     if (!module) continue;
                     
