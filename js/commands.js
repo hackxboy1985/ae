@@ -93,6 +93,27 @@ class FlipHorizontalCommand extends Command {
     }
 }
 
+// 垂直翻转命令类定义
+class FlipVerticalCommand extends Command {
+    constructor(frameModule) {
+        super();
+        this.frameModule = frameModule;
+        this.oldFlag = frameModule.flag;
+    }
+    
+    execute() {
+        // 切换垂直翻转标志
+        this.frameModule.flag ^= 2;
+    }
+    
+    undo() {
+        // 恢复原始标志
+        this.frameModule.flag = this.oldFlag;
+    }
+}
+
+
+
 // 组合命令类定义 - 用于组合多个命令
 class CompositeCommand extends Command {
     constructor() {

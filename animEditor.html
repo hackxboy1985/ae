@@ -3451,13 +3451,27 @@
         
         // 垂直翻转
         function flipVertical() {
-            if (!currentFrame || selectedModuleIndex < 0) return;
+            if (!currentFrame || (selectedModuleIndex < 0 && selectedModuleIndices.length === 0)) return;
+
+            // 创建一个组合命令来包含所有模块的变换命令
+            const compositeCommand = new CompositeCommand();
             
-            const fm = currentFrame.fmList[selectedModuleIndex];
-            CommandManager.instance.addCommand(new TransformFmCommand(fm, fm.x, fm.y, fm.flag));
+            // 如果有多个模块被选中，同时水平翻转所有选中的模块
+            if (selectedModuleIndices.length > 1) {
+                for (const index of selectedModuleIndices) {
+                    const fm = currentFrame.fmList[index];
+                    compositeCommand.addCommand(new FlipVerticalCommand(fm));
+                }
+            } else if (selectedModuleIndex >= 0) {
+                // console.log('垂直翻转前:',currentFrame.fmList[selectedModuleIndex].flag);
+                // 如果只有一个模块被选中，垂直翻转这个模块
+                const fm = currentFrame.fmList[selectedModuleIndex];
+                compositeCommand.addCommand(new FlipVerticalCommand(fm));
+
+            }
             
-            // 切换垂直翻转标志
-            fm.flag ^= 2;
+            // 添加组合命令到命令管理器
+            CommandManager.instance.addCommand(compositeCommand);
             
             // 更新界面
             renderCanvas(9);
