@@ -4,6 +4,11 @@ class Frame {
         this.fmList = []; // 存储FrameModule对象
     }
     
+    // 添加模块
+    addModule(module) {
+        this.fmList.push(module);
+    }
+
     draw(ctx, sprite, originX, originY) {
         this.fmList.forEach(fm => {
             fm.draw(ctx, sprite, originX, originY);

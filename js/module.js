@@ -47,21 +47,22 @@ class FrameModule {
         const height = rectModule.height;
         
         // 先移动到旋转中心（图像中心）
-        ctx.translate(width / 2, height / 2);
+
         
         // 应用任意角度旋转
         if (this.angle !== 0) {
+            ctx.translate(width / 2, height / 2);
             ctx.rotate(this.angle);
+            // 应用90度旋转标志
+            // if (this.flag & 4) {
+            //     ctx.rotate(Math.PI / 2);
+            // }
+            // 旋转后调整位置，使图像保持在原位置
+            ctx.translate(-width / 2, -height / 2);
         }
         
-        // 应用90度旋转标志
-        if (this.flag & 4) {
-            ctx.rotate(Math.PI / 2);
-        }
-        
-        // 旋转后调整位置，使图像保持在原位置
-        ctx.translate(-width / 2, -height / 2);
-        
+
+
         // 应用缩放（如果有）
         let scaleX = 1;
         let scaleY = 1;
