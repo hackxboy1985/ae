@@ -20,11 +20,14 @@ class ImageItem {
 
 // 帧模块类定义
 class FrameModule {
+    
     constructor(module, x = 0, y = 0, flag = 0) {
         this.module = module;
         this.x = x;
         this.y = y;
         this.flag = flag; // 0: 正常, 1: 水平翻转, 2: 垂直翻转, 4: 90度旋转
+        this.scale = null; // 缩放比例 { x: 1, y: 1 }
+        this.angle = 0; // 旋转角度（弧度）
     }
     
     draw(ctx, sprite, originX, originY) {
@@ -37,13 +40,27 @@ class FrameModule {
         ctx.save();
         
         // 移动到原点 - 与ActionEditor相同的原点逻辑
-        // 将图像中心与原点对齐
         ctx.translate(originX + this.x, originY - this.y);
         
         // 应用变换
-        if (this.flag & 4) { // 90度旋转
+        const width = rectModule.width;
+        const height = rectModule.height;
+        
+        // 先移动到旋转中心（图像中心）
+        ctx.translate(width / 2, height / 2);
+        
+        // 应用任意角度旋转
+        if (this.angle !== 0) {
+            ctx.rotate(this.angle);
+        }
+        
+        // 应用90度旋转标志
+        if (this.flag & 4) {
             ctx.rotate(Math.PI / 2);
         }
+        
+        // 旋转后调整位置，使图像保持在原位置
+        ctx.translate(-width / 2, -height / 2);
         
         // 应用缩放（如果有）
         let scaleX = 1;
@@ -65,23 +82,16 @@ class FrameModule {
         
         ctx.scale(scaleX, scaleY);
         
-        // 绘制图像 - 与ActionEditor相同的原点逻辑
-        // 将图像中心与原点对齐后绘制
-        const width = rectModule.width;
-        const height = rectModule.height;
-        
         // 计算绘制位置，考虑翻转效果
-        // 当应用水平翻转时，需要调整x坐标以保持图像位置不变
-        // 当应用垂直翻转时，需要调整y坐标以保持图像位置不变
-        let drawX = 0;
-        let drawY = 0;
+        const drawX = (this.flag & 1) ? -width : 0;
+        const drawY = (this.flag & 2) ? -height : 0;
         
         ctx.drawImage(
             imageItem.image,
             rectModule.x, rectModule.y,
             width, height,
-            (this.flag & 1) ? -width : 0, // 水平翻转时，调整x坐标
-            (this.flag & 2) ? -height : 0, // 垂直翻转时，调整y坐标
+            drawX, 
+            drawY,
             width, height
         );
         
@@ -100,6 +110,9 @@ class FrameModule {
         if (this.scale) {
             cloned.scale = { ...this.scale };
         }
+        
+        // 复制角度属性
+        cloned.angle = this.angle;
         
         return cloned;
     }

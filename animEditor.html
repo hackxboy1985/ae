@@ -699,6 +699,10 @@
                             <canvas id="flip-vertical-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
                             <span>垂直翻转</span>
                         </div>
+                        <div class="transformation-item" data-type="flip-both">
+                            <canvas id="flip-both-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                            <span>水平+垂直翻转</span>
+                        </div>
                     </div>
                 </div>
 
@@ -799,6 +803,9 @@
         let flipHorizontalPreviewCtx = flipHorizontalPreviewCanvas ? flipHorizontalPreviewCanvas.getContext('2d') : null;
         let flipVerticalPreviewCanvas = document.getElementById('flip-vertical-preview');
         let flipVerticalPreviewCtx = flipVerticalPreviewCanvas ? flipVerticalPreviewCanvas.getContext('2d') : null;
+        // 新增：水平+垂直翻转预览canvas
+        let flipBothPreviewCanvas = document.getElementById('flip-both-preview');
+        let flipBothPreviewCtx = flipBothPreviewCanvas ? flipBothPreviewCanvas.getContext('2d') : null;
         
         let moduleInfo = document.getElementById('module-info');
         let isImageModuleRangeMoving = false;
@@ -958,6 +965,11 @@
                 flipVerticalPreviewCanvas = document.getElementById('flip-vertical-preview');
                 flipVerticalPreviewCtx = flipVerticalPreviewCanvas.getContext('2d');
             }
+            // 初始化水平+垂直翻转预览canvas
+            if (!flipBothPreviewCanvas) {
+                flipBothPreviewCanvas = document.getElementById('flip-both-preview');
+                flipBothPreviewCtx = flipBothPreviewCanvas.getContext('2d');
+            }
             
             // 添加调试按钮
             const debugBtn = document.createElement('button');
@@ -1048,6 +1060,7 @@
             
             // 绑定图片预览canvas的点击事件
             if (imagePreviewCanvas) {
+                console.log('绑定图片预览canvas点击事件');
                 imagePreviewCanvas.addEventListener('click', handlePreviewCanvasClick);
                 imagePreviewCanvas.addEventListener('mousemove', updateMousePosition);
             }
@@ -1233,13 +1246,17 @@
         
         // 处理图片预览canvas的点击事件
         function handlePreviewCanvasClick(e) {
-            if (!currentSprite || !previewImage || !currentImageId) return;
-            
+            console.log('点击预览位置:', e.clientX, e.clientY);
+            if (!currentSprite || !previewImage) return;
+            // console.log('点击预览位置:', e.clientX, e.clientY);
+
             const rect = imagePreviewCanvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
+
+            console.log('点击预览位置:', mouseX, mouseY);
             
-            const imageItem = currentSprite.getImage(parseInt(currentImageId));
+            const imageItem = currentSprite.getImage(previewImageId);
             if (!imageItem || !imageItem.modulesList) return;
             
             // 计算图片在canvas上的位置
@@ -1263,12 +1280,13 @@
             }
             
             if (clickedModuleIndex !== -1) {
+                // 选中模块并保存为变量，但不直接添加到当前帧
                 selectedImageModule = clickedModuleIndex;
                 showPreviewWithMouse = true;
                 
                 // 显示变形预览区域
                 document.getElementById('transformation-preview').style.display = 'block';
-                
+                console.log('绘制变形');
                 // 渲染变形预览
                 renderTransformationPreviews(imageItem, clickedModuleIndex);
             } else {
@@ -1307,6 +1325,9 @@
             }
             if (flipVerticalPreviewCtx) {
                 flipVerticalPreviewCtx.clearRect(0, 0, 60, 60);
+            }
+            if (flipBothPreviewCtx) {
+                flipBothPreviewCtx.clearRect(0, 0, 60, 60);
             }
             
             // 计算居中位置
@@ -1347,6 +1368,19 @@
                 );
                 flipVerticalPreviewCtx.restore();
             }
+            
+            // 绘制水平+垂直翻转预览
+            if (flipBothPreviewCtx) {
+                flipBothPreviewCtx.save();
+                flipBothPreviewCtx.translate(60, 60);
+                flipBothPreviewCtx.scale(-1, -1);
+                flipBothPreviewCtx.drawImage(
+                    imageItem.image,
+                    module.x, module.y, module.width, module.height,
+                    offsetX, offsetY, scaledWidth, scaledHeight
+                );
+                flipBothPreviewCtx.restore();
+            }
         }
         
         // 将选中的模块添加到动作编辑的当前帧
@@ -1366,6 +1400,9 @@
             if (selectedTransformation === 'flip-horizontal') {
                 frameModule.flipHorizontal = true;
             } else if (selectedTransformation === 'flip-vertical') {
+                frameModule.flipVertical = true;
+            } else if (selectedTransformation === 'flip-both') {
+                frameModule.flipHorizontal = true;
                 frameModule.flipVertical = true;
             }
             
@@ -2267,8 +2304,8 @@
                 
                 // 创建一个小画布来显示模块预览
                 const previewCanvas = document.createElement('canvas');
-                previewCanvas.width = 70;
-                previewCanvas.height = 70;
+                // previewCanvas.width = 70;
+                // previewCanvas.height = 70;
                 const previewCtx = previewCanvas.getContext('2d');
                 
                 // 计算缩放比例
@@ -3392,6 +3429,7 @@
                                 originalHeight = height;
                                 originalX = fm.x;
                                 originalY = fm.y;
+                                console.log('控制点');
                                 return;
                             }
                         }
@@ -3424,9 +3462,43 @@
                     [width, height] = [height, width];
                 }
                 
+                // 计算旋转控制点位置（右下角向外延伸一点）
+                const rotateHandleX = fm.x + width + 10;
+                const rotateHandleY = fm.y - height;
+                
+                // 检查是否点击了旋转控制点
+                const dxRotate = x - rotateHandleX;
+                const dyRotate = y - rotateHandleY;
+                console.log('xy:',x,y,',rotateHandleX:',rotateHandleX,rotateHandleY);
+                if (x >= rotateHandleX-4 && x <= rotateHandleX+4 && y >= rotateHandleY-4 && y <= rotateHandleY+4) {
+                // if (dxRotate * dxRotate + dyRotate * dyRotate <= 16) { // 4px的点击范围
+                    console.log('旋转');
+                    selectedModuleIndex = i;
+                    isDragging = true;
+                    isDraggingRotate = true;
+                    originalAngle = fm.angle;
+                    
+                    // 计算模块中心点
+                    moduleCenterX = m_imageOriginPos.x + fm.x + width / 2;
+                    moduleCenterY = m_imageOriginPos.y - fm.y + height / 2;
+                    
+                    dragStartX = x;
+                    dragStartY = y;
+                    
+                    // 保存拖拽开始时的模块状态
+                    dragStartModuleState = {
+                        x: fm.x,
+                        y: fm.y,
+                        flag: fm.flag,
+                        angle: fm.angle
+                    };
+                    
+                    return;
+                }
+                
                 // 计算模块的边界框
-                let left = fm.x ;
-                let top =  fm.y;
+                let left = fm.x;
+                let top = fm.y;
                 let right = left + width;
                 let bottom = top - height;
                 
@@ -3437,7 +3509,7 @@
 
                 // 检查点击是否在模块内
                 console.log('click:',x, y, left, top, right, bottom);
-                if (x >= left && x <= right && y <= top && y >= bottom) {
+                if (x >= left-4 && x <= right+4 && y <= top+4 && y >= bottom+4) {
                     selectedModuleIndex = i;
                     isDragging = true;
                     dragStartX = x;
@@ -3487,6 +3559,57 @@
             }
         }
         
+        // 处理鼠标悬停事件 - 检测旋转控制点
+        canvas.addEventListener('mousemove', function(e) {
+            if (isDragging || isSpacePressed || !currentFrame || selectedModuleIndex < 0) {
+                return;
+            }
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // 检查选中的模块的旋转控制点
+            const fm = currentFrame.fmList[selectedModuleIndex];
+            const module = fm.module;
+            if (module) {
+                const imageItem = currentSprite.getImage(module.imageId);
+                if (imageItem && imageItem.modulesList[module.imageModuleId]) {
+                    const rectModule = imageItem.modulesList[module.imageModuleId];
+                    let width = rectModule.width;
+                    let height = rectModule.height;
+                    
+                    // 应用缩放
+                    if (fm.scale) {
+                        width *= fm.scale.x;
+                        height *= fm.scale.y;
+                    }
+                    
+                    // 应用变换后的尺寸
+                    if (fm.flag & 4) { // 90度旋转
+                        [width, height] = [height, width];
+                    }
+                    
+                    // 计算旋转控制点位置（右下角向外延伸一点）
+                    const rotateHandleX = m_imageOriginPos.x + fm.x + width + 10;
+                    const rotateHandleY = m_imageOriginPos.y - fm.y + height;
+                    
+                    // 检查鼠标是否在旋转控制点上
+                    const dx = mouseX - rotateHandleX;
+                    const dy = mouseY - rotateHandleY;
+                    if (dx * dx + dy * dy <= 16) { // 4px的点击范围
+                        canvas.style.cursor = 'grabbing'; // 使用旋转光标
+                        return;
+                    }
+                }
+            }
+            
+            // 如果没有悬停在旋转控制点上，恢复默认光标
+            if (canvas.style.cursor !== 'default' && canvas.style.cursor !== 'grab') {
+                canvas.style.cursor = 'default';
+            }
+        });
+        
         // 原始鼠标事件处理函数引用
         const originalHandleMouseDown = handleMouseDown;
         const originalHandleMouseMove = handleMouseMove;
@@ -3494,6 +3617,12 @@
         
         // 保存模块拖拽开始时的状态
         let dragStartModuleState = null;
+        
+        // 旋转相关状态变量
+        let isDraggingRotate = false;
+        let originalAngle = 0;
+        let moduleCenterX = 0;
+        let moduleCenterY = 0;
         
         // 处理鼠标移动事件
         function handleMouseMove(e) {
@@ -3519,10 +3648,27 @@
             // 计算相对于画布中心的坐标
             x = Math.round((x - m_imageOriginPos.x)/zoomLevel);
             y = Math.round((m_imageOriginPos.y - y)/zoomLevel);
-            // const relativeY = Math.round((m_imageOriginPos.y - y)/zoomLevel);
             console.log('move:',x, y);
             
             const fm = currentFrame.fmList[selectedModuleIndex];
+            
+            if (isDraggingRotate) {
+                // 处理旋转
+                // 计算鼠标相对于模块中心点的位置
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // 计算鼠标与模块中心点之间的连线与水平线的夹角
+                const dx = mouseX - moduleCenterX;
+                const dy = mouseY - moduleCenterY;
+                const angle = Math.atan2(dy, dx);
+                
+                fm.angle = originalAngle + angle;
+                
+                renderCanvas(13);
+                updateModuleProperties(fm);
+                return;
+            }
             
             if (resizeControlPoint !== -1) {
                 // 处理缩放
@@ -3640,6 +3786,7 @@
             
             isDragging = false;
             resizeControlPoint = -1;
+            isDraggingRotate = false;
         }
         
         // 更新模块属性显示
@@ -4228,22 +4375,18 @@
                         ctx.strokeStyle = 'blue';
                         ctx.lineWidth = 2 / zoomLevel;
                         ctx.strokeRect(
-                            m_imageOriginPos.x / zoomLevel + fm.x /*- width / 2 */- 2 / zoomLevel,
-                            m_imageOriginPos.y / zoomLevel - fm.y /*- height / 2 */- 2 / zoomLevel,
+                            m_imageOriginPos.x / zoomLevel + fm.x - 2 / zoomLevel,
+                            m_imageOriginPos.y / zoomLevel - fm.y - 2 / zoomLevel,
                             width + 4 / zoomLevel,
                             height + 4 / zoomLevel
                         );
                         
                         // 绘制控制点
                         const points = [
-                            // { x: m_imageOriginPos.x / zoomLevel + fm.x - width / 2, y: m_imageOriginPos.y / zoomLevel - fm.y - height / 2 },
-                            // { x: m_imageOriginPos.x / zoomLevel + fm.x + width / 2, y: m_imageOriginPos.y / zoomLevel - fm.y - height / 2 },
-                            // { x: m_imageOriginPos.x / zoomLevel + fm.x + width / 2, y: m_imageOriginPos.y / zoomLevel - fm.y + height / 2 },
-                            // { x: m_imageOriginPos.x / zoomLevel + fm.x - width / 2, y: m_imageOriginPos.y / zoomLevel - fm.y + height / 2 }
-                            { x: m_imageOriginPos.x/zoomLevel + fm.x , y: m_imageOriginPos.y/zoomLevel - fm.y },
-                            { x: m_imageOriginPos.x/zoomLevel + fm.x + width, y: m_imageOriginPos.y/zoomLevel - fm.y  },
+                            { x: m_imageOriginPos.x/zoomLevel + fm.x, y: m_imageOriginPos.y/zoomLevel - fm.y },
+                            { x: m_imageOriginPos.x/zoomLevel + fm.x + width, y: m_imageOriginPos.y/zoomLevel - fm.y },
                             { x: m_imageOriginPos.x/zoomLevel + fm.x + width, y: m_imageOriginPos.y/zoomLevel - fm.y + height },
-                            { x: m_imageOriginPos.x/zoomLevel + fm.x , y: m_imageOriginPos.y/zoomLevel - fm.y + height }
+                            { x: m_imageOriginPos.x/zoomLevel + fm.x, y: m_imageOriginPos.y/zoomLevel - fm.y + height }
                         ];
                         
                         ctx.fillStyle = 'blue';
@@ -4252,6 +4395,24 @@
                             ctx.arc(point.x, point.y, 4 / zoomLevel, 0, 2 * Math.PI);
                             ctx.fill();
                         });
+                        
+                        // 绘制旋转控制点（右下角向外延伸一点）
+                        const rotateHandleX = m_imageOriginPos.x/zoomLevel + fm.x + width + 10 / zoomLevel;
+                        const rotateHandleY = m_imageOriginPos.y/zoomLevel - fm.y + height;
+                        
+                        // 绘制旋转控制线
+                        ctx.strokeStyle = 'blue';
+                        ctx.lineWidth = 1 / zoomLevel;
+                        ctx.beginPath();
+                        ctx.moveTo(points[2].x, points[2].y);
+                        ctx.lineTo(rotateHandleX, rotateHandleY);
+                        ctx.stroke();
+                        
+                        // 绘制旋转控制手柄
+                        ctx.fillStyle = 'blue';
+                        ctx.beginPath();
+                        ctx.arc(rotateHandleX, rotateHandleY, 4 / zoomLevel, 0, 2 * Math.PI);
+                        ctx.fill();
                         
                         // 绘制坐标信息
                         ctx.fillStyle = 'black';
