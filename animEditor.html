@@ -843,19 +843,29 @@
         let currentAnim = null;
         let currentFrame = null;
         let currentFrameIndex = 0;
-        let selectedModuleIndex = -1;
+        let selectedModuleIndex = -1; // 当前选中的单个模块索引
+        let selectedModuleIndices = []; // 存储多个选中模块的索引数组
         let isDragging = false;
         let dragStartX = 0;
         let dragStartY = 0;
+        let isMarqueeSelecting = false; // 是否正在进行框选
+        let marqueeStartX = 0; // 框选起始点X坐标
+        let marqueeStartY = 0; // 框选起始点Y坐标
+        let marqueeEndX = 0; // 框选结束点X坐标
+        let marqueeEndY = 0; // 框选结束点Y坐标
+        let isCtrlPressed = false;// 是否按下了Ctrl键或cmd键
         let isPlaying = false;
         let animationSpeed = 100;
         let lastFrameTime = 0;
         let animationFrameId = null;
         let selectedImageModules = []; // 支持多选模块的数组
+        let dragStartModuleStates = []; // 保存所有选中模块的初始状态，用于拖拽操作
         let currentTab = 'animation';
+        let isMultiDragging = false; // 控制多选时的拖拽状态
         
         // 存储复制的模块信息，用于跨精灵粘贴
         let copiedModuleInfo = null;
+        let copiedModuleInfos = null; // 存储复制的多个模块信息
         
         // 网格相关设置
         let showGrid = true;         // 是否显示网格
@@ -1799,10 +1809,10 @@
             document.getElementById('save-project').addEventListener('click', saveProject);
             
             // 画布事件
-            canvas.addEventListener('mousedown', handleMouseDown);
-            canvas.addEventListener('mousemove', handleMouseMove);
-            canvas.addEventListener('mouseup', handleMouseUp);
-            canvas.addEventListener('mouseleave', handleMouseUp);
+            canvas.addEventListener('mousedown', handleFrameMouseDown);
+            canvas.addEventListener('mousemove', handleFrameMouseMove);
+            canvas.addEventListener('mouseup', handleFrameMouseUp);
+            canvas.addEventListener('mouseleave', handleFrameMouseUp);
             canvas.addEventListener('wheel', handleMouseWheel);
             
             // 动作编辑模式缩放控制
@@ -1869,7 +1879,8 @@
                                             module: fm.module,
                                             x: fm.x,
                                             y: fm.y,
-                                            flag: fm.flag
+                                            flag: fm.flag,
+                                            angle: fm.angle,
                                         }))
                                     }
                                 }))
@@ -1877,7 +1888,7 @@
                         }))
                     }
                 };
-                
+                // console.log('projectData', JSON.stringify(projectData));
                 // 使用localStorage保存项目数据
                 localStorage.setItem('animationEditorProject', JSON.stringify(projectData));
                 
@@ -2996,7 +3007,7 @@
                 // 添加点击事件
                 moduleItem.addEventListener('click', (e) => {
                     // 如果按住Ctrl键，进行多选
-                    if (e.ctrlKey || e.metaKey) {
+                    if (isCtrlPressed) {
                         // 切换该模块的选中状态
                         const indexInArray = selectedImageModules.indexOf(index);
                         if (indexInArray === -1) {
@@ -3222,54 +3233,133 @@
         
         // 复制选中的模块
         function copyModule() {
-            if (!currentFrame || selectedModuleIndex < 0) return;
+            if (!currentFrame || (selectedModuleIndex < 0 && selectedModuleIndices.length === 0)) return;
             
-            const fm = currentFrame.fmList[selectedModuleIndex];
-            
-            // 保存模块信息，包括模块对象、位置、翻转/旋转标志和缩放信息
-            copiedModuleInfo = {
-                module: fm.module,  // 模块对象
-                x: fm.x,            // X坐标
-                y: fm.y,            // Y坐标
-                flag: fm.flag,      // 翻转/旋转标志
-                scale: fm.scale ? { ...fm.scale } : null  // 缩放信息
-            };
-            
-            // 显示复制成功提示
-            showNotification('模块已复制，可以跨精灵粘贴');
+            // 检查是否有多个模块被选中
+            if (selectedModuleIndices.length > 1) {
+                // 保存所有选中模块的信息
+                copiedModuleInfos = [];
+                
+                for (const index of selectedModuleIndices) {
+                    const fm = currentFrame.fmList[index];
+                    copiedModuleInfos.push({
+                        module: fm.module,
+                        x: fm.x,
+                        y: fm.y,
+                        flag: fm.flag,
+                        scale: fm.scale ? { ...fm.scale } : null
+                    });
+                }
+                
+                // 清除单个模块的复制信息
+                copiedModuleInfo = null;
+                
+                // 显示复制成功提示
+                showNotification(`已复制 ${selectedModuleIndices.length} 个模块，可以跨精灵粘贴`);
+            } else if (selectedModuleIndex >= 0) {
+                // 如果只有一个模块被选中，使用原有的复制逻辑
+                const fm = currentFrame.fmList[selectedModuleIndex];
+                
+                // 保存模块信息，包括模块对象、位置、翻转/旋转标志和缩放信息
+                copiedModuleInfo = {
+                    module: fm.module,  // 模块对象
+                    x: fm.x,            // X坐标
+                    y: fm.y,            // Y坐标
+                    flag: fm.flag,      // 翻转/旋转标志
+                    scale: fm.scale ? { ...fm.scale } : null  // 缩放信息
+                };
+                
+                // 清除多个模块的复制信息
+                copiedModuleInfos = null;
+                
+                // 显示复制成功提示
+                showNotification('模块已复制，可以跨精灵粘贴');
+            }
         }
         
         // 粘贴模块
         function pasteModule() {
-            if (!copiedModuleInfo || !currentFrame) return;
+            if ((!copiedModuleInfo && !copiedModuleInfos) || !currentFrame) return;
             
-            // 从复制的信息创建新的FrameModule
-            const newFm = new FrameModule(
-                copiedModuleInfo.module,  // 使用相同的模块
-                copiedModuleInfo.x + 10,  // 稍微偏移一点，避免重叠
-                copiedModuleInfo.y + 10,  // 稍微偏移一点，避免重叠
-                copiedModuleInfo.flag     // 使用相同的翻转/旋转标志
-            );
+            // 创建一个组合命令来包含所有模块的添加命令
+            const compositeCommand = new CompositeCommand();
             
-            // 复制缩放信息（如果有）
-            if (copiedModuleInfo.scale) {
-                newFm.scale = { ...copiedModuleInfo.scale };
+            // 存储新粘贴的模块索引
+            const newModuleIndices = [];
+            
+            // 检查是否有多个模块的复制信息
+            if (copiedModuleInfos && copiedModuleInfos.length > 0) {
+                // 粘贴多个模块
+                for (const copiedInfo of copiedModuleInfos) {
+                    // 从复制的信息创建新的FrameModule
+                    const newFm = new FrameModule(
+                        copiedInfo.module,  // 使用相同的模块
+                        copiedInfo.x + 10,  // 稍微偏移一点，避免重叠
+                        copiedInfo.y + 10,  // 稍微偏移一点，避免重叠
+                        copiedInfo.flag     // 使用相同的翻转/旋转标志
+                    );
+                    
+                    // 复制缩放信息（如果有）
+                    if (copiedInfo.scale) {
+                        newFm.scale = copiedInfo.scale;
+                    }
+                    
+                    // 创建添加模块命令并添加到组合命令
+                    compositeCommand.addCommand(new AddFmCommand(currentFrame, newFm));
+                }
+                
+                // 执行组合命令
+                CommandManager.instance.addCommand(compositeCommand);
+                
+                // 更新显示
+                renderCanvas(7);
+                
+                // 选中所有新粘贴的模块
+                const startIndex = currentFrame.fmList.length - copiedModuleInfos.length;
+                selectedModuleIndices = [];
+                for (let i = startIndex; i < currentFrame.fmList.length; i++) {
+                    selectedModuleIndices.push(i);
+                }
+                
+                // 设置主要选中模块为第一个新粘贴的模块
+                selectedModuleIndex = selectedModuleIndices[0];
+                
+                // 更新控制面板属性
+                updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+                
+                // 显示粘贴成功提示
+                showNotification(`已粘贴 ${copiedModuleInfos.length} 个模块`);
+            } else if (copiedModuleInfo) {
+                // 如果只有一个模块被复制，使用原有的粘贴逻辑
+                // 从复制的信息创建新的FrameModule
+                const newFm = new FrameModule(
+                    copiedModuleInfo.module,  // 使用相同的模块
+                    copiedModuleInfo.x + 10,  // 稍微偏移一点，避免重叠
+                    copiedModuleInfo.y + 10,  // 稍微偏移一点，避免重叠
+                    copiedModuleInfo.flag     // 使用相同的翻转/旋转标志
+                );
+                
+                // 复制缩放信息（如果有）
+                if (copiedModuleInfo.scale) {
+                    newFm.scale = copiedModuleInfo.scale;
+                }
+                
+                // 添加新模块到当前帧
+                CommandManager.instance.addCommand(new AddFmCommand(currentFrame, newFm));
+                
+                // 更新显示
+                renderCanvas(7);
+                
+                // 选中新添加的模块
+                selectedModuleIndex = currentFrame.fmList.length - 1;
+                selectedModuleIndices = [selectedModuleIndex];
+                
+                // 更新控制面板属性
+                updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+                
+                // 显示粘贴成功提示
+                showNotification('模块已粘贴');
             }
-            
-            // 添加新模块到当前帧
-            CommandManager.instance.addCommand(new AddFmCommand(currentFrame, newFm));
-            
-            // 更新显示
-            renderCanvas(7);
-            
-            // 选中新添加的模块
-            selectedModuleIndex = currentFrame.fmList.length - 1;
-            
-            // 更新控制面板属性
-            updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
-            
-            // 显示粘贴成功提示
-            showNotification('模块已粘贴');
         }
         
         // 显示通知提示
@@ -3309,13 +3399,31 @@
         
         // 水平翻转
         function flipHorizontal() {
-            if (!currentFrame || selectedModuleIndex < 0) return;
+            if (!currentFrame || (selectedModuleIndex < 0 && selectedModuleIndices.length === 0)) return;
             
-            const fm = currentFrame.fmList[selectedModuleIndex];
-            CommandManager.instance.addCommand(new TransformFmCommand(fm, fm.x, fm.y, fm.flag));
+            // 创建一个组合命令来包含所有模块的变换命令
+            const compositeCommand = new CompositeCommand();
             
-            // 切换水平翻转标志
-            fm.flag ^= 1;
+            // 如果有多个模块被选中，同时水平翻转所有选中的模块
+            if (selectedModuleIndices.length > 1) {
+                for (const index of selectedModuleIndices) {
+                    const fm = currentFrame.fmList[index];
+                    compositeCommand.addCommand(new TransformFmCommand(fm, fm.x, fm.y, fm.flag));
+                    
+                    // 切换水平翻转标志
+                    fm.flag ^= 1;
+                }
+            } else if (selectedModuleIndex >= 0) {
+                // 如果只有一个模块被选中，水平翻转这个模块
+                const fm = currentFrame.fmList[selectedModuleIndex];
+                compositeCommand.addCommand(new TransformFmCommand(fm, fm.x, fm.y, fm.flag));
+                
+                // 切换水平翻转标志
+                fm.flag ^= 1;
+            }
+            
+            // 添加组合命令到命令管理器
+            CommandManager.instance.addCommand(compositeCommand);
             
             // 更新界面
             renderCanvas(8);
@@ -3365,8 +3473,73 @@
         let originalX = 0;
         let originalY = 0;
         
+
+        function checkPointInFm(x, y, currentFrame) {
+            for (let i = currentFrame.fmList.length - 1; i >= 0; i--) {
+                const fm = currentFrame.fmList[i];
+                const module = fm.module;
+                if (!module) continue;
+        
+                const imageItem = currentSprite.getImage(module.imageId);
+                if (!imageItem || !imageItem.modulesList[module.imageModuleId]) continue;
+
+                const rectModule = imageItem.modulesList[module.imageModuleId];
+                let width = rectModule.width;
+                let height = rectModule.height;
+
+                // 应用缩放
+                if (fm.scale) {
+                    width *= fm.scale;
+                    height *= fm.scale;
+                }
+                
+                // 应用变换后的尺寸
+                if (fm.flag & 4) { // 90度旋转
+                    [width, height] = [height, width];
+                }
+
+                // 计算模块的边界框
+                const left = fm.x;
+                const top = fm.y;
+                const right = left + width;
+                const bottom = top - height;
+                // console.log('xy:',x,y,',left:',left,',top:',top,',right:',right,',bottom:',bottom);
+                if(x >= left-4 && x <= right+4 && y <= top+4 && y >= bottom-4) {
+                    // console.log('点击模块')
+                    return [fm, true, false, width, height];
+                }
+
+                // 计算旋转控制点位置（右下角向外延伸一点）
+                const rotateHandleX = fm.x + width + 10;
+                const rotateHandleY = fm.y - height;
+                
+                // 检查是否点击了旋转控制点
+                const dxRotate = x - rotateHandleX;
+                const dyRotate = y - rotateHandleY;
+                // console.log('xy:',x,y,',rotateHandleX:',rotateHandleX,rotateHandleY);
+                if (x >= rotateHandleX-4 && x <= rotateHandleX+4 && y >= rotateHandleY-4 && y <= rotateHandleY+4) {
+                    // console.log('旋转点')
+                    return [fm, false, true, width, height];
+                }
+            }
+
+            return [null, false, false, 0, 0];
+        }
+
+
+        function getCurrentXY(e){
+            const rect = canvas.getBoundingClientRect();
+            let x = (e.clientX - rect.left );
+            let y = (e.clientY - rect.top );
+
+            // 计算相对于画布中心的坐标
+            x = Math.round((x - m_imageOriginPos.x)/zoomLevel);
+            y = Math.round((m_imageOriginPos.y - y)/zoomLevel);
+            return [x, y];
+        }
+
         // 处理鼠标按下事件
-        function handleMouseDown(e) {
+        function handleFrameMouseDown(e) {
             // 如果空格键按下且没有选中模块，进入拖拽原点模式
             if (isSpacePressed && selectedModuleIndex === -1) {
                 isDraggingOrigin = true;
@@ -3382,18 +3555,12 @@
             
             if (!currentFrame) return;
             
-            const rect = canvas.getBoundingClientRect();
-            let x = (e.clientX - rect.left );
-            let y = (e.clientY - rect.top );
-
-            // 计算相对于画布中心的坐标
-            x = Math.round((x - m_imageOriginPos.x)/zoomLevel);
-            y = Math.round((m_imageOriginPos.y - y)/zoomLevel);
-            // const relativeY = Math.round((m_imageOriginPos.y - y)/zoomLevel);
-            console.log('click:',x, y);
+            const [x, y] = getCurrentXY(e);
+            // console.log('click:',x, y);
             
+
             // 检查是否点击到了选中模块的控制点
-            if (selectedModuleIndex >= 0) {
+            if (selectedModuleIndex >= 0 && !isCtrlPressed) {
                 const fm = currentFrame.fmList[selectedModuleIndex];
                 const module = fm.module;
                 if (module) {
@@ -3421,6 +3588,7 @@
                             const dx = x - points[i].x;
                             const dy = y - points[i].y;
                             if (dx * dx + dy * dy <= 16) { // 4px的点击范围
+                                //单个模块开始拖拽
                                 resizeControlPoint = i;
                                 isDragging = true;
                                 dragStartX = x;
@@ -3437,43 +3605,25 @@
                 }
             }
             
+
             // 检查是否点击了某个模块
             // 从后往前检查，确保上层的模块先被选中
-            for (let i = currentFrame.fmList.length - 1; i >= 0; i--) {
-                const fm = currentFrame.fmList[i];
+            const [fm, isClick, isRotate, width, height] = checkPointInFm(x, y, currentFrame);
+
+            if(fm) {
                 const module = fm.module;
-                if (!module) continue;
+                selectedModuleIndex = currentFrame.fmList.indexOf(fm);
                 
-                const imageItem = currentSprite.getImage(module.imageId);
-                if (!imageItem || !imageItem.modulesList[module.imageModuleId]) continue;
-                
-                const rectModule = imageItem.modulesList[module.imageModuleId];
-                let width = rectModule.width;
-                let height = rectModule.height;
-                
-                // 应用缩放
-                if (fm.scale) {
-                    width *= fm.scale.x;
-                    height *= fm.scale.y;
+                //渲染时使用的是selectedModuleIndices,因此必须添加其中
+                if(!isCtrlPressed){
+                    selectedModuleIndices = [];
+                    selectedModuleIndices.push(selectedModuleIndex);
                 }
-                
-                // 应用变换后的尺寸
-                if (fm.flag & 4) { // 90度旋转
-                    [width, height] = [height, width];
-                }
-                
-                // 计算旋转控制点位置（右下角向外延伸一点）
-                const rotateHandleX = fm.x + width + 10;
-                const rotateHandleY = fm.y - height;
-                
-                // 检查是否点击了旋转控制点
-                const dxRotate = x - rotateHandleX;
-                const dyRotate = y - rotateHandleY;
-                console.log('xy:',x,y,',rotateHandleX:',rotateHandleX,rotateHandleY);
-                if (x >= rotateHandleX-4 && x <= rotateHandleX+4 && y >= rotateHandleY-4 && y <= rotateHandleY+4) {
-                // if (dxRotate * dxRotate + dyRotate * dyRotate <= 16) { // 4px的点击范围
-                    console.log('旋转');
-                    selectedModuleIndex = i;
+
+                // console.log('点击了模块:', fm,'isClick:',isClick,'isRotate:',isRotate);         
+
+                if(isRotate) {
+                    console.log('准备旋转');
                     isDragging = true;
                     isDraggingRotate = true;
                     originalAngle = fm.angle;
@@ -3495,46 +3645,74 @@
                     
                     return;
                 }
-                
-                // 计算模块的边界框
-                let left = fm.x;
-                let top = fm.y;
-                let right = left + width;
-                let bottom = top - height;
-                
-                // left /= zoomLevel;
-                // top /= zoomLevel;
-                // right /= zoomLevel;
-                // bottom /= zoomLevel;
 
-                // 检查点击是否在模块内
-                console.log('click:',x, y, left, top, right, bottom);
-                if (x >= left-4 && x <= right+4 && y <= top+4 && y >= bottom+4) {
-                    selectedModuleIndex = i;
-                    isDragging = true;
-                    dragStartX = x;
-                    dragStartY = y;
-                    
-                    // 保存拖拽开始时的模块状态
-                    dragStartModuleState = {
-                        x: fm.x,
-                        y: fm.y,
-                        flag: fm.flag
-                    };
-                    
-                    console.log('选中',selectedModuleIndex);
-                    // 更新控制面板属性
-                    updateModuleProperties(fm);
+                if(isClick){
+
+                    if (selectedModuleIndex >= 0 && selectedModuleIndices.length <= 1) {
+                        isDragging = true;
+                        dragStartX = x;
+                        dragStartY = y;
+                        
+                        // 保存拖拽开始时的模块状态
+                        dragStartModuleState = {
+                            x: fm.x,
+                            y: fm.y,
+                            flag: fm.flag
+                        };
+                        
+                        // console.log('选中',selectedModuleIndex);
+                        // 更新控制面板属性
+                        updateModuleProperties(fm);
+                    } else if (isCtrlPressed) {
+
+                        // 多选情况下按住Ctrl键，使用isMultiDragging变量来控制拖拽
+                        isMultiDragging = true;
+                        dragStartX = x;
+                        dragStartY = y;
+                        
+                        // 保存所有选中模块的初始状态
+                        dragStartModuleStates = [];
+                        for (const index of selectedModuleIndices) {
+                            const selectedFm = currentFrame.fmList[index];
+                            dragStartModuleStates.push({
+                                index: index,
+                                x: selectedFm.x,
+                                y: selectedFm.y,
+                                flag: selectedFm.flag
+                            });
+                        }
+                        
+                        console.log('multy drag start');
+                        // 更新控制面板属性
+                        updateModuleProperties(fm);
+                    } else {
+                        // 多选情况下没有按住Ctrl键，不开始拖拽
+                        // 只更新控制面板属性
+                        updateModuleProperties(fm);
+                    }
                     
                     renderCanvas(11);
+
+                    // console.log('点击了模块 isDragging:', isDragging, 'isMultiDragging:', isMultiDragging);
                     return;
                 }
             }
             
-            // 如果没有点击到任何模块，取消选择
-            selectedModuleIndex = -1;
+            // 如果没有点击到任何模块，开始框选操作
+            isMarqueeSelecting = true;
+            isDragging = false;
+            marqueeStartX = x;
+            marqueeStartY = y;
+            marqueeEndX = x;
+            marqueeEndY = y;
             
-            renderCanvas(12);
+            // 如果没有按住Ctrl键，清空之前的选择
+            if (!isCtrlPressed) {
+                selectedModuleIndex = -1;
+                selectedModuleIndices = [];
+            }
+            
+            renderCanvas();
         }
         
         // 处理空格键按下事件
@@ -3547,8 +3725,14 @@
                 }
                 e.preventDefault();
             }
+            
+            // console.log('键按下:',e.code);
+
+            if (e.code === 'Ctrl' || e.code === 'MetaLeft' || e.code === 'ControlLeft') {
+                isCtrlPressed = true;
+            }
         }
-        
+
         // 处理空格键释放事件
         function handleKeyUp(e) {
             if (e.code === 'Space') {
@@ -3556,6 +3740,10 @@
                 isDraggingOrigin = false;
                 // 恢复鼠标形状
                 canvas.style.cursor = 'default';
+            }
+
+            if (e.code === 'Ctrl' || e.code === 'MetaLeft' || e.code === 'ControlLeft') {
+                isCtrlPressed = false;
             }
         }
         
@@ -3581,15 +3769,15 @@
                     
                     // 应用缩放
                     if (fm.scale) {
-                        width *= fm.scale.x;
-                        height *= fm.scale.y;
+                        width *= fm.scale;
+                        height *= fm.scale;
                     }
                     
                     // 应用变换后的尺寸
                     if (fm.flag & 4) { // 90度旋转
                         [width, height] = [height, width];
                     }
-                    
+
                     // 计算旋转控制点位置（右下角向外延伸一点）
                     const rotateHandleX = m_imageOriginPos.x + fm.x + width + 10;
                     const rotateHandleY = m_imageOriginPos.y - fm.y + height;
@@ -3611,9 +3799,9 @@
         });
         
         // 原始鼠标事件处理函数引用
-        const originalHandleMouseDown = handleMouseDown;
-        const originalHandleMouseMove = handleMouseMove;
-        const originalHandleMouseUp = handleMouseUp;
+        const originalHandleMouseDown = handleFrameMouseDown;
+        const originalHandleMouseMove = handleFrameMouseMove;
+        const originalHandleMouseUp = handleFrameMouseUp;
         
         // 保存模块拖拽开始时的状态
         let dragStartModuleState = null;
@@ -3625,7 +3813,7 @@
         let moduleCenterY = 0;
         
         // 处理鼠标移动事件
-        function handleMouseMove(e) {
+        function handleFrameMouseMove(e) {
             // 如果处于拖拽原点模式
             if (isDraggingOrigin) {
                 // 计算鼠标移动的屏幕偏移量
@@ -3635,25 +3823,42 @@
                 // 根据当前缩放比例计算原点应该移动的距离
                 m_imageOriginPos.x = originDragStartPosX + deltaX;// / zoomLevel;
                 m_imageOriginPos.y = originDragStartPosY + deltaY;// / zoomLevel;
-                renderCanvas(13);
+                renderCanvas();
+                return;
+            }
+
+            let [x, y] = getCurrentXY(e);
+
+            // 处理框选操作
+            if (isMarqueeSelecting && currentFrame) {
+
+                // 更新框选结束点
+                marqueeEndX = x;
+                marqueeEndY = y;
+                
+                // 重绘画布以显示框选矩形
+                renderCanvas();
                 return;
             }
             
-            if (!isDragging || !currentFrame || selectedModuleIndex < 0) return;
+            // console.log('isDragging:',isDragging,isMultiDragging);
+
+            if ((!isDragging && !isMultiDragging) || !currentFrame || selectedModuleIndex < 0) return;
             
-            const rect = canvas.getBoundingClientRect();
-            let x = (e.clientX - rect.left);// / zoomLevel;
-            let y = (e.clientY - rect.top);// / zoomLevel;
             
-            // 计算相对于画布中心的坐标
-            x = Math.round((x - m_imageOriginPos.x)/zoomLevel);
-            y = Math.round((m_imageOriginPos.y - y)/zoomLevel);
-            console.log('move:',x, y);
+            // let x = (e.clientX - rect.left);// / zoomLevel;
+            // let y = (e.clientY - rect.top);// / zoomLevel;
+            
+            // // 计算相对于画布中心的坐标
+            // x = Math.round((x - m_imageOriginPos.x)/zoomLevel);
+            // y = Math.round((m_imageOriginPos.y - y)/zoomLevel);
+            // console.log('move:',x, y);
             
             const fm = currentFrame.fmList[selectedModuleIndex];
             
             if (isDraggingRotate) {
                 // 处理旋转
+                const rect = canvas.getBoundingClientRect();
                 // 计算鼠标相对于模块中心点的位置
                 const mouseX = e.clientX - rect.left;
                 const mouseY = e.clientY - rect.top;
@@ -3662,10 +3867,10 @@
                 const dx = mouseX - moduleCenterX;
                 const dy = mouseY - moduleCenterY;
                 const angle = Math.atan2(dy, dx);
-                
+
                 fm.angle = originalAngle + angle;
                 
-                renderCanvas(13);
+                renderCanvas();
                 updateModuleProperties(fm);
                 return;
             }
@@ -3730,16 +3935,16 @@
                         
                         // 计算新的缩放比例
                         const scaleX = newWidth / baseWidth;
-                        const scaleY = newHeight / baseHeight;
+                        // const scaleY = newHeight / baseHeight;
                         
                         // 更新模块位置和缩放
                         fm.x = newX;
                         fm.y = newY;
                         
                         // 保存缩放比例
-                        if (!fm.scale) fm.scale = { x: 1, y: 1 };
-                        fm.scale.x = scaleX;
-                        fm.scale.y = scaleY;
+                        if (!fm.scale) fm.scale = 1;
+                        fm.scale = scaleX;
+                        // fm.scale = scaleY;
                         
 
                     }
@@ -3747,21 +3952,33 @@
             } else {
                 const deltaX = x - dragStartX;
                 const deltaY = y - dragStartY;
-
-                // 处理拖拽移动
-                fm.x = fm.x + deltaX;
-                fm.y = fm.y + deltaY;
+                // 根据拖拽类型处理模块移动
+                if (isMultiDragging) {
+                    // 如果是多选拖拽，同时拖拽所有选中的模块
+                    // console.log('多选拖拽');
+                    for (const index of selectedModuleIndices) {
+                        const selectedFm = currentFrame.fmList[index];
+                        selectedFm.x = selectedFm.x + deltaX;
+                        selectedFm.y = selectedFm.y + deltaY;
+                    }
+                } else if (isDragging) {
+                    // 如果是单选拖拽，只拖拽当前选中的模块
+                    fm.x = fm.x + deltaX;
+                    fm.y = fm.y + deltaY;
+                    // console.log('单选拖拽');
+                }
+                
                 dragStartX = x;
                 dragStartY = y;
 
             }
             
-            renderCanvas(13);
+            renderCanvas();
             updateModuleProperties(fm);
         }
         
         // 处理鼠标释放事件
-        function handleMouseUp() {
+        function handleFrameMouseUp(e) {
             // 结束拖拽原点模式
             if (isDraggingOrigin) {
                 isDraggingOrigin = false;
@@ -3773,18 +3990,117 @@
                 return;
             }
             
+            // 处理框选结束
+            if (isMarqueeSelecting && currentFrame) {
+                isMarqueeSelecting = false;
+                
+                // 计算框选区域
+                const x1 = Math.min(marqueeStartX, marqueeEndX);
+                const y1 = Math.min(marqueeStartY, marqueeEndY);
+                const x2 = Math.max(marqueeStartX, marqueeEndX);
+                const y2 = Math.max(marqueeStartY, marqueeEndY);
+                
+                // 遍历所有模块，检查是否在框选区域内
+                for (let i = 0; i < currentFrame.fmList.length; i++) {
+                    const fm = currentFrame.fmList[i];
+                    const module = fm.module;
+                    if (!module) continue;
+                    
+                    const imageItem = currentSprite.getImage(module.imageId);
+                    if (!imageItem || !imageItem.modulesList[module.imageModuleId]) continue;
+                    
+                    const rectModule = imageItem.modulesList[module.imageModuleId];
+                    let width = rectModule.width;
+                    let height = rectModule.height;
+                    
+                    // 应用缩放
+                    if (fm.scale) {
+                        width *= fm.scale;
+                        height *= fm.scale;
+                    }
+                    
+                    // 应用变换后的尺寸
+                    if (fm.flag & 4) { // 90度旋转
+                        [width, height] = [height, width];
+                    }
+                    
+                    // 计算模块的边界框
+                    const left = fm.x;
+                    const right = left + width;
+                    const top = fm.y;
+                    const bottom = top - height;
+                    
+                    // 检查模块是否完全在框选区域内
+                    if (left >= x1 && right <= x2 && bottom >= y1 && top <= y2) {
+                        // 如果模块已经在选中列表中，不重复添加
+                        if (!selectedModuleIndices.includes(i)) {
+                            selectedModuleIndices.push(i);
+                        }
+                    }
+                }
+                
+                // 如果有选中的模块，设置第一个为当前选中的模块
+                if (selectedModuleIndices.length > 0) {
+                    selectedModuleIndex = selectedModuleIndices[0];
+                    updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+                }
+                
+                // 重绘画布以显示选中状态
+                renderCanvas();
+                return;
+            }
+            
             // 如果是拖拽模块结束，创建变换命令
-            if (isDragging && currentFrame && selectedModuleIndex >= 0 && dragStartModuleState) {
-                const fm = currentFrame.fmList[selectedModuleIndex];
-                // 检查是否有保存的起始状态
-                if (dragStartModuleState) {
+            if (isDragging && currentFrame && selectedModuleIndex >= 0) {
+                // 如果有多个模块被选中，为所有选中的模块创建变换命令
+                if (selectedModuleIndices.length > 1 && dragStartModuleStates.length > 0) {
+                    // 创建一个组合命令来包含所有模块的变换命令
+                    const compositeCommand = new CompositeCommand();
+                    
+                    for (const state of dragStartModuleStates) {
+                        const fm = currentFrame.fmList[state.index];
+                        const command = new TransformFmCommand(fm, state.x, state.y, state.flag);
+                        compositeCommand.addCommand(command);
+                    }
+                    
+                    CommandManager.instance.addCommand(compositeCommand);
+                } else if (dragStartModuleState) {
+                    // 如果只有一个模块被选中，为这个模块创建变换命令
+                    const fm = currentFrame.fmList[selectedModuleIndex];
                     const command = new TransformFmCommand(fm, dragStartModuleState.x, dragStartModuleState.y, dragStartModuleState.flag);
                     CommandManager.instance.addCommand(command);
                 }
+                
                 dragStartModuleState = null;
+                dragStartModuleStates = [];
             }
             
+            if(!currentFrame) return;
+
+            let [x, y] = getCurrentXY(e);
+            const [fm, isClick, isRotate] = checkPointInFm(x, y, currentFrame);
+
+            if(fm && isClick && isCtrlPressed) {
+                
+                const index = selectedModuleIndices.indexOf(selectedModuleIndex);
+                console.log('mouse up 选中模块:',index);
+                if (index === -1) {
+                    // 如果模块未被选中，则添加到选中列表
+                    selectedModuleIndices.push(selectedModuleIndex);
+                    selectedModuleIndex = selectedModuleIndex; // 将当前模块设为主要选中模块
+                } else {
+                    // 如果模块已被选中，则从选中列表中移除
+                    selectedModuleIndices.splice(index, selectedModuleIndex);
+                    // 如果选中列表为空，设置selectedModuleIndex为-1
+                    // 否则，设置selectedModuleIndex为第一个选中的模块
+                    selectedModuleIndex = selectedModuleIndices.length > 0 ? selectedModuleIndices[0] : -1;
+                }
+                renderCanvas(21);
+            }
+
+
             isDragging = false;
+            isMultiDragging = false;
             resizeControlPoint = -1;
             isDraggingRotate = false;
         }
@@ -3794,29 +4110,29 @@
             if (!fm) return;
             
             // 获取模块信息
-            const module = fm.module;
-            let width = 0;
-            let height = 0;
+            // const module = fm.module;
+            // let width = 0;
+            // let height = 0;
             
-            if (module) {
-                const imageItem = currentSprite.getImage(module.imageId);
-                if (imageItem && imageItem.modulesList[module.imageModuleId]) {
-                    const rectModule = imageItem.modulesList[module.imageModuleId];
-                    width = rectModule.width;
-                    height = rectModule.height;
+            // if (module) {
+            //     const imageItem = currentSprite.getImage(module.imageId);
+            //     if (imageItem && imageItem.modulesList[module.imageModuleId]) {
+            //         const rectModule = imageItem.modulesList[module.imageModuleId];
+            //         width = rectModule.width;
+            //         height = rectModule.height;
                     
-                    // 应用变换后的尺寸
-                    if (fm.flag & 4) { // 90度旋转
-                        [width, height] = [height, width];
-                    }
+            //         // 应用变换后的尺寸
+            //         if (fm.flag & 4) { // 90度旋转
+            //             [width, height] = [height, width];
+            //         }
                     
-                    // 应用缩放
-                    if (fm.scale) {
-                        width *= fm.scale.x;
-                        height *= fm.scale.y;
-                    }
-                }
-            }
+            //         // 应用缩放
+            //         if (fm.scale) {
+            //             width *= fm.scale;
+            //             height *= fm.scale;
+            //         }
+            //     }
+            // }
         }
         
         // 更新模块位置
@@ -3860,12 +4176,11 @@
                     
                     // 计算缩放比例
                     const scaleX = width / origWidth;
-                    const scaleY = height / origHeight;
+                    // const scaleY = height / origHeight;
                     
                     // 保存缩放比例到frameModule对象，以便在draw时使用
-                    if (!fm.scale) fm.scale = { x: 1, y: 1 };
-                    fm.scale.x = scaleX;
-                    fm.scale.y = scaleY;
+                    if (!fm.scale) fm.scale = 1;
+                    fm.scale = scaleX;
                     
                     CommandManager.instance.addCommand(command);
                     renderCanvas(15);
@@ -4351,36 +4666,52 @@
             // 应用缩放
             ctx.save();
             ctx.scale(zoomLevel, zoomLevel);
-            console.log('draw currentFrame')
+            // console.log('draw currentFrame')
             // 绘制当前帧
             currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
             
-            // 如果有选中的模块，绘制选中框
-            if (selectedModuleIndex >= 0 && selectedModuleIndex < currentFrame.fmList.length) {
-                const fm = currentFrame.fmList[selectedModuleIndex];
-                const module = fm.module;
-                if (module) {
+            // 绘制所有选中的模块的选中框
+            if (selectedModuleIndices.length > 0 && currentFrame) {
+                for (const index of selectedModuleIndices) {
+                    const fm = currentFrame.fmList[index];
+                    const module = fm.module;
+                    if (!module) continue;
+                    
                     const imageItem = currentSprite.getImage(module.imageId);
-                    if (imageItem && imageItem.modulesList[module.imageModuleId]) {
-                        const rectModule = imageItem.modulesList[module.imageModuleId];
-                        let width = rectModule.width;
-                        let height = rectModule.height;
-                        
-                        // 应用变换后的尺寸
-                        if (fm.flag & 4) { // 90度旋转
-                            [width, height] = [height, width];
-                        }
-                        
-                        // 绘制选中框
-                        ctx.strokeStyle = 'blue';
-                        ctx.lineWidth = 2 / zoomLevel;
-                        ctx.strokeRect(
-                            m_imageOriginPos.x / zoomLevel + fm.x - 2 / zoomLevel,
-                            m_imageOriginPos.y / zoomLevel - fm.y - 2 / zoomLevel,
-                            width + 4 / zoomLevel,
-                            height + 4 / zoomLevel
-                        );
-                        
+                    if (!imageItem || !imageItem.modulesList[module.imageModuleId]) continue;
+                    
+                    const rectModule = imageItem.modulesList[module.imageModuleId];
+                    let width = rectModule.width;
+                    let height = rectModule.height;
+                    
+                    // 应用缩放
+                    if (fm.scale) {
+                        width *= fm.scale;
+                        height *= fm.scale;
+                    }
+                    
+                    // 应用变换后的尺寸
+                    if (fm.flag & 4) { // 90度旋转
+                        [width, height] = [height, width];
+                    }
+                    
+                    // 对于非主要选中的模块，使用不同的选中框样式
+                    const isMainSelected = index === selectedModuleIndex;
+                    const strokeStyle = isMainSelected ? 'blue' : '#666';
+                    const lineWidth = isMainSelected ? 2 / zoomLevel : 1 / zoomLevel;
+                    
+                    // 绘制选中框
+                    ctx.strokeStyle = strokeStyle;
+                    ctx.lineWidth = lineWidth;
+                    ctx.strokeRect(
+                        m_imageOriginPos.x / zoomLevel + fm.x - 2 / zoomLevel,
+                        m_imageOriginPos.y / zoomLevel - fm.y - 2 / zoomLevel,
+                        width + 4 / zoomLevel,
+                        height + 4 / zoomLevel
+                    );
+                    
+                    // 只为主选中的模块绘制控制点和旋转控制手柄
+                    if (isMainSelected) {
                         // 绘制控制点
                         const points = [
                             { x: m_imageOriginPos.x/zoomLevel + fm.x, y: m_imageOriginPos.y/zoomLevel - fm.y },
@@ -4421,6 +4752,38 @@
                         ctx.fillText(`Y: ${Math.round(fm.y)}`, m_imageOriginPos.x / zoomLevel + fm.x + width / 2 + 10 / zoomLevel, m_imageOriginPos.y / zoomLevel - fm.y - height / 2);
                     }
                 }
+            }else if(selectedModuleIndex !== -1) {
+                // 处理其他模块的点击事件
+
+            }
+            
+            // 绘制框选矩形
+            if (isMarqueeSelecting && currentFrame) {
+                const x1 = Math.min(marqueeStartX, marqueeEndX);
+                const y1 = Math.min(marqueeStartY, marqueeEndY);
+                const x2 = Math.max(marqueeStartX, marqueeEndX);
+                const y2 = Math.max(marqueeStartY, marqueeEndY);
+                
+                // 计算框选矩形在画布中的位置和大小
+                const rectX = m_imageOriginPos.x / zoomLevel + x1;
+                const rectY = m_imageOriginPos.y / zoomLevel - y1;
+                const rectWidth = x2 - x1;
+                const rectHeight = y1 - y2; // 注意Y轴方向是向下为负
+                
+                // 设置虚线样式
+                ctx.setLineDash([5 / zoomLevel, 5 / zoomLevel]);
+                
+                // 绘制框选矩形
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 1 / zoomLevel;
+                ctx.strokeRect(rectX, rectY, rectWidth, rectHeight);
+                
+                // 填充半透明区域
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+                ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
+                
+                // 重置线条样式
+                ctx.setLineDash([]);
             }
             
             // 恢复缩放
@@ -4436,6 +4799,7 @@
             currentFrame = null;
             currentFrameIndex = 0;
             selectedModuleIndex = -1;
+            selectedModuleIndices = []; // 清空选中的模块列表
             
             // 更新界面
             renderSpriteList();
@@ -4456,6 +4820,7 @@
             currentFrame = currentAnim.aframeList.length > 0 ? currentAnim.aframeList[0].frame : null;
             currentFrameIndex = 0;
             selectedModuleIndex = -1;
+            selectedModuleIndices = []; // 清空选中的模块列表
             
             // 更新界面
             renderAnimList();
@@ -4473,6 +4838,7 @@
             currentFrameIndex = index;
             currentFrame = currentAnim.aframeList[index].frame;
             selectedModuleIndex = -1;
+            selectedModuleIndices = []; // 清空选中的模块列表
             
             // 更新界面
             renderTimeline();

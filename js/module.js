@@ -21,13 +21,13 @@ class ImageItem {
 // 帧模块类定义
 class FrameModule {
     
-    constructor(module, x = 0, y = 0, flag = 0) {
+    constructor(module, x = 0, y = 0, flag = 0, scale = 1, angle = 0) {
         this.module = module;
         this.x = x;
         this.y = y;
         this.flag = flag; // 0: 正常, 1: 水平翻转, 2: 垂直翻转, 4: 90度旋转
-        this.scale = null; // 缩放比例 { x: 1, y: 1 }
-        this.angle = 0; // 旋转角度（弧度）
+        this.scale = scale; // 缩放比例 1
+        this.angle = angle; // 旋转角度（弧度）
     }
     
     draw(ctx, sprite, originX, originY) {
@@ -68,8 +68,8 @@ class FrameModule {
         
         // 应用用户设置的缩放比例
         if (this.scale) {
-            scaleX = this.scale.x;
-            scaleY = this.scale.y;
+            scaleX = this.scale;
+            scaleY = this.scale;
         }
         
         // 应用翻转
@@ -103,16 +103,10 @@ class FrameModule {
             new Module(this.module.imageId, this.module.imageModuleId),
             this.x,
             this.y,
-            this.flag
+            this.flag,
+            this.scale,
+            this.angle
         );
-        
-        // 复制缩放属性
-        if (this.scale) {
-            cloned.scale = { ...this.scale };
-        }
-        
-        // 复制角度属性
-        cloned.angle = this.angle;
         
         return cloned;
     }
