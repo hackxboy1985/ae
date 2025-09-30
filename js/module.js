@@ -36,6 +36,63 @@ class FrameModule {
         
         const rectModule = imageItem.modulesList[this.module.imageModuleId];
         if (!rectModule) return;
+        // 应用变换
+        const width = rectModule.width;
+        const height = rectModule.height;
+
+        ctx.save();
+        
+        // 移动到原点 - 与ActionEditor相同的原点逻辑
+        
+        // 2. 平移坐标系到图片中心（关键：所有变换围绕中心进行）
+        const centerX = originX + this.x + width / 2;
+        const centerY = originY - this.y + height / 2; //-y是因为坐标系统不同
+        ctx.translate(centerX, centerY);
+
+
+        
+        // 3. 应用旋转（先旋转，避免翻转影响旋转方向）
+        if (this.angle !== 0) {
+            const rotateRad = this.angle * Math.PI / 180;
+            ctx.rotate(rotateRad);
+        }
+        
+
+        // 4. 应用翻转（根据配置决定是否水平/垂直翻转）
+        if(this.flag != 0){
+            // console.log('翻转:',this.flag);
+            const scaleX = this.flag & 1 ? -1 : 1; // 水平翻转：X轴缩放-1
+            const scaleY = this.flag & 2 ? -1 : 1; // 垂直翻转：Y轴缩放-1
+            ctx.scale(scaleX, scaleY);
+        }
+    
+        // 5. 绘制图片（坐标相对于新原点，需向左上偏移半宽高）
+        // ctx.drawImage(
+        //     imageItem.image, 
+        //     -width / 2,  // 相对于中心的X坐标
+        //     -height / 2, // 相对于中心的Y坐标
+        //     width, 
+        //     height
+        // );
+
+         ctx.drawImage(
+            imageItem.image,
+            rectModule.x, rectModule.y,
+            width, height,
+             -width / 2,  // 相对于中心的X坐标
+            -height / 2, // 相对于中心的Y坐标
+            width, height
+        );
+        
+        ctx.restore();
+    }
+
+    drawold(ctx, sprite, originX, originY) {
+        const imageItem = sprite.getImage(this.module.imageId);
+        if (!imageItem || !imageItem.image.complete) return;
+        
+        const rectModule = imageItem.modulesList[this.module.imageModuleId];
+        if (!rectModule) return;
         
         ctx.save();
         

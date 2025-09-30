@@ -3433,18 +3433,14 @@
             if (selectedModuleIndices.length > 1) {
                 for (const index of selectedModuleIndices) {
                     const fm = currentFrame.fmList[index];
-                    compositeCommand.addCommand(new TransformFmCommand(fm, fm.x, fm.y, fm.flag));
-                    
-                    // 切换水平翻转标志
-                    fm.flag ^= 1;
+                    compositeCommand.addCommand(new FlipHorizontalCommand(fm));
                 }
             } else if (selectedModuleIndex >= 0) {
+                console.log('水平翻转前:',currentFrame.fmList[selectedModuleIndex].flag);
                 // 如果只有一个模块被选中，水平翻转这个模块
                 const fm = currentFrame.fmList[selectedModuleIndex];
-                compositeCommand.addCommand(new TransformFmCommand(fm, fm.x, fm.y, fm.flag));
-                
-                // 切换水平翻转标志
-                fm.flag ^= 1;
+                compositeCommand.addCommand(new FlipHorizontalCommand(fm));
+                console.log('水平翻转后:',fm.flag);
             }
             
             // 添加组合命令到命令管理器
