@@ -2523,6 +2523,41 @@
             }
         }
         
+        // 删除动画
+        function deleteAnimation() {
+            if (!currentAnim || !currentSprite) return;
+            
+            // 显示确认对话框，提示删除后无法恢复
+            if (!confirm(`确定要删除动画 "${currentAnim.name}" 吗？此操作无法恢复！`)) {
+                return;
+            }
+            
+            const animIndex = currentSprite.mAnimList.indexOf(currentAnim);
+            
+            // 从角色的动画列表中删除动画
+            currentSprite.mAnimList.splice(animIndex, 1);
+            
+            // 如果还有其他动画，选择第一个动画
+            if (currentSprite.mAnimList.length > 0) {
+                selectAnim(0);
+            } else {
+                // 如果没有其他动画，重置相关变量
+                currentAnim = null;
+                currentFrame = null;
+                currentFrameIndex = -1;
+                
+                // 更新界面
+                renderCanvas(20);
+                document.getElementById('current-anim-name').textContent = '无动画';
+            }
+            
+            // 更新动画列表
+            renderAnimList();
+            
+            // 保存项目
+            saveProject();
+        }
+        
         // 更新当前角色
         function createSprite() {
             const spriteName = document.getElementById('sprite-name').value.trim();
@@ -4530,8 +4565,25 @@
                     }
                 });
                 
-                // 添加按钮到容器 - 只保留重命名按钮
+                // 创建删除按钮
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'anim-action-btn';
+                deleteBtn.textContent = '删除';
+                deleteBtn.style.backgroundColor = '#ff6b6b'; // 红色背景
+                deleteBtn.style.color = 'white';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (currentAnim === anim) {
+                        deleteAnimation();
+                    } else {
+                        selectAnim(index);
+                        setTimeout(deleteAnimation, 100);
+                    }
+                });
+                
+                // 添加按钮到容器
                 actionsDiv.appendChild(renameBtn);
+                actionsDiv.appendChild(deleteBtn);
                 
                 // 添加元素到li
                 li.appendChild(nameSpan);
