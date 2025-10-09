@@ -3412,9 +3412,6 @@
                 // 执行组合命令
                 CommandManager.instance.addCommand(compositeCommand);
                 
-                // 更新显示
-                renderCanvas(7);
-                
                 // 选中所有新粘贴的模块
                 const startIndex = currentFrame.fmList.length - copiedModuleInfos.length;
                 selectedModuleIndices = [];
@@ -3427,6 +3424,9 @@
                 
                 // 更新控制面板属性
                 updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+                
+                // 强制重绘，确保选中状态正确显示
+                renderCanvas(7);
                 
                 // 显示粘贴成功提示
                 showNotification(`已粘贴 ${copiedModuleInfos.length} 个模块`);
@@ -3445,15 +3445,15 @@
                 // 添加新模块到当前帧
                 CommandManager.instance.addCommand(new AddFmCommand(currentFrame, newFm));
                 
-                // 更新显示
-                renderCanvas(7);
-                
                 // 选中新添加的模块
                 selectedModuleIndex = currentFrame.fmList.length - 1;
                 selectedModuleIndices = [selectedModuleIndex];
                 
                 // 更新控制面板属性
                 updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+                
+                // 强制重绘，确保选中状态正确显示
+                renderCanvas(7);
                 
                 // 显示粘贴成功提示
                 showNotification('模块已粘贴');
@@ -3823,7 +3823,7 @@
             renderCanvas();
         }
         
-        // 处理空格键按下事件
+        // 处理键盘按下事件
         function handleKeyDown(e) {
             if (e.code === 'Space') {
                 isSpacePressed = true;
@@ -3834,14 +3834,162 @@
                 e.preventDefault();
             }
             
-            // console.log('键按下:',e.code);
-
             if (e.code === 'Ctrl' || e.code === 'MetaLeft' || e.code === 'ControlLeft') {
                 isCtrlPressed = true;
             }
-        }
 
-        // 处理空格键释放事件
+            
+            //  console.log('键按下:',e.code);
+            //  console.log('键按下:',e.code);
+            // 处理上下左右键移动选中的模块
+            if (currentFrame && (selectedModuleIndex >= 0 || selectedModuleIndices.length > 0)) {
+                // 检查是否有选中的模块
+                let modulesToMove = [];
+                
+                if (selectedModuleIndices.length > 0) {
+                    // 如果有多个模块被选中，移动所有选中的模块
+                    modulesToMove = selectedModuleIndices.map(index => currentFrame.fmList[index]);
+                } else if (selectedModuleIndex >= 0) {
+                    // 如果只有一个模块被选中，移动这个模块
+                    modulesToMove = [currentFrame.fmList[selectedModuleIndex]];
+                }
+                // console.log('modulesToMove ',modulesToMove);
+                // 检查是否按下了箭头键
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                    // console.log('移动模块2');
+
+                    // 创建一个组合命令来包含所有模块的移动命令
+                    const compositeCommand = new CompositeCommand();
+                    
+                    // 移动量
+                    let dx = 0;
+                    let dy = 0;
+                    
+                    // 根据按键方向设置移动量
+                    if (e.code === 'ArrowUp') {
+                        dy = 1; // 向上移动1个单位
+                    } else if (e.code === 'ArrowDown') {
+                        dy = -1; // 向下移动1个单位
+                    } else if (e.code === 'ArrowLeft') {
+                        dx = -1; // 向左移动1个单位
+                    } else if (e.code === 'ArrowRight') {
+                        dx = 1; // 向右移动1个单位
+                    }
+
+                    // 移动每个模块
+                    modulesToMove.forEach(fm => {
+                        // 先记录当前位置作为旧位置
+                        const oldX = fm.x;
+                        const oldY = fm.y;
+                        
+                        // 更新模块位置
+                        fm.x += dx;
+                        fm.y += dy;
+                        console.log('fm.x,fm.y',fm.x,fm.y);
+                        
+                        // 在位置更新后创建移动命令，并传入新的位置值
+                        const moveCommand = {
+                            execute: function() {
+                                fm.x = oldX + dx;
+                                fm.y = oldY + dy;
+                            },
+                            undo: function() {
+                                fm.x = oldX;
+                                fm.y = oldY;
+                            }
+                        };
+                        compositeCommand.addCommand(moveCommand);
+                    });
+
+
+                    // 执行组合命令
+                    CommandManager.instance.addCommand(compositeCommand);
+                    
+                    // 更新界面
+                    renderCanvas(7);
+                    
+                    // 更新模块属性面板
+                    if (selectedModuleIndex >= 0) {
+                        updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+                    }
+                    
+                    e.preventDefault(); // 阻止默认行为
+                } else if (e.code === 'Delete' || e.code === 'Backspace') {
+                    // 处理删除键删除选中的模块
+                    // 创建一个组合命令来包含所有模块的删除命令
+                    const compositeCommand = new CompositeCommand();
+                    let hasDeletedModules = false;
+                    
+                    if (selectedModuleIndices.length > 0) {
+                        // 如果有多个模块被选中，按索引从大到小删除，避免索引错误
+                        const sortedIndices = [...selectedModuleIndices].sort((a, b) => b - a);
+                        
+                        sortedIndices.forEach(index => {
+                            if (index >= 0 && index < currentFrame.fmList.length) {
+                                hasDeletedModules = true;
+                                const fm = currentFrame.fmList[index];
+                                // 保存索引，因为在删除后索引会变化
+                                const originalIndex = index;
+                                // 创建删除命令并添加到组合命令
+                                const deleteCommand = {
+                                    execute: function() {},
+                                    undo: function() {
+                                        // 使用原始索引插入，确保位置正确
+                                        currentFrame.fmList.splice(originalIndex, 0, fm);
+                                        renderCanvas(5);
+                                        if (currentFrame.fmList.length > 0) {
+                                            selectedModuleIndex = Math.min(originalIndex, currentFrame.fmList.length - 1);
+                                            updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+                                        }
+                                    }
+                                };
+                                compositeCommand.addCommand(deleteCommand);
+                                
+                                // 从当前帧中删除模块
+                                currentFrame.fmList.splice(index, 1);
+                            }
+                        });
+                    } else if (selectedModuleIndex >= 0 && selectedModuleIndex < currentFrame.fmList.length) {
+                        // 如果只有一个模块被选中，删除这个模块
+                        hasDeletedModules = true;
+                        const fm = currentFrame.fmList[selectedModuleIndex];
+                        // 保存索引，因为在删除后索引会变化
+                        const originalIndex = selectedModuleIndex;
+                        // 创建删除命令并添加到组合命令
+                        const deleteCommand = {
+                            execute: function() {},
+                            undo: function() {
+                                // 使用原始索引插入，确保位置正确
+                                currentFrame.fmList.splice(originalIndex, 0, fm);
+                                renderCanvas(5);
+                                updateModuleProperties(fm);
+                            }
+                        };
+                        compositeCommand.addCommand(deleteCommand);
+                        
+                        // 从当前帧中删除模块
+                        currentFrame.fmList.splice(selectedModuleIndex, 1);
+                    }
+                    
+                    // 只有在实际删除了模块的情况下才执行命令和更新界面
+                    if (hasDeletedModules) {
+                        // 执行组合命令
+                        CommandManager.instance.addCommand(compositeCommand);
+                        
+                        // 重置选中状态
+                        selectedModuleIndex = -1;
+                        selectedModuleIndices = [];
+                        
+                        // 更新界面
+                        renderCanvas(6);
+                        
+                        e.preventDefault(); // 阻止默认行为
+                    }
+                }
+            }
+        }
+        
+        // 处理键盘释放事件
         function handleKeyUp(e) {
             if (e.code === 'Space') {
                 isSpacePressed = false;
@@ -3849,7 +3997,7 @@
                 // 恢复鼠标形状
                 canvas.style.cursor = 'default';
             }
-
+            
             if (e.code === 'Ctrl' || e.code === 'MetaLeft' || e.code === 'ControlLeft') {
                 isCtrlPressed = false;
             }
