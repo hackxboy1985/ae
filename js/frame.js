@@ -26,8 +26,26 @@ class Frame {
 
 // 动画帧类定义
 class AnimFrame {
-    constructor(frame, keyFrameState = false) {
+    constructor(frame, keyFrameState = false, expressionRect = {x:0,y:0,width:50,height:60}) {
         this.frame = frame;
         this.KeyFrameState = keyFrameState;
+        this.expressionRect = expressionRect;
+    }
+}
+
+class Expression {
+    constructor(name,imageUrls) {
+        this.name = name;
+        this.imageUrls = imageUrls;
+        this.images = [];
+        this.loadImages();
+    }
+
+    loadImages() {
+        this.imageUrls.forEach(url => {
+            const img = new Image();
+            img.src = url;
+            this.images.push(img);
+        });
     }
 }

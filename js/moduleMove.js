@@ -1,5 +1,10 @@
 // 向上移动模块一层
 function moveModuleUp() {
+    // 如果正在编辑表情区域，不允许移动模块
+    if (window.isEditingExpressionRect) {
+        return;
+    }
+    
     if (!currentFrame || selectedModuleIndex < 0) return;
     
     // 检查是否可以向上移动（不是最上层）
@@ -17,6 +22,11 @@ function moveModuleUp() {
 
 // 向下移动模块一层
 function moveModuleDown() {
+    // 如果正在编辑表情区域，不允许移动模块
+    if (window.isEditingExpressionRect) {
+        return;
+    }
+    
     if (!currentFrame || selectedModuleIndex < 0) return;
     
     // 检查是否可以向下移动（不是最下层）
