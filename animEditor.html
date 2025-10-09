@@ -3655,8 +3655,16 @@
             // 创建当前帧的克隆
             const clonedFrame = currentFrame.clone();
             
-            // 创建新的动画帧对象
-            const newAnimFrame = new AnimFrame(clonedFrame, currentAnim.aframeList[currentFrameIndex].KeyFrameState);
+            // 获取当前帧的表情区域
+            const originalAnimFrame = currentAnim.aframeList[currentFrameIndex];
+            const originalExpressionRect = originalAnimFrame.expressionRect;
+            
+            // 创建新的动画帧对象，同时克隆表情区域
+            const newAnimFrame = new AnimFrame(
+                clonedFrame, 
+                originalAnimFrame.KeyFrameState,
+                originalExpressionRect ? { ...originalExpressionRect } : {x:0,y:0,width:50,height:60}
+            );
             
             // 插入到当前帧之后
             currentAnim.aframeList.splice(currentFrameIndex + 1, 0, newAnimFrame);
@@ -6355,14 +6363,7 @@
             };
         }
         
-        // 修改renderCanvas函数，在绘制帧时调用drawFrameExpression
-        const originalRenderCanvas = window.renderCanvas;
-        window.renderCanvas = function(fps) {
-            originalRenderCanvas.apply(this, arguments);
-            
-            // 绘制表情
-            drawFrameExpression();
-        };
+
         
     </script>
 </body>

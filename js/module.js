@@ -30,7 +30,7 @@ class FrameModule {
         this.angle = angle; // 旋转角度（弧度）
     }
     
-    draw(ctx, sprite, originX, originY) {
+    draw(ctx, sprite, originX, originY, globalFlag = 0) {
         const imageItem = sprite.getImage(this.module.imageId);
         if (!imageItem || !imageItem.image.complete) return;
         
@@ -39,6 +39,8 @@ class FrameModule {
         // 应用变换
         const width = rectModule.width;
         const height = rectModule.height;
+
+        
 
         ctx.save();
         
