@@ -543,7 +543,7 @@
             <div class="sidebar-section">
                 <div class="sidebar-title">角色</div>
                 <ul id="sprite-list" class="sidebar-list"></ul>
-                <button id="add-sprite" class="add-button">添加角色</button>
+                <button id="add-sprite" class="add-button">编辑角色</button>
             </div>
             
             <div class="sidebar-section">
@@ -738,10 +738,10 @@
         </div>
     </div>
     
-    <!-- 新建角色模态框 -->
+    <!-- 编辑角色模态框 -->
     <div id="new-sprite-modal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">新建角色</div>
+            <div class="modal-header">编辑角色</div>
             <div class="modal-body">
                 <div class="control-group">
                     <label for="sprite-name">角色名称</label>
@@ -749,7 +749,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="create-sprite" class="modal-button primary">创建</button>
+                <button id="create-sprite" class="modal-button primary">确定</button>
                 <button id="cancel-create-sprite" class="modal-button secondary">取消</button>
             </div>
         </div>
@@ -2393,10 +2393,19 @@
             });
         }
         
-        // 显示新建角色模态框
+        // 显示编辑角色模态框
         function showNewSpriteModal() {
+            const spriteNameInput = document.getElementById('sprite-name');
+            
+            // 如果已有当前角色，将其名称填入输入框
+            if (currentSprite) {
+                spriteNameInput.value = currentSprite.name;
+            } else {
+                spriteNameInput.value = '';
+            }
+            
             document.getElementById('new-sprite-modal').style.display = 'flex';
-            document.getElementById('sprite-name').focus();
+            spriteNameInput.focus();
         }
         
         // 隐藏新建角色模态框
@@ -2416,6 +2425,40 @@
                 document.getElementById('current-anim-name').textContent = `${currentAnim.name} - 帧${currentFrameIndex + 1}`;
                 saveProject();
             }
+        }
+        
+        // 复制动画
+        function copyAnimation() {
+            if (!currentAnim || !currentSprite) return;
+            
+            // 创建一个新的动画名称
+            let newName = `${currentAnim.name}-复制`;
+            let counter = 1;
+            
+            // 检查是否存在同名动画，如果存在则添加数字后缀
+            while (currentSprite.mAnimList.some(anim => anim.name === newName)) {
+                counter++;
+                newName = `${currentAnim.name}-复制${counter}`;
+            }
+            
+            // 创建新的动画对象
+            const newAnim = new Anim(newName);
+            
+            // 深拷贝每一帧
+            currentAnim.aframeList.forEach(animFrame => {
+                // 克隆帧对象
+                const clonedFrame = animFrame.frame.clone();
+                // 创建新的动画帧
+                const newAnimFrame = new AnimFrame(clonedFrame, animFrame.KeyFrameState);
+                newAnim.aframeList.push(newAnimFrame);
+            });
+            
+            // 添加到当前角色的动画列表
+            currentSprite.mAnimList.push(newAnim);
+            
+            // 更新界面
+            renderAnimList();
+            saveProject();
         }
         
         // 上移动画
@@ -2480,7 +2523,7 @@
             }
         }
         
-        // 创建角色
+        // 更新当前角色
         function createSprite() {
             const spriteName = document.getElementById('sprite-name').value.trim();
             if (!spriteName) {
@@ -2488,8 +2531,14 @@
                 return;
             }
             
-            const newSprite = new Sprite(spriteName);
-            currentProject.addSprite(newSprite);
+            // 如果已有当前角色，更新其名称
+            if (currentSprite) {
+                currentSprite.name = spriteName;
+            } else {
+                // 如果没有当前角色，创建一个新角色（仅在必要时）
+                currentSprite = new Sprite(spriteName);
+                currentProject.addSprite(currentSprite);
+            }
             
             // 更新界面
             renderSpriteList();
@@ -3317,8 +3366,8 @@
                         copiedInfo.x + 10,  // 稍微偏移一点，避免重叠
                         copiedInfo.y + 10,  // 稍微偏移一点，避免重叠
                         copiedInfo.flag,    // 使用相同的翻转/旋转标志
-                        copiedInfo.angle ? copiedInfo.angle : 0,  // 角度信息
-                        copiedInfo.scale ? copiedInfo.scale : 1  // 缩放信息
+                        copiedInfo.scale ? copiedInfo.scale : 1,  // 缩放信息
+                        copiedInfo.angle ? copiedInfo.angle : 0  // 角度信息
                     );
                     
                     // 创建添加模块命令并添加到组合命令
@@ -3353,13 +3402,10 @@
                     copiedModuleInfo.module,  // 使用相同的模块
                     copiedModuleInfo.x + 10,  // 稍微偏移一点，避免重叠
                     copiedModuleInfo.y + 10,  // 稍微偏移一点，避免重叠
-                    copiedModuleInfo.flag     // 使用相同的翻转/旋转标志
+                    copiedModuleInfo.flag,     // 使用相同的翻转/旋转标志
+                    copiedModuleInfo.scale ? copiedModuleInfo.scale : 1,  // 缩放信息
+                    copiedModuleInfo.angle ? copiedModuleInfo.angle : 0  // 角度信息
                 );
-                
-                // 复制缩放信息（如果有）
-                if (copiedModuleInfo.scale) {
-                    newFm.scale = copiedModuleInfo.scale;
-                }
                 
                 // 添加新模块到当前帧
                 CommandManager.instance.addCommand(new AddFmCommand(currentFrame, newFm));
@@ -4394,6 +4440,21 @@
                 // 操作按钮容器
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'anim-actions';
+                
+                // 复制按钮
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'anim-action-btn';
+                copyBtn.textContent = '复制';
+                copyBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (currentAnim === anim) {
+                        copyAnimation();
+                    } else {
+                        selectAnim(index);
+                        setTimeout(copyAnimation, 100);
+                    }
+                });
+                actionsDiv.appendChild(copyBtn);
                 
                 // 重命名按钮
                 const renameBtn = document.createElement('button');

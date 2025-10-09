@@ -53,7 +53,8 @@ class FrameModule {
         
         // 3. 应用旋转（先旋转，避免翻转影响旋转方向）
         if (this.angle !== 0) {
-            const rotateRad = this.angle;// * Math.PI / 180;
+            // 确保角度是以弧度表示的
+            const rotateRad = typeof this.angle === 'number' ? this.angle : 0;
             ctx.rotate(rotateRad);
         }
         
