@@ -5705,10 +5705,10 @@
                 // 获取当前帧
                 const aframe = currentAnim.aframeList[currentFrameIndex];
                 // 绘制当前帧
-                const currentFrameExpressionRect =  aframe.expressionRect;
-                if(expression && currentFrameExpressionRect && currentFrameIndex < expression.images.length){
+                // const currentFrameExpressionRect =  aframe.expressionRect;
+                if(expression && currentFrameIndex < expression.images.length){
                     const currentFrameExpressionImg = expression.images[currentFrameIndex];
-                    currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel,currentFrameExpressionRect,currentFrameExpressionImg);
+                    aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel,currentFrameExpressionImg,0);
                 }else{
                     // 绘制当前帧
                     currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);

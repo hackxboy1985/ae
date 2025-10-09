@@ -40,8 +40,6 @@ class FrameModule {
         const width = rectModule.width;
         const height = rectModule.height;
 
-        
-
         ctx.save();
         
         // 移动到原点 - 与ActionEditor相同的原点逻辑
@@ -51,34 +49,29 @@ class FrameModule {
         const centerY = originY - this.y + height / 2; //-y是因为坐标系统不同
         ctx.translate(centerX, centerY);
 
-
-        
         // 3. 应用旋转（先旋转，避免翻转影响旋转方向）
         if (this.angle !== 0) {
             // 确保角度是以弧度表示的
             const rotateRad = typeof this.angle === 'number' ? this.angle : 0;
             ctx.rotate(rotateRad);
         }
-        
 
-        // 4. 应用翻转（根据配置决定是否水平/垂直翻转）
-        if(this.flag != 0){
-            // console.log('翻转:',this.flag);
-            const scaleX = this.flag & 1 ? -1 : 1; // 水平翻转：X轴缩放-1
-            const scaleY = this.flag & 2 ? -1 : 1; // 垂直翻转：Y轴缩放-1
+        // 4. 应用翻转（结合模块翻转和全局翻转参数）
+        if(this.flag != 0 || globalFlag != 0){
+            // 计算水平翻转状态：如果模块和全局参数中奇数个设置了水平翻转(bit 0)，最终就是翻转
+            const isHorizontalFlip = ((this.flag & 1) !== 0) !== ((globalFlag & 1) !== 0);
+            // 计算垂直翻转状态：如果模块和全局参数中奇数个设置了垂直翻转(bit 1)，最终就是翻转
+            const isVerticalFlip = ((this.flag & 2) !== 0) !== ((globalFlag & 2) !== 0);
+            
+            const scaleX = isHorizontalFlip ? -1 : 1;
+            const scaleY = isVerticalFlip ? -1 : 1;
+            console.log(globalFlag,isHorizontalFlip,isVerticalFlip,scaleX,scaleY)
             ctx.scale(scaleX, scaleY);
         }
-    
-        // 5. 绘制图片（坐标相对于新原点，需向左上偏移半宽高）
-        // ctx.drawImage(
-        //     imageItem.image, 
-        //     -width / 2,  // 相对于中心的X坐标
-        //     -height / 2, // 相对于中心的Y坐标
-        //     width, 
-        //     height
-        // );
+        // console.log('aa',this.flag,globalFlag);
 
-         ctx.drawImage(
+        // 5. 绘制图片（坐标相对于新原点，需向左上偏移半宽高）
+        ctx.drawImage(
             imageItem.image,
             rectModule.x, rectModule.y,
             width, height,
