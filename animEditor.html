@@ -98,6 +98,81 @@
             background-color: #e0e0e0;
         }
         
+        /* 选项卡样式 */
+        .control-tabs {
+            margin-bottom: 20px;
+        }
+        
+        .tab-header {
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 15px;
+        }
+        
+        .tab-button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #f1f1f1;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button:hover {
+            background-color: #e1e1e1;
+        }
+        
+        .tab-button.active {
+            background-color: #fff;
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* 表情列表样式 */
+        .expression-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .expression-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .expression-item:hover {
+            background-color: #f0f0f0;
+            border-color: #4CAF50;
+        }
+        
+        .expression-item.selected {
+            background-color: #e8f5e9;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+        
+        .expression-image {
+            max-width: 80px;
+            max-height: 80px;
+            display: block;
+            margin: 0 auto 5px;
+        }
+        
         .sidebar-list li.active {
             background-color: #ddd;
             font-weight: bold;
@@ -690,79 +765,79 @@
         <!-- 控制面板 -->
         <div class="control-panel" style="min-width: 350px;">
 
-            <!-- 动作编辑模式显示区域 -->
-            <div id="animation-control-section" style="display: none;">
-                
-                <div class="control-section" style="position: relative;">
-                    <div class="control-title">当前图片</div>
-                    <!-- 上半部分：图片选择下拉列表和显示完整图片的canvas -->
-                    <div class="image-selection-container">
-                        <select id="image-dropdown" style="width: 100%; padding: 8px; margin-bottom: 12px; ">
-                            <option value="">请选择图片</option>
-                        </select>
-                    </div>
-                    <!-- 上半部分canvas容器 -->
-                    <div class="image-preview-container" style="border: 1px solid #ddd; margin: 10px 0; overflow: auto;">
-                        <canvas id="image-preview-canvas" style="background-color: white;"></canvas>
-                    </div>
-                    <!-- 缩放控制按钮 -->
-                    <div class="zoom-controls" style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <button id="zoom-in-btn" style="padding: 5px 10px;">放大</button>
-                        <button id="zoom-out-btn" style="padding: 5px 10px;">缩小</button>
-                        <button id="reset-zoom-btn" style="padding: 5px 10px;">重置缩放</button>
-                    </div>
+            <!-- 动作编辑模式选项卡 -->
+            <div class="control-tabs">
+                <div id="anim-tab-header" class="tab-header">
+                    <button id="tab-animation-control" class="tab-button active">图片模块</button>
+                    <button id="tab-expression-list" class="tab-button">表情列表</button>
                 </div>
                 
-                <!-- 下半部分：变形预览区域 -->
-                <div class="control-section">
-                    <div class="control-title">变形选项</div>
-                    <div id="transformation-preview" class="transformation-preview" style="display: none;">
-                        <div class="transformation-item" data-type="original">
-                            <canvas id="original-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
-                            <span>原图</span>
+                <!-- 原有的动画控制区域 -->
+                <div id="animation-control-section" class="tab-content active">
+                
+                    <div class="control-section" style="position: relative;">
+                        <div class="control-title">当前图片</div>
+                        <!-- 上半部分：图片选择下拉列表和显示完整图片的canvas -->
+                        <div class="image-selection-container">
+                            <select id="image-dropdown" style="width: 100%; padding: 8px; margin-bottom: 12px; ">
+                                <option value="">请选择图片</option>
+                            </select>
                         </div>
-                        <div class="transformation-item" data-type="flip-horizontal">
-                            <canvas id="flip-horizontal-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
-                            <span>水平翻转</span>
+                        <!-- 上半部分canvas容器 -->
+                        <div class="image-preview-container" style="border: 1px solid #ddd; margin: 10px 0; overflow: auto;">
+                            <canvas id="image-preview-canvas" style="background-color: white;"></canvas>
                         </div>
-                        <div class="transformation-item" data-type="flip-vertical">
-                            <canvas id="flip-vertical-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
-                            <span>垂直翻转</span>
-                        </div>
-                        <div class="transformation-item" data-type="flip-both">
-                            <canvas id="flip-both-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
-                            <span>水平+垂直翻转</span>
+                        <!-- 缩放控制按钮 -->
+                        <div class="zoom-controls" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <button id="zoom-in-btn" style="padding: 5px 10px;">放大</button>
+                            <button id="zoom-out-btn" style="padding: 5px 10px;">缩小</button>
+                            <button id="reset-zoom-btn" style="padding: 5px 10px;">重置缩放</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- 图片列表 -->
-                <!-- <div class="animation-images-list mb-2" style="border: 1px solid #ddd; overflow-y: auto; max-height: 150px;">
-                    <div class="control-title">可用图片</div>
-                    <div id="animation-images-list" class="images-list"></div>
-                </div> -->
-
-
-                <!-- <div class="animation-modules-list" style="border: 1px solid #ddd; overflow-y: auto; flex: 1;">
-                    <div class="control-title" id="selected-image-title">选择图片查看模块</div>
-                    <div id="animation-modules-list" class="modules-grid"></div>
-                </div> -->
                 
-            </div>
+                    <!-- 下半部分：变形预览区域 -->
+                    <div class="control-section">
+                        <div class="control-title">变形选项</div>
+                        <div id="transformation-preview" class="transformation-preview" style="display: none;">
+                            <div class="transformation-item" data-type="original">
+                                <canvas id="original-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                                <span>原图</span>
+                            </div>
+                            <div class="transformation-item" data-type="flip-horizontal">
+                                <canvas id="flip-horizontal-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                                <span>水平翻转</span>
+                            </div>
+                            <div class="transformation-item" data-type="flip-vertical">
+                                <canvas id="flip-vertical-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                                <span>垂直翻转</span>
+                            </div>
+                            <div class="transformation-item" data-type="flip-both">
+                                <canvas id="flip-both-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                                <span>水平+垂直翻转</span>
+                            </div>
+                        </div>
+                    </div>
+                
+                </div>
             
-            <!-- 图片模块编辑模式显示区域 -->
-            <div id="image-control-section">
+                <!-- 表情列表区域 -->
+                <div id="expression-list-section" class="tab-content">
+                    <div class="control-section">
+                        <div class="control-title">表情列表</div>
+                        <div id="expression-list-container" class="expression-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 400px; overflow-y: auto;">
+                            <!-- 表情列表将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- 图片模块编辑模式 -->
+            <div id="image-control-section" style="display: none;">
                 <!-- 图片列表区域 -->
                 <div class="images-list-container mb-2">
                     <div class="control-title">加载的图片</div>
                     <div id="images-list" class="images-list"></div>
                 </div>
-                
-                <!-- <div class="control-section">
-                    <div class="control-title">模块属性</div>
-                    
-                </div> -->
-                
                 
             </div>
         </div>
@@ -2174,6 +2249,7 @@
                 
                 // 显示动作编辑控制面板，隐藏图片模块编辑控制面板
                 document.getElementById('animation-control-section').style.display = 'block';
+                document.getElementById('anim-tab-header').style.display = 'block';
                 document.getElementById('image-control-section').style.display = 'none';
 
                 // 重新初始化图片预览相关元素
@@ -2234,6 +2310,8 @@
                 
                 // 显示图片模块编辑控制面板，隐藏动作编辑控制面板
                 document.getElementById('animation-control-section').style.display = 'none';
+                document.getElementById('anim-tab-header').style.display = 'none';
+                
                 document.getElementById('image-control-section').style.display = 'block';
             }
         }
@@ -6055,6 +6133,234 @@
             // 初始化时加载表情数据
             loadExpression();
         });
+        
+        // 选项卡切换功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化选项卡切换
+            const tabAnimationControlBtn = document.getElementById('tab-animation-control');//btn
+            const tabExpressionBtn = document.getElementById('tab-expression-list');//btn
+            const tabContentAnimation = document.getElementById('animation-control-section');
+            const tabContentExpression = document.getElementById('expression-list-section');
+            
+            if (tabAnimationControlBtn && tabExpressionBtn && tabContentAnimation && tabContentExpression) {
+                // 切换到图片控制选项卡
+                tabAnimationControlBtn.addEventListener('click', function() {
+                    // 激活当前选项卡，取消激活其他选项卡
+                    tabAnimationControlBtn.classList.add('active');
+                    tabExpressionBtn.classList.remove('active');
+                    
+                    // 显示当前选项卡内容，隐藏其他内容
+                    // tabContentAnimation.classList.add('active');
+                    // tabContentExpression.classList.remove('active');
+                    tabContentAnimation.style.display = 'block';
+                    tabContentExpression.style.display = 'none';
+                    
+                    // 清除图片模块编辑的框选模块操作与编辑模块操作
+                    if (isMultiDragging) {
+                        isMultiDragging = false;
+                    }
+                    if (dragStartModuleStates.length > 0) {
+                        dragStartModuleStates = [];
+                    }
+                });
+                
+                // 切换到表情列表选项卡
+                tabExpressionBtn.addEventListener('click', function() {
+                    // 激活当前选项卡，取消激活其他选项卡
+                    tabExpressionBtn.classList.add('active');
+                    tabAnimationControlBtn.classList.remove('active');
+                    
+                    // 显示当前选项卡内容，隐藏其他内容
+                    // tabContentExpression.classList.add('active');
+                    // tabContentAnimation.classList.remove('active');
+                    tabContentAnimation.style.display = 'none';
+                    tabContentExpression.style.display = 'block';
+                    
+                    
+                    // 初始化表情列表
+                    initExpressionList();
+                });
+            }
+        });
+        
+        // 初始化表情列表
+        function initExpressionList() {
+            const expressionListContainer = document.getElementById('expression-list-container');
+            if (!expressionListContainer) return;
+            
+            // 清空容器
+            expressionListContainer.innerHTML = '';
+            
+            // 获取已加载的表情数据
+            if (!window.expressions || window.expressions.length === 0) {
+                console.log('没有加载到表情数据');
+                return;
+            }
+            
+            // 为当前帧获取已选择的表情
+            const currentFrameExpression = getCurrentFrameExpression();
+            
+            // 创建表情列表项
+            window.expressions.forEach(expression => {
+                const expressionItem = document.createElement('div');
+                expressionItem.className = `expression-item ${currentFrameExpression === expression.name ? 'selected' : ''}`;
+                expressionItem.dataset.expressionId = expression.name;
+                
+                // 创建表情图片
+                const expressionImage = document.createElement('img');
+                expressionImage.className = 'expression-image';
+                expressionImage.src = expression.imageUrls[0]; // 使用第一张图片
+                expressionImage.alt = expression.name;
+                expressionImage.onerror = function() {
+                    // 如果图片加载失败，显示默认样式
+                    this.style.display = 'none';
+                    const defaultDiv = document.createElement('div');
+                    defaultDiv.style.width = '60px';
+                    defaultDiv.style.height = '60px';
+                    defaultDiv.style.backgroundColor = '#f0f0f0';
+                    defaultDiv.style.margin = '0 auto 5px';
+                    defaultDiv.style.borderRadius = '4px';
+                    defaultDiv.style.display = 'flex';
+                    defaultDiv.style.alignItems = 'center';
+                    defaultDiv.style.justifyContent = 'center';
+                    defaultDiv.textContent = expression.name;
+                    this.parentNode.appendChild(defaultDiv);
+                };
+                
+                // 创建表情名称
+                const expressionName = document.createElement('div');
+                expressionName.textContent = expression.name;
+                expressionName.style.fontSize = '12px';
+                
+                // 添加到表情项
+                expressionItem.appendChild(expressionImage);
+                expressionItem.appendChild(expressionName);
+                
+                // 添加点击事件
+                expressionItem.addEventListener('click', function() {
+                    // 移除其他选中项的选中状态
+                    document.querySelectorAll('.expression-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    
+                    // 添加当前项的选中状态
+                    this.classList.add('selected');
+                    
+                    // 保存选中的表情到当前帧
+                    setCurrentFrameExpression(expression.name);
+                    
+                    // 重新渲染画布
+                    renderCanvas(20);
+                });
+                
+                // 添加到容器
+                expressionListContainer.appendChild(expressionItem);
+            });
+        }
+        
+        // 获取当前帧的表情
+        function getCurrentFrameExpression() {
+            if (!currentAnim || !currentFrameIndex || currentFrameIndex < 0 || !currentAnim.aframeList[currentFrameIndex]) {
+                return null;
+            }
+            return currentAnim.aframeList[currentFrameIndex].expression;
+        }
+        
+        // 设置当前帧的表情
+        function setCurrentFrameExpression(expressionName) {
+            if (!currentAnim || !currentFrameIndex || currentFrameIndex < 0 || !currentAnim.aframeList[currentFrameIndex]) {
+                console.warn('没有选中的帧，无法设置表情');
+                return;
+            }
+            
+            // 保存表情到当前帧
+            currentAnim.aframeList[currentFrameIndex].expression = expressionName;
+            
+            console.log(`已设置当前帧表情为: ${expressionName}`);
+        }
+        
+        // 在渲染当前帧时绘制表情
+        function drawFrameExpression() {
+            if (!currentAnim || !currentFrameIndex || currentFrameIndex < 0 || !currentAnim.aframeList[currentFrameIndex]) {
+                return;
+            }
+            
+            // 获取当前帧
+            const aframe = currentAnim.aframeList[currentFrameIndex];
+            
+            // 获取表情区域
+            const expressionRect = aframe.expressionRect;
+            
+            // 检查表情区域是否有效
+            if (!expressionRect || !expressionRect.x || !expressionRect.y || !expressionRect.width || !expressionRect.height) {
+                return;
+            }
+            
+            // 获取当前帧的表情
+            const expressionName = aframe.expression;
+            if (!expressionName || !window.expressions) {
+                return;
+            }
+            
+            // 查找表情对象
+            const expression = window.expressions.find(expr => expr.name === expressionName);
+            if (!expression || !expression.imageUrls || expression.imageUrls.length === 0) {
+                // 如果找不到表情，绘制简单的方块代替
+                ctx.fillStyle = '#4CAF50';
+                ctx.fillRect(expressionRect.x, expressionRect.y, expressionRect.width, expressionRect.height);
+                
+                // 绘制表情名称
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(expressionName, expressionRect.x + expressionRect.width / 2, expressionRect.y + expressionRect.height / 2);
+                return;
+            }
+            
+            // 尝试使用表情图片
+            const expressionImage = new Image();
+            expressionImage.src = expression.imageUrls[0]; // 使用第一张图片
+            
+            // 图片加载完成后绘制
+            expressionImage.onload = function() {
+                // 创建一个临时canvas来绘制表情图片
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // 设置临时canvas尺寸
+                tempCanvas.width = expressionRect.width;
+                tempCanvas.height = expressionRect.height;
+                
+                // 绘制表情图片到临时canvas
+                tempCtx.drawImage(expressionImage, 0, 0, expressionRect.width, expressionRect.height);
+                
+                // 将临时canvas的内容绘制到主canvas
+                ctx.drawImage(tempCanvas, expressionRect.x, expressionRect.y);
+            };
+            
+            // 如果图片加载失败，绘制简单的方块
+            expressionImage.onerror = function() {
+                ctx.fillStyle = '#4CAF50';
+                ctx.fillRect(expressionRect.x, expressionRect.y, expressionRect.width, expressionRect.height);
+                
+                // 绘制表情名称
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(expressionName, expressionRect.x + expressionRect.width / 2, expressionRect.y + expressionRect.height / 2);
+            };
+        }
+        
+        // 修改renderCanvas函数，在绘制帧时调用drawFrameExpression
+        const originalRenderCanvas = window.renderCanvas;
+        window.renderCanvas = function(fps) {
+            originalRenderCanvas.apply(this, arguments);
+            
+            // 绘制表情
+            drawFrameExpression();
+        };
         
     </script>
 </body>
