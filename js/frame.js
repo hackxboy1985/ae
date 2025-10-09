@@ -9,10 +9,31 @@ class Frame {
         this.fmList.push(module);
     }
 
-    draw(ctx, sprite, originX, originY) {
+    draw(ctx, sprite, originX, originY,expressionRect = null,expressionImg = null) {
         this.fmList.forEach(fm => {
-            fm.draw(ctx, sprite, originX, originY);
+            fm.draw(ctx, sprite, originX, originY,expressionRect);
         });
+        
+        if(expressionRect && expressionImg) {
+            ctx.save();
+            console.log('draw Image');
+            // 移动到原点 - 与ActionEditor相同的原点逻辑
+        
+            // 2. 平移坐标系到图片中心（关键：所有变换围绕中心进行）
+            const centerX = originX + expressionRect.x + expressionRect.width / 2;
+            const centerY = originY - expressionRect.y - expressionRect.height / 2; //-y是因为坐标系统不同  
+            ctx.translate(centerX, centerY);
+            console.log('expression centerX',centerX, centerY);
+            // ctx.drawImage(expressionImg,0,0,expressionRect.width,expressionRect.height);
+            ctx.drawImage(expressionImg,0,0,expressionImg.width,expressionImg.height
+                ,
+                -expressionRect.width / 2,  // 相对于中心的X坐标
+                -expressionRect.height / 2, // 相对于中心的Y坐标
+                expressionRect.width, expressionRect.height
+            );
+
+            ctx.restore();
+        }
     }
     
     clone() {
@@ -30,6 +51,10 @@ class AnimFrame {
         this.frame = frame;
         this.KeyFrameState = keyFrameState;
         this.expressionRect = expressionRect;
+    }
+    // 添加模块
+    addModule(module) {
+        this.frame.addModule(module);
     }
 }
 

@@ -949,6 +949,7 @@
         let currentSprite = null;
         let currentAnim = null;
         let currentFrame = null;
+        // let currentFrameExpressionRect = null;//当前帧表情
         let currentFrameIndex = 0;
         let selectedModuleIndex = -1; // 当前选中的单个模块索引
         let selectedModuleIndices = []; // 存储多个选中模块的索引数组
@@ -4736,7 +4737,7 @@
                 }
                 
                 // 确保尺寸不为负数
-                newWidth = Math.max(40, newWidth);
+                newWidth = Math.max(30, newWidth);
                 newHeight = newWidth * 1.2; // 保持1:1.2的宽高比
                 // newHeight = Math.max(1, newHeight);
                 
@@ -5689,8 +5690,26 @@
             ctx.save();
             ctx.scale(zoomLevel, zoomLevel);
             // console.log('draw currentFrame')
-            // 绘制当前帧
-            currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
+
+            if (currentSelectedExpression && currentAnim && currentFrameIndex >= 0 && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex]) {
+                // 查找表情对象
+                const expression = expressions.find(expr => expr.name === currentSelectedExpression);
+                // 获取当前帧
+                const aframe = currentAnim.aframeList[currentFrameIndex];
+                // 绘制当前帧
+                const currentFrameExpressionRect =  aframe.expressionRect;
+                if(expression && currentFrameExpressionRect && currentFrameIndex < expression.images.length){
+                    const currentFrameExpressionImg = expression.images[currentFrameIndex];
+                    currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel,currentFrameExpressionRect,currentFrameExpressionImg);
+                }else{
+                    // 绘制当前帧
+                    currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
+                }
+                
+            } else {
+                // 绘制当前帧
+                currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
+            }
             
             // 绘制表情区域矩形框
             if (isEditingExpressionRect && currentFrameIndex === expressionRectFrameIndex && currentAnim && currentFrameIndex >= 0 && currentAnim.aframeList[currentFrameIndex]) {
@@ -6087,14 +6106,17 @@
             const mockExpressions = [
                 {
                     name: "普通1",
+                    type: "0",//0是通用表情、1是男专用，2是女专用
                     imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n1.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n2.png"]
                 },
                 {
                     name: "普通2",
+                    type: "0",//0是通用表情、1是男专用，2是女专用
                     imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n3.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n4.png"]
                 },
                 {
                     name: "开心",
+                    type: "0",//0是通用表情、1是男专用，2是女专用
                     imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/happy1.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/happy2.png"]
                 }
             ];
@@ -6183,6 +6205,9 @@
             }
         });
         
+        // 全局变量：当前选中的表情
+        let currentSelectedExpression = null;
+        
         // 初始化表情列表
         function initExpressionList() {
             const expressionListContainer = document.getElementById('expression-list-container');
@@ -6192,18 +6217,15 @@
             expressionListContainer.innerHTML = '';
             
             // 获取已加载的表情数据
-            if (!window.expressions || window.expressions.length === 0) {
-                console.log('没有加载到表情数据');
+            if (!expressions || expressions.length === 0) {
+                console.log('没有加载到表情数据',window.expressions,expressions);
                 return;
             }
             
-            // 为当前帧获取已选择的表情
-            const currentFrameExpression = getCurrentFrameExpression();
-            
             // 创建表情列表项
-            window.expressions.forEach(expression => {
+            expressions.forEach(expression => {
                 const expressionItem = document.createElement('div');
-                expressionItem.className = `expression-item ${currentFrameExpression === expression.name ? 'selected' : ''}`;
+                expressionItem.className = `expression-item ${currentSelectedExpression === expression.name ? 'selected' : ''}`;
                 expressionItem.dataset.expressionId = expression.name;
                 
                 // 创建表情图片
@@ -6246,37 +6268,18 @@
                     // 添加当前项的选中状态
                     this.classList.add('selected');
                     
-                    // 保存选中的表情到当前帧
-                    setCurrentFrameExpression(expression.name);
+                    // 保存选中的表情到全局变量
+                    currentSelectedExpression = expression.name;
                     
-                    // 重新渲染画布
+                    console.log(`已选择表情: ${expression.name}`);
+                    
+                    // 重新渲染画布，将表情绘制到当前帧
                     renderCanvas(20);
                 });
                 
                 // 添加到容器
                 expressionListContainer.appendChild(expressionItem);
             });
-        }
-        
-        // 获取当前帧的表情
-        function getCurrentFrameExpression() {
-            if (!currentAnim || !currentFrameIndex || currentFrameIndex < 0 || !currentAnim.aframeList[currentFrameIndex]) {
-                return null;
-            }
-            return currentAnim.aframeList[currentFrameIndex].expression;
-        }
-        
-        // 设置当前帧的表情
-        function setCurrentFrameExpression(expressionName) {
-            if (!currentAnim || !currentFrameIndex || currentFrameIndex < 0 || !currentAnim.aframeList[currentFrameIndex]) {
-                console.warn('没有选中的帧，无法设置表情');
-                return;
-            }
-            
-            // 保存表情到当前帧
-            currentAnim.aframeList[currentFrameIndex].expression = expressionName;
-            
-            console.log(`已设置当前帧表情为: ${expressionName}`);
         }
         
         // 在渲染当前帧时绘制表情
@@ -6296,14 +6299,13 @@
                 return;
             }
             
-            // 获取当前帧的表情
-            const expressionName = aframe.expression;
-            if (!expressionName || !window.expressions) {
+            // 检查是否有选中的表情
+            if (!currentSelectedExpression || !expressions) {
                 return;
             }
             
             // 查找表情对象
-            const expression = window.expressions.find(expr => expr.name === expressionName);
+            const expression = expressions.find(expr => expr.name === currentSelectedExpression);
             if (!expression || !expression.imageUrls || expression.imageUrls.length === 0) {
                 // 如果找不到表情，绘制简单的方块代替
                 ctx.fillStyle = '#4CAF50';
@@ -6314,7 +6316,7 @@
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(expressionName, expressionRect.x + expressionRect.width / 2, expressionRect.y + expressionRect.height / 2);
+                ctx.fillText(currentSelectedExpression, expressionRect.x + expressionRect.width / 2, expressionRect.y + expressionRect.height / 2);
                 return;
             }
             
@@ -6349,7 +6351,7 @@
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(expressionName, expressionRect.x + expressionRect.width / 2, expressionRect.y + expressionRect.height / 2);
+                ctx.fillText(currentSelectedExpression, expressionRect.x + expressionRect.width / 2, expressionRect.y + expressionRect.height / 2);
             };
         }
         

@@ -80,7 +80,7 @@ class FrameModule {
             imageItem.image,
             rectModule.x, rectModule.y,
             width, height,
-             -width / 2,  // 相对于中心的X坐标
+            -width / 2,  // 相对于中心的X坐标
             -height / 2, // 相对于中心的Y坐标
             width, height
         );
