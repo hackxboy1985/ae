@@ -525,6 +525,29 @@
             z-index: 1000;
             pointer-events: none;
         }
+        
+        /* 模式切换按钮样式 */
+        .mode-button {
+            padding: 8px 16px;
+            border: none;
+            background-color: #f0f0f0;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .mode-button:first-child {
+            border-right: 1px solid #ddd;
+        }
+        
+        .mode-button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .mode-button:hover:not(.active) {
+            background-color: #e0e0e0;
+        }
     </style>
 </head>
 <body>
@@ -622,7 +645,10 @@
                     <div class="toolbar">
                         <button id="upload-image">上传图片</button>
                         <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
-                        <button id="crop-module">框选模块</button>
+                        <div style="display: inline-flex; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
+                            <button id="crop-module" class="mode-button active">框选模块</button>
+                            <button id="edit-module" class="mode-button">编辑模块</button>
+                        </div>
                         <button id="save-module">保存模块</button>
                         <label for="show-all-modules" style="margin-left: 10px; display: inline-flex; align-items: center;">
                             <input type="checkbox" id="show-all-modules" checked>显示
@@ -829,7 +855,7 @@
         let zoomCenterY = 0; // 缩放中心点Y
         // 新增：图片预览相关变量
         let previewZoomLevel = 1; // 预览canvas的缩放级别
-        let selectedImageModule = -1; // 当前选中的图片模块
+        // let selectedImageModule = -1; // 当前选中的图片模块
         let showPreviewWithMouse = false; // 是否显示跟随鼠标的预览
         let selectedTransformation = 'original'; // 当前选中的变形方式
         let mouseXOnCanvas = 0; // 鼠标在canvas上的X坐标
@@ -855,6 +881,9 @@
         let marqueeStartY = 0; // 框选起始点Y坐标
         let marqueeEndX = 0; // 框选结束点X坐标
         let marqueeEndY = 0; // 框选结束点Y坐标
+        // 图片模块编辑模式
+        let editMode = 'crop'; // 'crop' 或 'edit'
+        let selectedImageModule = -1; // 当前选中的图片模块
         let isCtrlPressed = false;// 是否按下了Ctrl键或cmd键
         let isPlaying = false;
         let animationSpeed = 100;
@@ -1560,28 +1589,62 @@
                 drawX, drawY, 
                 drawWidth, drawHeight
             );
-            //console.log('图片绘制区域：',drawX,drawY,drawWidth,drawHeight);
-
+            
+            // 绘制选中的模块
             drawSelectedModules();
-
-            // 绘制虚拟裁剪框
-            if (isCropping && cropWidth > 0 && cropHeight > 0) {
-                const canvasX = drawX + cropLeft * zoomLevel;
-                const canvasY = drawY + cropTop * zoomLevel;
-                const canvasWidth = cropWidth * zoomLevel;
-                const canvasHeight = cropHeight * zoomLevel;
-                
-                // 绘制裁剪框边框
-                imageCtx.strokeStyle = 'blue';
-                imageCtx.lineWidth = 2;
-                imageCtx.strokeRect(canvasX, canvasY, canvasWidth, canvasHeight);
-                
-                // 绘制裁剪框内部透明覆盖层
-                imageCtx.fillStyle = 'rgba(0, 128, 255, 0.1)';
-                imageCtx.fillRect(canvasX, canvasY, canvasWidth, canvasHeight);
-                
-                // 绘制裁剪手柄
-                drawCropHandles(canvasX, canvasY, canvasWidth, canvasHeight);
+            
+            // 根据当前模式显示不同的内容
+            if (editMode === 'crop') {
+                // 裁剪模式：显示虚拟裁剪框
+                if (isCropping && cropWidth > 0 && cropHeight > 0) {
+                    const canvasX = drawX + cropLeft * zoomLevel;
+                    const canvasY = drawY + cropTop * zoomLevel;
+                    const canvasWidth = cropWidth * zoomLevel;
+                    const canvasHeight = cropHeight * zoomLevel;
+                    
+                    // 绘制裁剪框边框
+                    imageCtx.strokeStyle = 'blue';
+                    imageCtx.lineWidth = 2;
+                    imageCtx.strokeRect(canvasX, canvasY, canvasWidth, canvasHeight);
+                    
+                    // 绘制裁剪框内部透明覆盖层
+                    imageCtx.fillStyle = 'rgba(0, 128, 255, 0.1)';
+                    imageCtx.fillRect(canvasX, canvasY, canvasWidth, canvasHeight);
+                    
+                    // 绘制裁剪手柄
+                    drawCropHandles(canvasX, canvasY, canvasWidth, canvasHeight);
+                }
+            } else if (editMode === 'edit') {
+                // 编辑模式：显示所有现有模块，并高亮选中的模块
+                const imageItem = currentSprite.getImage(currentImageId);
+                if (imageItem && imageItem.modulesList) {
+                    imageItem.modulesList.forEach((module, index) => {
+                        const moduleX = drawX + module.x * zoomLevel;
+                        const moduleY = drawY + module.y * zoomLevel;
+                        const moduleWidth = module.width * zoomLevel;
+                        const moduleHeight = module.height * zoomLevel;
+                        
+                        // 如果是选中的模块，高亮显示
+                        if (index === selectedImageModule) {
+                            // 绘制选中模块的边框
+                            imageCtx.strokeStyle = 'green';
+                            imageCtx.lineWidth = 2;
+                            imageCtx.strokeRect(moduleX, moduleY, moduleWidth, moduleHeight);
+                            
+                            // 绘制选中模块内部透明覆盖层
+                            imageCtx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+                            imageCtx.fillRect(moduleX, moduleY, moduleWidth, moduleHeight);
+                            
+                            // 绘制调整手柄
+                            drawCropHandles(moduleX, moduleY, moduleWidth, moduleHeight);
+                        } else {
+                            // 绘制未选中模块的边框
+                            imageCtx.strokeStyle = 'gray';
+                            imageCtx.lineWidth = 1;
+                            imageCtx.strokeRect(moduleX, moduleY, moduleWidth, moduleHeight);
+                        }
+                    });
+                }
             }
             
             // 绘制跟随鼠标的预览
@@ -1828,6 +1891,7 @@
             document.getElementById('confirm-upload').addEventListener('click', uploadImage);
             document.getElementById('cancel-upload').addEventListener('click', hideUploadImageModal);
             document.getElementById('crop-module').addEventListener('click', toggleCropping);
+            document.getElementById('edit-module').addEventListener('click', toggleEditModule);
             document.getElementById('save-module').addEventListener('click', saveModule);
             
             // 项目保存事件
@@ -2697,131 +2761,233 @@
         // 切换裁剪模式
         function toggleCropping() {
             if (!currentImage) {
-                alert('请先上传一张图片');
+                alert('请先选择或上传一张图片');
                 return;
             }
             
-            isCropping = !isCropping;
-            const cropButton = document.getElementById('crop-module');
-            cropButton.textContent = isCropping ? '取消裁剪' : '框选模块';
+            // 设置为裁剪模式
+            editMode = 'crop';
+            isCropping = true;
             
-            if (!isCropping) {
-                // 取消裁剪时重置裁剪参数
-                cropLeft = 0;
-                cropTop = 0;
-                cropWidth = 0;
-                cropHeight = 0;
-                isImageModuleRangeMoving = false;
-                resizeMode = null;
-                
-                // 隐藏模块信息提示
-                if (moduleInfo) {
-                    moduleInfo.style.display = 'none';
-                }
+            // 更新按钮状态
+            document.getElementById('crop-module').classList.add('active');
+            document.getElementById('edit-module').classList.remove('active');
+            
+            // 重置编辑模块状态
+            selectedImageModule = -1;
+            
+            // 重新绘制画布
+            drawCurrentImage();
+        }
+        
+        // 切换编辑模块模式
+        function toggleEditModule() {
+            if (!currentImage || (!currentSprite || !currentSprite.getImage(currentImageId) || currentSprite.getImage(currentImageId).modulesList.length === 0)) {
+                alert('请先上传图片并创建至少一个模块');
+                return;
             }
             
-            // 重新绘制画布以显示或隐藏裁剪框
+            // 设置为编辑模式
+            editMode = 'edit';
+            isCropping = false;
+            
+            // 更新按钮状态
+            document.getElementById('crop-module').classList.remove('active');
+            document.getElementById('edit-module').classList.add('active');
+            
+            // 重置裁剪参数
+            cropLeft = 0;
+            cropTop = 0;
+            cropWidth = 0;
+            cropHeight = 0;
+            isImageModuleRangeMoving = false;
+            resizeMode = null;
+            
+            // 隐藏模块信息提示
+            if (moduleInfo) {
+                moduleInfo.style.display = 'none';
+            }
+            
+            // 重新绘制画布
             drawCurrentImage();
         }
         
 
         // 处理图片画布鼠标按下事件
         function handleImageMouseDown(e) {
-            if (!isCropping || !currentImage) return;
+            if (!currentImage) return;
 
             // 计算图片在画布上的绘制位置
             const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
             const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
-            // console.log('图片在画布上的绘制位置：',drawX,drawY);
 
             const rect = imageCanvas.getBoundingClientRect();
             
             // 计算相对于图片的坐标（考虑缩放）
             const imageX = (e.clientX - rect.left - drawX) / zoomLevel;
             const imageY = (e.clientY - rect.top - drawY) / zoomLevel;
-            console.log('点击在图片上的坐标（考虑缩放）：',e.clientX - rect.left, e.clientY - rect.top, 'imageX:',imageX,imageY);
             
-            // 检查是否点击在虚拟裁剪框上
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
-            const canvasLeft = drawX + cropLeft * zoomLevel;
-            const canvasTop = drawY + cropTop * zoomLevel;
-            const canvasWidth = cropWidth * zoomLevel;
-            const canvasHeight = cropHeight * zoomLevel;
-            console.log('虚拟裁剪框位置：',canvasLeft,canvasTop,canvasWidth,canvasHeight,',click:',clickX,clickY);
-            // 判断点击位置，确定调整模式
-            const borderWidth = 15; // 边缘检测宽度，扩大以便于操作
-            if (cropWidth > 0 && cropHeight > 0 &&
-                clickX >= canvasLeft - borderWidth/2 && clickX <= canvasLeft + canvasWidth + borderWidth/2 &&
-                clickY >= canvasTop - borderWidth/2 && clickY <= canvasTop + canvasHeight + borderWidth/2) {
+            
+            // 根据当前模式执行不同的处理
+            if (editMode === 'crop') {
+                if (!isCropping) return;
                 
-                isImageModuleRangeMoving = false;
+                // 检查是否点击在虚拟裁剪框上
+                const canvasLeft = drawX + cropLeft * zoomLevel;
+                const canvasTop = drawY + cropTop * zoomLevel;
+                const canvasWidth = cropWidth * zoomLevel;
+                const canvasHeight = cropHeight * zoomLevel;
                 
-                // 记录初始状态
-                initialLeft = cropLeft;
-                initialTop = cropTop;
-                initialWidth = cropWidth;
-                initialHeight = cropHeight;
-                dragStartX = clickX;
-                dragStartY = clickY;
-                
-                // 判断点击的是哪个边缘或角落
-                if (clickX <= canvasLeft + borderWidth) {
-                    // 左边
-                    if (clickY <= canvasTop + borderWidth) {
-                        resizeMode = 'top-left';
+                // 判断点击位置，确定调整模式
+                const borderWidth = 15; // 边缘检测宽度，扩大以便于操作
+                if (cropWidth > 0 && cropHeight > 0 &&
+                    clickX >= canvasLeft - borderWidth/2 && clickX <= canvasLeft + canvasWidth + borderWidth/2 &&
+                    clickY >= canvasTop - borderWidth/2 && clickY <= canvasTop + canvasHeight + borderWidth/2) {
+                    
+                    isImageModuleRangeMoving = false;
+                    
+                    // 记录初始状态
+                    initialLeft = cropLeft;
+                    initialTop = cropTop;
+                    initialWidth = cropWidth;
+                    initialHeight = cropHeight;
+                    dragStartX = clickX;
+                    dragStartY = clickY;
+                    
+                    // 判断点击的是哪个边缘或角落
+                    if (clickX <= canvasLeft + borderWidth) {
+                        // 左边
+                        if (clickY <= canvasTop + borderWidth) {
+                            resizeMode = 'top-left';
+                        } else if (clickY >= canvasTop + canvasHeight - borderWidth) {
+                            resizeMode = 'bottom-left';
+                        } else {
+                            resizeMode = 'left';
+                        }
+                    } else if (clickX >= canvasLeft + canvasWidth - borderWidth) {
+                        // 右边
+                        if (clickY <= canvasTop + borderWidth) {
+                            resizeMode = 'top-right';
+                        } else if (clickY >= canvasTop + canvasHeight - borderWidth) {
+                            resizeMode = 'bottom-right';
+                        } else {
+                            resizeMode = 'right';
+                        }
+                    } else if (clickY <= canvasTop + borderWidth) {
+                        // 上边
+                        resizeMode = 'top';
                     } else if (clickY >= canvasTop + canvasHeight - borderWidth) {
-                        resizeMode = 'bottom-left';
+                        // 底边
+                        resizeMode = 'bottom';
                     } else {
-                        resizeMode = 'left';
+                        // 点击在主体上，移动模式
+                        resizeMode = 'move';
                     }
-                } else if (clickX >= canvasLeft + canvasWidth - borderWidth) {
-                    // 右边
-                    if (clickY <= canvasTop + borderWidth) {
-                        resizeMode = 'top-right';
-                    } else if (clickY >= canvasTop + canvasHeight - borderWidth) {
-                        resizeMode = 'bottom-right';
-                    } else {
-                        resizeMode = 'right';
-                    }
-                } else if (clickY <= canvasTop + borderWidth) {
-                    // 上边
-                    resizeMode = 'top';
-                } else if (clickY >= canvasTop + canvasHeight - borderWidth) {
-                    // 底边
-                    resizeMode = 'bottom';
                 } else {
-                    // 点击在主体上，移动模式
-                    resizeMode = 'move';
+                    // 开始新的裁剪
+                    isImageModuleRangeMoving = true;
+                    resizeMode = null;
+                    
+                    // 计算实际的点击位置（考虑缩放）
+                    cropStartX = imageX;
+                    cropStartY = imageY;
+                    
+                    // 重置裁剪参数
+                    cropLeft = cropStartX;
+                    cropTop = cropStartY;
+                    cropWidth = 0;
+                    cropHeight = 0;
+                    
+                    // 重新绘制画布以显示空的裁剪框
+                    drawCurrentImage();
                 }
-
-                console.log('点击在裁剪框上，resizeMode:',resizeMode,'cropRect:',cropLeft,cropTop,cropWidth,cropHeight)
-            } else {
-                // 开始新的裁剪
-                isImageModuleRangeMoving = true;
-                resizeMode = null;
+            } else if (editMode === 'edit') {
+                // 编辑模式：选择和编辑现有模块
+                const imageItem = currentSprite.getImage(currentImageId);
+                if (!imageItem || !imageItem.modulesList) return;
                 
-                console.log('点击在图片上，开始新的裁剪');
-
-                // 计算实际的点击位置（考虑缩放）
-                cropStartX = imageX;
-                cropStartY = imageY;
-                console.log('点击在图片上的坐标（考虑缩放），作为裁剪框的起始点：',cropStartX,cropStartY);
+                // 查找点击到的模块
+                let clickedModuleIndex = -1;
+                for (let i = 0; i < imageItem.modulesList.length; i++) {
+                    const module = imageItem.modulesList[i];
+                    const moduleLeft = module.x;
+                    const moduleTop = module.y;
+                    const moduleRight = module.x + module.width;
+                    const moduleBottom = module.y + module.height;
+                    
+                    if (imageX >= moduleLeft && imageX <= moduleRight && imageY >= moduleTop && imageY <= moduleBottom) {
+                        clickedModuleIndex = i;
+                        break;
+                    }
+                }
                 
-                // 重置裁剪参数
-                cropLeft = cropStartX;
-                cropTop = cropStartY;
-                cropWidth = 0;
-                cropHeight = 0;
-                
-                // 重新绘制画布以显示空的裁剪框
-                drawCurrentImage();
+                if (clickedModuleIndex !== -1) {
+                    // 选中模块
+                    selectedImageModule = clickedModuleIndex;
+                    
+                    // 获取选中模块的信息
+                    const module = imageItem.modulesList[selectedImageModule];
+                    
+                    // 记录初始状态，用于拖动和调整大小
+                    initialLeft = module.x;
+                    initialTop = module.y;
+                    initialWidth = module.width;
+                    initialHeight = module.height;
+                    dragStartX = clickX;
+                    dragStartY = clickY;
+                    
+                    // 判断点击的是模块的哪个部分
+                    const moduleLeft = drawX + module.x * zoomLevel;
+                    const moduleTop = drawY + module.y * zoomLevel;
+                    const moduleRight = moduleLeft + module.width * zoomLevel;
+                    const moduleBottom = moduleTop + module.height * zoomLevel;
+                    const borderWidth = 15; // 边缘检测宽度，扩大以便于操作
+                    
+                    if (clickX <= moduleLeft + borderWidth) {
+                        // 左边
+                        if (clickY <= moduleTop + borderWidth) {
+                            resizeMode = 'top-left';
+                        } else if (clickY >= moduleBottom - borderWidth) {
+                            resizeMode = 'bottom-left';
+                        } else {
+                            resizeMode = 'left';
+                        }
+                    } else if (clickX >= moduleRight - borderWidth) {
+                        // 右边
+                        if (clickY <= moduleTop + borderWidth) {
+                            resizeMode = 'top-right';
+                        } else if (clickY >= moduleBottom - borderWidth) {
+                            resizeMode = 'bottom-right';
+                        } else {
+                            resizeMode = 'right';
+                        }
+                    } else if (clickY <= moduleTop + borderWidth) {
+                        // 上边
+                        resizeMode = 'top';
+                    } else if (clickY >= moduleBottom - borderWidth) {
+                        // 底边
+                        resizeMode = 'bottom';
+                    } else {
+                        // 点击在主体上，移动模式
+                        resizeMode = 'move';
+                    }
+                } else {
+                    // 没有点击到任何模块，取消选中
+                    selectedImageModule = -1;
+                    resizeMode = null;
+                    
+                    // 重新绘制画布
+                    drawCurrentImage();
+                }
             }
         }
+        // }
         
         // 处理图片画布鼠标移动事件
         function handleImageMouseMove(e) {
-            if (!isCropping || !currentImage) return;
+            if (!currentImage) return;
             
             const rect = imageCanvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
@@ -2897,25 +3063,35 @@
                 newLeft = Math.max(0, Math.min(newLeft, maxX));
                 newTop = Math.max(0, Math.min(newTop, maxY));
                 
-                // 更新虚拟裁剪框参数
-                cropLeft = newLeft;
-                cropTop = newTop;
-                cropWidth = newWidth;
-                cropHeight = newHeight;
+                // 根据当前模式更新相应的参数
+                if (editMode === 'crop' && isCropping) {
+                    // 裁剪模式
+                    cropLeft = newLeft;
+                    cropTop = newTop;
+                    cropWidth = newWidth;
+                    cropHeight = newHeight;
+                } else if (editMode === 'edit' && selectedImageModule !== -1) {
+                    // 编辑模式
+                    const imageItem = currentSprite.getImage(currentImageId);
+                    if (imageItem && imageItem.modulesList && imageItem.modulesList[selectedImageModule]) {
+                        imageItem.modulesList[selectedImageModule].x = newLeft;
+                        imageItem.modulesList[selectedImageModule].y = newTop;
+                        imageItem.modulesList[selectedImageModule].width = newWidth;
+                        imageItem.modulesList[selectedImageModule].height = newHeight;
+                    }
+                }
                 
-                // 重新绘制画布以显示更新后的裁剪框
+                // 重新绘制画布以显示更新后的裁剪框或模块
                 drawCurrentImage();
             }
-            // 处理新建裁剪
-            else if (isImageModuleRangeMoving) {
+            // 处理新建裁剪（仅在裁剪模式下）
+            else if (editMode === 'crop' && isCropping && isImageModuleRangeMoving) {
                 // 计算图片在画布上的绘制位置
                 const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
                 const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
-                console.log('图片在画布上的绘制位置：',drawX,drawY);
                 
                 const currentX = (e.clientX - rect.left - drawX) / zoomLevel;
                 const currentY = (e.clientY - rect.top - drawY) / zoomLevel;
-                console.log('当前鼠标位置（考虑图片偏移）：',currentX,currentY);
                 
                 // 计算裁剪框的位置和大小
                 const x = Math.min(cropStartX, currentX);
@@ -2938,43 +3114,112 @@
                 // 重新绘制画布以显示更新后的裁剪框
                 drawCurrentImage();
             }
+            // 编辑模式：鼠标悬停时改变光标样式
+            else if (editMode === 'edit') {
+                const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
+                const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+                
+                const imageItem = currentSprite.getImage(currentImageId);
+                if (!imageItem || !imageItem.modulesList) {
+                    imageCanvas.style.cursor = 'default';
+                    return;
+                }
+                
+                const imageX = (e.clientX - rect.left - drawX) / zoomLevel;
+                const imageY = (e.clientY - rect.top - drawY) / zoomLevel;
+                
+                // 检查鼠标是否悬停在某个模块上
+                for (let i = 0; i < imageItem.modulesList.length; i++) {
+                    const module = imageItem.modulesList[i];
+                    const moduleLeft = drawX + module.x * zoomLevel;
+                    const moduleTop = drawY + module.y * zoomLevel;
+                    const moduleRight = moduleLeft + module.width * zoomLevel;
+                    const moduleBottom = moduleTop + module.height * zoomLevel;
+                    const borderWidth = 15; // 边缘检测宽度，扩大以便于操作
+                    
+                    if (clickX >= moduleLeft - borderWidth/2 && clickX <= moduleRight + borderWidth/2 &&
+                        clickY >= moduleTop - borderWidth/2 && clickY <= moduleBottom + borderWidth/2) {
+                        // 检查悬停在模块的哪个部分
+                        if (clickX <= moduleLeft + borderWidth) {
+                            // 左边
+                            if (clickY <= moduleTop + borderWidth) {
+                                imageCanvas.style.cursor = 'nwse-resize'; // 左上
+                            } else if (clickY >= moduleBottom - borderWidth) {
+                                imageCanvas.style.cursor = 'nesw-resize'; // 左下
+                            } else {
+                                imageCanvas.style.cursor = 'ew-resize'; // 左
+                            }
+                        } else if (clickX >= moduleRight - borderWidth) {
+                            // 右边
+                            if (clickY <= moduleTop + borderWidth) {
+                                imageCanvas.style.cursor = 'nesw-resize'; // 右上
+                            } else if (clickY >= moduleBottom - borderWidth) {
+                                imageCanvas.style.cursor = 'nwse-resize'; // 右下
+                            } else {
+                                imageCanvas.style.cursor = 'ew-resize'; // 右
+                            }
+                        } else if (clickY <= moduleTop + borderWidth) {
+                            // 上边
+                            imageCanvas.style.cursor = 'ns-resize'; // 上
+                        } else if (clickY >= moduleBottom - borderWidth) {
+                            // 底边
+                            imageCanvas.style.cursor = 'ns-resize'; // 下
+                        } else {
+                            // 悬停在模块主体上
+                            imageCanvas.style.cursor = 'move'; // 移动
+                        }
+                        return;
+                    }
+                }
+                
+                // 没有悬停在任何模块上，恢复默认光标
+                imageCanvas.style.cursor = 'default';
+            }
         }
+        // }
         
         // 处理图片画布鼠标释放事件
         function handleImageMouseUp() {
-            if (!isCropping || !currentImage) return;
+            if (!currentImage) return;
 
-            console.log('handleImageMouseUp');
             isImageModuleRangeMoving = false;
             resizeMode = null;
-            // 当鼠标释放时，检查裁剪框是否有有效尺寸
-            const scaledWidth = cropWidth * zoomLevel;
-            const scaledHeight = cropHeight * zoomLevel;
             
-            if (scaledWidth > 10 && scaledHeight > 10) {
-                // 显示提示信息，告知用户可以点击"保存模块"按钮确认
-                const moduleInfo = document.getElementById('module-info');
-                if (moduleInfo) {
-                    moduleInfo.textContent = `已选择区域: ${Math.round(scaledWidth)}x${Math.round(scaledHeight)} - 双击区域确认`;
-                    moduleInfo.style.display = 'block';
-                }
-                // 不自动保存模块，让用户点击按钮确认
-            } else if (scaledWidth > 0 && scaledHeight > 0) {
-                // 如果尺寸太小，重置虚拟裁剪框参数
-                cropLeft = 0;
-                cropTop = 0;
-                cropWidth = 0;
-                cropHeight = 0;
+            // 根据当前模式执行不同的处理
+            if (editMode === 'crop' && isCropping) {
+                // 当鼠标释放时，检查裁剪框是否有有效尺寸
+                const scaledWidth = cropWidth * zoomLevel;
+                const scaledHeight = cropHeight * zoomLevel;
                 
-                // 重新绘制画布以清除裁剪框
+                if (scaledWidth > 10 && scaledHeight > 10) {
+                    // 显示提示信息，告知用户可以点击"保存模块"按钮确认
+                    const moduleInfo = document.getElementById('module-info');
+                    if (moduleInfo) {
+                        moduleInfo.textContent = `已选择区域: ${Math.round(scaledWidth)}x${Math.round(scaledHeight)} - 双击区域确认`;
+                        moduleInfo.style.display = 'block';
+                    }
+                    // 不自动保存模块，让用户点击按钮确认
+                } else if (scaledWidth > 0 && scaledHeight > 0) {
+                    // 如果尺寸太小，重置虚拟裁剪框参数
+                    cropLeft = 0;
+                    cropTop = 0;
+                    cropWidth = 0;
+                    cropHeight = 0;
+                    
+                    // 重新绘制画布以清除裁剪框
+                    drawCurrentImage();
+                    
+                    const moduleInfo = document.getElementById('module-info');
+                    if (moduleInfo) {
+                        moduleInfo.style.display = 'none';
+                    }
+                }
+            } else if (editMode === 'edit') {
+                // 编辑模式：确保更新后的模块显示正确
                 drawCurrentImage();
-                
-                const moduleInfo = document.getElementById('module-info');
-                if (moduleInfo) {
-                    moduleInfo.style.display = 'none';
-                }
             }
         }
+        // }
         
         // 保存模块
         function saveModule() {
@@ -3838,10 +4083,66 @@
                 isCtrlPressed = true;
             }
 
+            // 处理图片编辑模式下的键盘事件
+            if (editMode === 'edit' && selectedImageModule !== -1) {
+                const imageItem = currentSprite.getImage(currentImageId);
+                if (imageItem && imageItem.modulesList && imageItem.modulesList[selectedImageModule]) {
+                    const module = imageItem.modulesList[selectedImageModule];
+                    
+                    // 处理上下左右键移动选中的图片模块
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                        // 移动量
+                        let dx = 0;
+                        let dy = 0;
+                        
+                        // 根据按键方向设置移动量
+                        if (e.code === 'ArrowUp') {
+                            dy = -1; // 向上移动1个单位
+                        } else if (e.code === 'ArrowDown') {
+                            dy = 1; // 向下移动1个单位
+                        } else if (e.code === 'ArrowLeft') {
+                            dx = -1; // 向左移动1个单位
+                        } else if (e.code === 'ArrowRight') {
+                            dx = 1; // 向右移动1个单位
+                        }
+
+                        // 更新模块位置
+                        module.x += dx;
+                        module.y += dy;
+                        
+                        // 确保模块不超出图片范围
+                        module.x = Math.max(0, module.x);
+                        module.y = Math.max(0, module.y);
+                        module.x = Math.min(module.x, currentImage.width - module.width);
+                        module.y = Math.min(module.y, currentImage.height - module.height);
+                        
+                        // 重新绘制画布
+                        drawCurrentImage();
+                        
+                        e.preventDefault(); // 阻止默认行为
+                    } else if (e.code === 'Delete' || e.code === 'Backspace') {
+                        // 处理删除键删除选中的图片模块
+                        if (confirm('确定要删除选中的模块吗？此操作无法恢复。')) {
+                            // 从模块列表中删除选中的模块
+                            imageItem.modulesList.splice(selectedImageModule, 1);
+                            
+                            // 重置选中状态
+                            selectedImageModule = -1;
+                            resizeMode = null;
+                            
+                            // 重新绘制画布
+                            drawCurrentImage();
+                            
+                            // 更新模块列表
+                            renderModulesList();
+                        }
+                        
+                        e.preventDefault(); // 阻止默认行为
+                    }
+                }
+            }
             
-            //  console.log('键按下:',e.code);
-            //  console.log('键按下:',e.code);
-            // 处理上下左右键移动选中的模块
+            // 处理帧编辑模式下的键盘事件
             if (currentFrame && (selectedModuleIndex >= 0 || selectedModuleIndices.length > 0)) {
                 // 检查是否有选中的模块
                 let modulesToMove = [];
@@ -3853,11 +4154,9 @@
                     // 如果只有一个模块被选中，移动这个模块
                     modulesToMove = [currentFrame.fmList[selectedModuleIndex]];
                 }
-                // console.log('modulesToMove ',modulesToMove);
+                
                 // 检查是否按下了箭头键
                 if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-                    // console.log('移动模块2');
-
                     // 创建一个组合命令来包含所有模块的移动命令
                     const compositeCommand = new CompositeCommand();
                     
@@ -3885,7 +4184,6 @@
                         // 更新模块位置
                         fm.x += dx;
                         fm.y += dy;
-                        console.log('fm.x,fm.y',fm.x,fm.y);
                         
                         // 在位置更新后创建移动命令，并传入新的位置值
                         const moveCommand = {
@@ -3900,7 +4198,6 @@
                         };
                         compositeCommand.addCommand(moveCommand);
                     });
-
 
                     // 执行组合命令
                     CommandManager.instance.addCommand(compositeCommand);
@@ -4003,7 +4300,7 @@
             }
         }
         
-        // 处理鼠标悬停事件 - 检测旋转控制点
+        // 处理鼠标悬停事件 - 检测旋转控制点和调整尺寸控制点
         canvas.addEventListener('mousemove', function(e) {
             if (isDragging || isSpacePressed || !currentFrame || selectedModuleIndex < 0) {
                 return;
@@ -4013,7 +4310,7 @@
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             
-            // 检查选中的模块的旋转控制点
+            // 检查选中的模块的旋转控制点和尺寸控制点
             const fm = currentFrame.fmList[selectedModuleIndex];
             const module = fm.module;
             if (module) {
@@ -4045,10 +4342,44 @@
                         canvas.style.cursor = 'grabbing'; // 使用旋转光标
                         return;
                     }
+                    
+                    // 计算四个调整尺寸控制点的位置
+                    const points = [
+                        { x: m_imageOriginPos.x + fm.x, y: m_imageOriginPos.y - fm.y }, // 左上
+                        { x: m_imageOriginPos.x + fm.x + width, y: m_imageOriginPos.y - fm.y }, // 右上
+                        { x: m_imageOriginPos.x + fm.x + width, y: m_imageOriginPos.y - fm.y + height }, // 右下
+                        { x: m_imageOriginPos.x + fm.x, y: m_imageOriginPos.y - fm.y + height } // 左下
+                    ];
+                    
+                    // 检查鼠标是否在任何一个尺寸控制点上
+                    for (let i = 0; i < points.length; i++) {
+                        const dx = mouseX - points[i].x;
+                        const dy = mouseY - points[i].y;
+                        if (dx * dx + dy * dy <= 16) { // 4px的点击范围
+                            // 根据控制点位置设置相应的光标样式
+                            if (i === 0 || i === 2) {
+                                canvas.style.cursor = 'nwse-resize'; // 对角线光标
+                            } else {
+                                canvas.style.cursor = 'nesw-resize'; // 另一条对角线光标
+                            }
+                            return;
+                        }
+                    }
+                    
+                    // 检查鼠标是否在模块上
+                    const left = m_imageOriginPos.x + fm.x;
+                    const top = m_imageOriginPos.y - fm.y;
+                    const right = left + width;
+                    const bottom = top + height;
+                    
+                    if (mouseX >= left - 4 && mouseX <= right + 4 && mouseY >= top - 4 && mouseY <= bottom + 4) {
+                        canvas.style.cursor = 'move'; // 移动光标
+                        return;
+                    }
                 }
             }
             
-            // 如果没有悬停在旋转控制点上，恢复默认光标
+            // 如果没有悬停在旋转控制点、尺寸控制点或模块上，恢复默认光标
             if (canvas.style.cursor !== 'default' && canvas.style.cursor !== 'grab') {
                 canvas.style.cursor = 'default';
             }
@@ -4364,31 +4695,7 @@
         // 更新模块属性显示
         function updateModuleProperties(fm) {
             if (!fm) return;
-            
-            // 获取模块信息
-            // const module = fm.module;
-            // let width = 0;
-            // let height = 0;
-            
-            // if (module) {
-            //     const imageItem = currentSprite.getImage(module.imageId);
-            //     if (imageItem && imageItem.modulesList[module.imageModuleId]) {
-            //         const rectModule = imageItem.modulesList[module.imageModuleId];
-            //         width = rectModule.width;
-            //         height = rectModule.height;
-                    
-            //         // 应用变换后的尺寸
-            //         if (fm.flag & 4) { // 90度旋转
-            //             [width, height] = [height, width];
-            //         }
-                    
-            //         // 应用缩放
-            //         if (fm.scale) {
-            //             width *= fm.scale;
-            //             height *= fm.scale;
-            //         }
-            //     }
-            // }
+
         }
         
         // 更新模块位置
