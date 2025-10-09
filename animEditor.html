@@ -1016,6 +1016,7 @@
             const debugBtn = document.createElement('button');
             debugBtn.textContent = '检查Canvas状态';
             debugBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1001; padding: 8px; background-color: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer;';
+            debugBtn.style.display = 'none'; // 隐藏调试按钮
             debugBtn.addEventListener('click', function() {
                 // 在页面加载完成后添加调试面板功能
                 // window.addEventListener('load', showDebugInfo);
@@ -2162,6 +2163,21 @@
                     console.log('Skipping renderImagePreview: missing required elements');
                 }
             } else if (tabName === 'image') {
+                // 如果没有选中的图片，但是currentSprite有图片列表，则默认选中第一个图片
+                if (!currentImage && currentSprite && currentSprite.m_imageList.length > 0) {
+                    const firstImageItem = currentSprite.m_imageList[0];
+                    currentImage = firstImageItem.image;
+                    currentImageId = firstImageItem.id;
+                    
+                    // 调整画布大小以适应图片
+                    imageCanvas.width = currentImage.width;
+                    imageCanvas.height = currentImage.height;
+                    
+                    // 重置缩放
+                    zoomLevel = 1;
+                    updateZoomLevel();
+                }
+                
                 renderModulesList();
                 drawCurrentImage();
                 renderImagesList();
