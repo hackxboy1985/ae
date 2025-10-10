@@ -47,7 +47,15 @@ class FrameModule {
         // 2. 平移坐标系到图片中心（关键：所有变换围绕中心进行）
         const centerX = originX + this.x + width / 2;
         const centerY = originY - this.y + height / 2; //-y是因为坐标系统不同
-        ctx.translate(centerX, centerY);
+        if(globalFlag & 1){ //水平镜像
+            const centerX_FlipY = originX - (this.x + width / 2);
+            console.log('原点x:',originX,'this.x:',this.x,'width/2:',width/2,'算出的centerX:',centerX,'水平镜像的X',centerX_FlipY);
+            ctx.translate(centerX_FlipY, centerY);
+        }else{
+            ctx.translate(centerX, centerY);
+        }
+
+
 
         // 3. 应用旋转（先旋转，避免翻转影响旋转方向）
         if (this.angle !== 0) {
@@ -56,8 +64,9 @@ class FrameModule {
             ctx.rotate(rotateRad);
         }
 
-        // 4. 应用翻转（结合模块翻转和全局翻转参数）
-        if(this.flag != 0 || globalFlag != 0){
+        // 4. 应用翻转和镜像
+        // 首先应用模块自身的翻转
+        if(this.flag != 0 || globalFlag != 0) {
             // 计算水平翻转状态：如果模块和全局参数中奇数个设置了水平翻转(bit 0)，最终就是翻转
             const isHorizontalFlip = ((this.flag & 1) !== 0) !== ((globalFlag & 1) !== 0);
             // 计算垂直翻转状态：如果模块和全局参数中奇数个设置了垂直翻转(bit 1)，最终就是翻转
@@ -65,12 +74,12 @@ class FrameModule {
             
             const scaleX = isHorizontalFlip ? -1 : 1;
             const scaleY = isVerticalFlip ? -1 : 1;
-            console.log(globalFlag,isHorizontalFlip,isVerticalFlip,scaleX,scaleY)
             ctx.scale(scaleX, scaleY);
+            console.log(globalFlag,isHorizontalFlip,isVerticalFlip,scaleX,scaleY)
+            console.log('应用镜像/翻转: flag=',this.flag, 'globalFlag=', globalFlag, 'scaleX=', scaleX, 'scaleY=', scaleY);
         }
-        // console.log('aa',this.flag,globalFlag);
 
-        // 5. 绘制图片（坐标相对于新原点，需向左上偏移半宽高）
+        // 5. 绘制图片（使用调整后的坐标）
         ctx.drawImage(
             imageItem.image,
             rectModule.x, rectModule.y,

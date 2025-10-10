@@ -47,7 +47,14 @@ class AnimFrame {
             // 2. 平移坐标系到图片中心（关键：所有变换围绕中心进行）
             const centerX = originX + this.expressionRect.x + this.expressionRect.width / 2;
             const centerY = originY - this.expressionRect.y - this.expressionRect.height / 2; //-y是因为坐标系统不同  
-            ctx.translate(centerX, centerY);
+            if(globalFlag & 1){ //水平镜像
+                const centerX_FlipY = originX - (this.expressionRect.x + this.expressionRect.width / 2);
+                console.log('原点x:',originX,'this.expressionRect.x:',this.expressionRect.x,'width/2:',this.expressionRect.width/2,'算出的centerX:',centerX,'水平镜像的X',centerX_FlipY);
+                ctx.translate(centerX_FlipY, centerY);
+            }else{
+                ctx.translate(centerX, centerY);
+            }
+            
 
             // 4. 应用翻转（结合模块翻转和全局翻转参数）
             if(this.expressionFlag != 0 || globalFlag != 0){

@@ -5708,7 +5708,7 @@
                 // const currentFrameExpressionRect =  aframe.expressionRect;
                 if(expression && currentFrameIndex < expression.images.length){
                     const currentFrameExpressionImg = expression.images[currentFrameIndex];
-                    aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel,currentFrameExpressionImg,0);
+                    aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel,currentFrameExpressionImg, 1);// 1 表示应用全局水平镜像
                 }else{
                     // 绘制当前帧
                     currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
@@ -6114,17 +6114,17 @@
             const mockExpressions = [
                 {
                     name: "普通1",
-                    type: "0",//0是通用表情、1是男专用，2是女专用
+                    type: 0,//0是通用表情、1是男专用，2是女专用
                     imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n1.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n2.png"]
                 },
                 {
                     name: "普通2",
-                    type: "0",//0是通用表情、1是男专用，2是女专用
+                    type: 0,//0是通用表情、1是男专用，2是女专用
                     imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n3.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n4.png"]
                 },
                 {
                     name: "开心",
-                    type: "0",//0是通用表情、1是男专用，2是女专用
+                    type: 0,//0是通用表情、1是男专用，2是女专用
                     imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/happy1.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/happy2.png"]
                 }
             ];
