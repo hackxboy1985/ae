@@ -5725,16 +5725,15 @@
                 // 获取当前帧
                 const aframe = currentAnim.aframeList[currentFrameIndex];
                 // 绘制当前帧
-                aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, currentFrameExpressionImg, globalHorizontalMirrorFlag,1.5,0);// 1 表示应用全局水平镜像
+                aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, currentFrameExpressionImg, globalHorizontalMirrorFlag,1,0);// 1 表示应用全局水平镜像
                 // else{
                 //     console.log('2');
                 //     // 绘制当前帧
                 //     currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
                 // }
             } else {
-                console.log('3');
                 // 绘制当前帧
-                currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, globalHorizontalMirrorFlag,1);// 1 表示应用全局水平镜像
+                currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, globalHorizontalMirrorFlag,1,0);// 1 表示应用全局水平镜像
             }
             
             // 绘制表情区域矩形框

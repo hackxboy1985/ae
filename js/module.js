@@ -31,6 +31,31 @@ class FrameModule {
     }
     
     draw(ctx, sprite, originX, originY, globalFlag = 0,globalScale = 1, globalAngle=0) {
+
+        const imageItem = sprite.getImage(this.module.imageId);
+        if (!imageItem || !imageItem.image.complete) return;
+        
+        const rectModule = imageItem.modulesList[this.module.imageModuleId];
+        if (!rectModule) return;
+        // 应用变换
+        const x = rectModule.x;
+        const y = rectModule.y;
+        const width = rectModule.width;
+        const height = rectModule.height;
+
+        const rotateOrigin = { x:originX,y:originY};
+        const config = {
+            source: { x: x, y: y, width: width, height: height },
+            drawPosition: { x: this.x, y: -this.y, width: width, height: height },  // 相对于旋转原点的位置
+            flipX: (this.flag & 1) !== 0,  // 自身水平翻转
+            flipY: (this.flag & 2) !== 0,  // 自身垂直翻转
+            color: 'blue',
+            drawInfo: false,
+        };
+        DrawApi.drawAPI(ctx,rotateOrigin,config,imageItem.image,globalFlag===1,globalScale,globalAngle);
+    }
+
+    drawold(ctx, sprite, originX, originY, globalFlag = 0,globalScale = 1, globalAngle=0) {
         const imageItem = sprite.getImage(this.module.imageId);
         if (!imageItem || !imageItem.image.complete) return;
         
@@ -84,14 +109,10 @@ class FrameModule {
             let scaleX = isHorizontalFlip ? -1 : 1;
             let scaleY = isVerticalFlip ? -1 : 1;
 
-            // if(globalScale != 1){
-            //     scaleX *= globalScale;
-            //     scaleY *= globalScale;
-            // }   
 
             ctx.scale(scaleX, scaleY);
             //console.log(globalFlag,isHorizontalFlip,isVerticalFlip,scaleX,scaleY)
-            console.log('应用镜像/翻转: flag=',this.flag, 'globalFlag=', globalFlag, 'globalScale',globalScale, 'scaleX=', scaleX, 'scaleY=', scaleY);
+            //console.log('应用镜像/翻转: flag=',this.flag, 'globalFlag=', globalFlag, 'globalScale',globalScale, 'scaleX=', scaleX, 'scaleY=', scaleY);
 
         }
 
@@ -188,5 +209,87 @@ class FrameModule {
         );
         
         return cloned;
+    }
+}
+
+class DrawApi{
+
+    /**
+     * 
+     * @param {*} ctx 
+     * @param {*} rotateOrigin 
+     * @param {*} config 这个y一定要转回canvas坐标系，因为canvas的y轴是向下的，所以绘制时传入的Y值要取负。
+     *              相对于操作时取的是向上为正的Y坐标轴，
+     *              而绘制时canvas要基于绘制的原点rotateOrigin是基于canvas坐标系的，
+     *              所以要将config.drawPosition.y取负。
+     *              比如：(x:10,y:20)这个是在操作时相对于rotateOrigin,但绘制时必须为(x:10,y:-20)
+     * @param {*} img 
+     * @param {*} globalFlipX 
+     * @param {*} globalScale 
+     * @param {*} globalRotate 
+     */
+    static drawAPI(ctx,rotateOrigin,config,img,globalFlipX=false,globalScale=1,globalRotate=0){
+        ctx.save();
+
+        // 1. 平移到旋转原点（Canvas中心）
+        ctx.translate(rotateOrigin.x, rotateOrigin.y);
+
+        // 2. 应用全局水平镜像（基于旋转原点）
+        const globalScaleX = globalFlipX ? -1 : 1;
+        ctx.scale(globalScaleX, 1);
+
+        // 3. 应用全局缩放
+        ctx.scale(globalScale, globalScale);
+
+        // 4. 应用旋转（共享角度）
+        const rotateRad = globalRotate * Math.PI / 180;
+        ctx.rotate(rotateRad);
+
+        // 5. 平移到配置项的相对位置
+        ctx.translate(config.drawPosition.x, config.drawPosition.y);
+
+        // 6. 自身水平翻转（基于自身中心点，核心修改）
+        if (config.flipX) {
+            ctx.translate(config.drawPosition.width / 2, config.drawPosition.height / 2);
+            ctx.scale(-1, 1);
+            ctx.translate(-config.drawPosition.width / 2, -config.drawPosition.height / 2);
+        }
+
+        // 7. 自身垂直翻转（基于自身中心点，新增逻辑）
+        if (config.flipY) {
+            ctx.translate(config.drawPosition.width / 2, config.drawPosition.height / 2);
+            ctx.scale(1, -1);
+            ctx.translate(-config.drawPosition.width / 2, -config.drawPosition.height / 2);
+        }
+
+        // 8. 绘制截取的图片区域
+        ctx.drawImage(
+            img,
+            config.source.x, config.source.y,
+            config.source.width, config.source.height,
+            0, 0,
+            config.drawPosition.width, 
+            config.drawPosition.height
+        );
+
+        if(config.drawInfo===true){
+            // 绘制辅助边框（基于绘制宽高）
+            ctx.strokeStyle = config.color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, 0, config.drawPosition.width, config.drawPosition.height);
+            
+            // 标记自身中心点（基于绘制宽高）
+            ctx.fillStyle = config.color;
+            ctx.beginPath();
+            ctx.arc(
+                config.drawPosition.width / 2,  // 绘制区域中心点X
+                config.drawPosition.height / 2, // 绘制区域中心点Y
+                3, 0, 2 * Math.PI
+            );
+            ctx.fill();
+        }
+        
+
+        ctx.restore();
     }
 }
