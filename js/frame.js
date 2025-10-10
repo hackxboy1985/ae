@@ -9,13 +9,10 @@ class Frame {
         this.fmList.push(module);
     }
 
-    draw(ctx, sprite, originX, originY, globalFlag = 0) {
-
+    draw(ctx, sprite, originX, originY, globalFlag = 0, globalScale = 1,globalAngle=0) {
         this.fmList.forEach(fm => {
-            fm.draw(ctx, sprite, originX, originY, globalFlag);
+            fm.draw(ctx, sprite, originX, originY, globalFlag, globalScale,globalAngle);
         });
-        
-        
     }
     
     clone() {
@@ -29,6 +26,7 @@ class Frame {
 
 // 动画帧类定义
 class AnimFrame {
+
     constructor(frame, keyFrameState = false, expressionRect = {x:0,y:0,width:50,height:60}, expressionFlag = 0) {
         this.frame = frame;
         this.KeyFrameState = keyFrameState;
@@ -36,25 +34,34 @@ class AnimFrame {
         this.expressionFlag = expressionFlag;
     }
 
-    draw(ctx, sprite, originX, originY, expressionImg = null, globalFlag = 0) {
-        this.frame.draw(ctx, sprite, originX, originY, globalFlag);
+    draw(ctx, sprite, originX, originY, expressionImg = null, globalFlag = 0, globalScale = 1,globalAngle=0) {
+        // console.log('globalScale',globalScale)
+        this.frame.draw(ctx, sprite, originX, originY, globalFlag,globalScale,globalAngle);
 
         if(this.expressionRect && expressionImg) {
             ctx.save();
             // console.log('draw Image');
             // 移动到原点 - 与ActionEditor相同的原点逻辑
         
+            let drawX = this.expressionRect.x  * globalScale;
+            let drawY = this.expressionRect.y  * globalScale;
+            let drawWidth = this.expressionRect.width * globalScale;
+            let drawHeight = this.expressionRect.height * globalScale;
+
             // 2. 平移坐标系到图片中心（关键：所有变换围绕中心进行）
-            const centerX = originX + this.expressionRect.x + this.expressionRect.width / 2;
-            const centerY = originY - this.expressionRect.y - this.expressionRect.height / 2; //-y是因为坐标系统不同  
+            const centerX = originX + drawX + drawWidth / 2;
+            const centerY = originY - drawY + drawHeight / 2; //-y是因为坐标系统不同，绘制时要换算成左上角原点坐标系
             if(globalFlag & 1){ //水平镜像
-                const centerX_FlipY = originX - (this.expressionRect.x + this.expressionRect.width / 2);
-                console.log('原点x:',originX,'this.expressionRect.x:',this.expressionRect.x,'width/2:',this.expressionRect.width/2,'算出的centerX:',centerX,'水平镜像的X',centerX_FlipY);
+                const centerX_FlipY = originX - (drawX + drawWidth / 2);
+                console.log('原点x:',originX,'drawX:',drawX,'width/2:',drawWidth/2,'算出的centerX:',centerX,'水平镜像的X',centerX_FlipY);
                 ctx.translate(centerX_FlipY, centerY);
             }else{
                 ctx.translate(centerX, centerY);
             }
-            
+            // 3. 应用旋转
+            // if(globalAngle !== 0) {
+            //     ctx.rotate(globalAngle);
+            // }
 
             // 4. 应用翻转（结合模块翻转和全局翻转参数）
             if(this.expressionFlag != 0 || globalFlag != 0){
@@ -74,9 +81,9 @@ class AnimFrame {
             // ctx.drawImage(expressionImg,0,0,expressionRect.width,expressionRect.height);
             ctx.drawImage(expressionImg,0,0,expressionImg.width,expressionImg.height
                 ,
-                - this.expressionRect.width / 2,  // 相对于中心的X坐标
-                - this.expressionRect.height / 2, // 相对于中心的Y坐标
-                this.expressionRect.width, this.expressionRect.height
+                - drawWidth / 2,  // 相对于中心的X坐标
+                - drawHeight / 2, // 相对于中心的Y坐标
+                drawWidth, drawHeight
             );
 
             ctx.restore();

@@ -681,6 +681,10 @@
                                 <input type="checkbox" id="add-expression-rect" style="margin-right: 5px;">
                                 <span>表情区域</span>
                             </label>
+                            <label class="checkbox-label" style="display: flex; align-items: center; cursor: pointer; margin-left: 10px;">
+                                <input type="checkbox" id="horizontal-mirror" style="margin-right: 5px;">
+                                <span>水平镜像</span>
+                            </label>
                         </div>
                         
                         <div class="image-controls mb-2" style="display: flex; align-items: center;">
@@ -1000,7 +1004,7 @@
             canvas.height = containerHeight;
             
             // 重新渲染画布
-            renderCanvas(20);
+
         }
         
         // 初始化函数
@@ -4072,7 +4076,7 @@
             return [null, false, false, 0, 0];
         }
 
-
+        //计算相对于画布中心的坐标
         function getCurrentXY(e){
             const rect = canvas.getBoundingClientRect();
             let x = (e.clientX - rect.left );
@@ -4111,8 +4115,8 @@
                 // 计算表情区域的边界
                 const left = rect.x;
                 const right = rect.x + rect.width;
-                const top = rect.y + rect.height;
-                const bottom = rect.y;
+                const top = rect.y;
+                const bottom = rect.y - rect.height;
                 
                 // 计算控制点位置 左上、右上、右下、左下
                 const points = [
@@ -4148,7 +4152,7 @@
                     return;
                 } else if (x >= left && x <= right && y >= bottom && y <= top) {
                     // 点击到了表情区域内部，开始拖拽表情区域
-                    console.log('drag表情区域');
+                    // console.log('drag表情区域');
                     isDraggingExpressionRect = true;
                     expressionDragStartX = x;
                     expressionDragStartY = y;
@@ -4161,7 +4165,6 @@
             // 如果正在编辑表情区域，不允许选中fm及对fm的其它操作
             if (isEditingExpressionRect) {
                 canvas.style.cursor = 'default';
-
                 return;
             }
             
@@ -4559,10 +4562,10 @@
             }
         }
         
-        // 处理鼠标悬停事件 - 检测旋转控制点和调整尺寸控制点
+        // 处理鼠标悬停事件 - 检测fm模块的 旋转控制点和调整尺寸控制点
         canvas.addEventListener('mousemove', function(e) {
 
-            
+            //针对fm模块悬停时鼠标改变形状
             if (isDragging || isSpacePressed || !currentFrame || selectedModuleIndex < 0) {
                 return;
             }
@@ -4572,10 +4575,11 @@
                 return;
             }
 
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            
+            // const rect = canvas.getBoundingClientRect();
+            // const mouseX = e.clientX - rect.left;
+            // const mouseY = e.clientY - rect.top;
+            const [mouseX, mouseY] = getCurrentXY(e);
+
             // 检查选中的模块的旋转控制点和尺寸控制点
             const fm = currentFrame.fmList[selectedModuleIndex];
             const module = fm.module;
@@ -4598,8 +4602,8 @@
                     }
 
                     // 计算旋转控制点位置（右下角向外延伸一点）
-                    const rotateHandleX = m_imageOriginPos.x + fm.x + width + 10;
-                    const rotateHandleY = m_imageOriginPos.y - fm.y + height;
+                    const rotateHandleX = fm.x + width + 10;
+                    const rotateHandleY = fm.y - height;
                     
                     // 检查鼠标是否在旋转控制点上
                     const dx = mouseX - rotateHandleX;
@@ -4609,12 +4613,12 @@
                         return;
                     }
                     
-                    // 计算四个调整尺寸控制点的位置
+                    // 计算四个调整尺寸控制点的位置,相对于原点坐标系
                     const points = [
-                        { x: m_imageOriginPos.x + fm.x, y: m_imageOriginPos.y - fm.y }, // 左上
-                        { x: m_imageOriginPos.x + fm.x + width, y: m_imageOriginPos.y - fm.y }, // 右上
-                        { x: m_imageOriginPos.x + fm.x + width, y: m_imageOriginPos.y - fm.y + height }, // 右下
-                        { x: m_imageOriginPos.x + fm.x, y: m_imageOriginPos.y - fm.y + height } // 左下
+                        { x: fm.x, y: fm.y }, // 左上
+                        { x: fm.x + width, y:  fm.y }, // 右上
+                        { x: fm.x + width, y: fm.y - height }, // 右下
+                        { x: fm.x, y: fm.y - height } // 左下
                     ];
                     
                     // 检查鼠标是否在任何一个尺寸控制点上
@@ -4633,13 +4637,14 @@
                     }
                     
                     // 检查鼠标是否在模块上
-                    const left = m_imageOriginPos.x + fm.x;
-                    const top = m_imageOriginPos.y - fm.y;
+                    const left = fm.x;
+                    const top = fm.y;
                     const right = left + width;
-                    const bottom = top + height;
+                    const bottom = top - height;
                     
-                    if (mouseX >= left - 4 && mouseX <= right + 4 && mouseY >= top - 4 && mouseY <= bottom + 4) {
+                    if (mouseX >= left - 4 && mouseX <= right + 4 && mouseY <= top - 4 && mouseY >= bottom + 4) {
                         canvas.style.cursor = 'move'; // 移动光标
+                        //console.log('in move');
                         return;
                     }
                 }
@@ -4667,6 +4672,8 @@
         
         // 表情区域相关状态变量
         let isEditingExpressionRect = false; // 是否正在编辑表情区域
+        let isDraggingExpressionRect = false; // 是否正在拖拽表情区域
+        let isResizingExpressionRect = false; // 是否正在修改表情区域宽高
         let expressionRectFrameIndex = -1; // 当前编辑的表情区域所在的帧索引
         let expressionResizeControlPoint = -1; // 表情区域的缩放控制点索引
         let expressionDragStartX = 0; // 表情区域拖拽开始时的X坐标
@@ -4675,9 +4682,8 @@
         let expressionOriginalY = 0; // 表情区域原始Y坐标
         let expressionOriginalWidth = 0; // 表情区域原始宽度
         let expressionOriginalHeight = 0; // 表情区域原始高度
-        let isDraggingExpressionRect = false; // 是否正在拖拽表情区域
-        let isResizingExpressionRect = false; // 是否正在修改表情区域宽高
         let expressions = []; // 存储加载的表情数据
+        let globalHorizontalMirrorFlag = 0; // 水平镜像标志，0表示不镜像，1表示镜像
         
         // 处理鼠标移动事件
         function handleFrameMouseMove(e) {
@@ -4771,8 +4777,8 @@
                     // 计算表情区域的边界
                     const left = rect.x;
                     const right = rect.x + rect.width;
-                    const top = rect.y + rect.height;
-                    const bottom = rect.y;
+                    const top = rect.y;
+                    const bottom = rect.y - rect.height;
                     
                     // 计算控制点位置 左上、右上、右下、左下
                     const points = [
@@ -4791,6 +4797,7 @@
                         if (dx * dx + dy * dy <= 16) { // 4px的点击范围
                             isOverControlPoint = true;
                             controlPointIndex = i;
+                            console.log('over control point',i);
                             break;
                         }
                     }
@@ -4801,13 +4808,13 @@
                          console.log('resize',controlPointIndex);
                         // 根据不同的控制点设置不同的光标
                         if (controlPointIndex === 0 || controlPointIndex === 2) {
-                            canvas.style.cursor = 'nesw-resize';
-                        } else {
                             canvas.style.cursor = 'nwse-resize';
+                        } else {
+                            canvas.style.cursor = 'nesw-resize';
                         }
-                    } else if (x >= left && x <= right && y >= bottom && y <= top) {
+                    } else if (x >= left && x <= right && y <= top && y >= bottom) {
                         canvas.style.cursor = 'move';
-                        // console.log('in move');
+                        console.log('in move');
                     } else {
                         // console.log('no');
                         canvas.style.cursor = 'default';
@@ -5614,20 +5621,10 @@
             // 这个功能暂时不实现，主要通过拖放帧到其他帧上实现排序
         }
         
-        // 渲染画布
-        function renderCanvas(i = -1) {
-            if(i !== -1){
-                console.log('renderCanvas:',i);
-            }
-            // 清空画布
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            
-
+        function renderXY() {
             // 先不应用缩放，绘制网格线和坐标轴
             // 如果需要显示网格
             if (showGrid) { 
-
 
                 ctx.strokeStyle = gridColor;
                 ctx.lineWidth = 1; // 线宽固定
@@ -5684,6 +5681,18 @@
             ctx.moveTo(m_imageOriginPos.x, (m_imageOriginPos.y) - 8);
             ctx.lineTo(m_imageOriginPos.x, (m_imageOriginPos.y) + 8);
             ctx.stroke();
+        }
+
+        // 渲染画布
+        function renderCanvas(i = -1) {
+            if(i !== -1){
+                console.log('renderCanvas:',i);
+            }
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            renderXY();
+
  
             if (!currentFrame) {
                 // 即使没有当前帧，如果需要显示预览，也要显示
@@ -5693,30 +5702,39 @@
                 ctx.restore();
                 return;
             }
+
             ctx.restore();
             // 应用缩放
             ctx.save();
             ctx.scale(zoomLevel, zoomLevel);
-            // console.log('draw currentFrame')
+            // console.log('currentSelectedExpression',currentSelectedExpression)
 
-            if (currentSelectedExpression && currentAnim && currentFrameIndex >= 0 && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex]) {
-                // 查找表情对象
-                const expression = expressions.find(expr => expr.name === currentSelectedExpression);
+            //currentSelectedExpression
+            if (isEditingExpressionRect && currentAnim && currentFrameIndex >= 0 && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex]) {
+
+                let currentFrameExpressionImg = null;
+                if(currentSelectedExpression){
+                    // 查找表情对象
+                    const expression = expressions.find(expr => expr.name === currentSelectedExpression);
+                    // const currentFrameExpressionRect =  aframe.expressionRect;
+                    if(expression && currentFrameIndex < expression.images.length){
+                        currentFrameExpressionImg = expression.images[currentFrameIndex];
+                    }
+                }
+                
                 // 获取当前帧
                 const aframe = currentAnim.aframeList[currentFrameIndex];
                 // 绘制当前帧
-                // const currentFrameExpressionRect =  aframe.expressionRect;
-                if(expression && currentFrameIndex < expression.images.length){
-                    const currentFrameExpressionImg = expression.images[currentFrameIndex];
-                    aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel,currentFrameExpressionImg, 1);// 1 表示应用全局水平镜像
-                }else{
-                    // 绘制当前帧
-                    currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
-                }
-                
+                aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, currentFrameExpressionImg, globalHorizontalMirrorFlag,1.5,0);// 1 表示应用全局水平镜像
+                // else{
+                //     console.log('2');
+                //     // 绘制当前帧
+                //     currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
+                // }
             } else {
+                console.log('3');
                 // 绘制当前帧
-                currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
+                currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, globalHorizontalMirrorFlag,1);// 1 表示应用全局水平镜像
             }
             
             // 绘制表情区域矩形框
@@ -5730,7 +5748,7 @@
                     ctx.lineWidth = 2 / zoomLevel;
                     ctx.strokeRect(
                         m_imageOriginPos.x / zoomLevel + rect.x, 
-                        m_imageOriginPos.y / zoomLevel - rect.y - rect.height, 
+                        m_imageOriginPos.y / zoomLevel - rect.y, 
                         rect.width, 
                         rect.height
                     );
@@ -5741,8 +5759,8 @@
                         const points = [
                             { x: m_imageOriginPos.x/zoomLevel + rect.x, y: m_imageOriginPos.y/zoomLevel - rect.y },
                             { x: m_imageOriginPos.x/zoomLevel + rect.x + rect.width, y: m_imageOriginPos.y/zoomLevel - rect.y },
-                            { x: m_imageOriginPos.x/zoomLevel + rect.x + rect.width, y: m_imageOriginPos.y/zoomLevel - rect.y - rect.height },
-                            { x: m_imageOriginPos.x/zoomLevel + rect.x, y: m_imageOriginPos.y/zoomLevel - rect.y - rect.height }
+                            { x: m_imageOriginPos.x/zoomLevel + rect.x + rect.width, y: m_imageOriginPos.y/zoomLevel - rect.y + rect.height },
+                            { x: m_imageOriginPos.x/zoomLevel + rect.x, y: m_imageOriginPos.y/zoomLevel - rect.y + rect.height }
                         ];
                         
                         ctx.fillStyle = 'purple';
@@ -6092,6 +6110,14 @@
                 isEditingExpressionRect = false;
             }
 
+            renderCanvas();
+        });
+        
+        // 处理水平镜像复选框点击事件
+        document.getElementById('horizontal-mirror').addEventListener('change', function() {
+            // 根据复选框状态设置水平镜像标志
+            globalHorizontalMirrorFlag = this.checked ? 1 : 0;
+            console.log('水平镜像状态变更为:', globalHorizontalMirrorFlag);
             renderCanvas();
         });
         

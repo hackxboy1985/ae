@@ -30,7 +30,7 @@ class FrameModule {
         this.angle = angle; // 旋转角度（弧度）
     }
     
-    draw(ctx, sprite, originX, originY, globalFlag = 0) {
+    draw(ctx, sprite, originX, originY, globalFlag = 0,globalScale = 1, globalAngle=0) {
         const imageItem = sprite.getImage(this.module.imageId);
         if (!imageItem || !imageItem.image.complete) return;
         
@@ -40,16 +40,25 @@ class FrameModule {
         const width = rectModule.width;
         const height = rectModule.height;
 
+        let drawX = this.x * this.scale * globalScale;
+        let drawY = this.y * this.scale * globalScale;
+        let drawWidth = width * this.scale * globalScale;
+        let drawHeight = height * this.scale * globalScale;
+
+        // 1. 缩放
+        // ctx.scale(globalScale * this.scale, globalScale * this.scale);
+        // 2. 旋转
+        // ctx.rotate(globalAngle + this.angle);
+
         ctx.save();
         
         // 移动到原点 - 与ActionEditor相同的原点逻辑
-        
         // 2. 平移坐标系到图片中心（关键：所有变换围绕中心进行）
-        const centerX = originX + this.x + width / 2;
-        const centerY = originY - this.y + height / 2; //-y是因为坐标系统不同
+        const centerX = originX + drawX + drawWidth / 2;
+        const centerY = originY - drawY + drawHeight / 2; //-y是因为坐标系统不同,要转换到左上角原点坐标系
         if(globalFlag & 1){ //水平镜像
-            const centerX_FlipY = originX - (this.x + width / 2);
-            console.log('原点x:',originX,'this.x:',this.x,'width/2:',width/2,'算出的centerX:',centerX,'水平镜像的X',centerX_FlipY);
+            const centerX_FlipY = originX - (drawX + drawWidth / 2);
+            //console.log('原点x:',originX,'this.x:',this.x,'width/2:',width/2,'算出的centerX:',centerX,'水平镜像的X',centerX_FlipY);
             ctx.translate(centerX_FlipY, centerY);
         }else{
             ctx.translate(centerX, centerY);
@@ -63,7 +72,7 @@ class FrameModule {
             const rotateRad = typeof this.angle === 'number' ? this.angle : 0;
             ctx.rotate(rotateRad);
         }
-
+        //console.log('draw flag:',this.flag,'globalFlag:',globalFlag,'globalScale:',globalScale);
         // 4. 应用翻转和镜像
         // 首先应用模块自身的翻转
         if(this.flag != 0 || globalFlag != 0) {
@@ -72,11 +81,18 @@ class FrameModule {
             // 计算垂直翻转状态：如果模块和全局参数中奇数个设置了垂直翻转(bit 1)，最终就是翻转
             const isVerticalFlip = ((this.flag & 2) !== 0) !== ((globalFlag & 2) !== 0);
             
-            const scaleX = isHorizontalFlip ? -1 : 1;
-            const scaleY = isVerticalFlip ? -1 : 1;
+            let scaleX = isHorizontalFlip ? -1 : 1;
+            let scaleY = isVerticalFlip ? -1 : 1;
+
+            // if(globalScale != 1){
+            //     scaleX *= globalScale;
+            //     scaleY *= globalScale;
+            // }   
+
             ctx.scale(scaleX, scaleY);
-            console.log(globalFlag,isHorizontalFlip,isVerticalFlip,scaleX,scaleY)
-            console.log('应用镜像/翻转: flag=',this.flag, 'globalFlag=', globalFlag, 'scaleX=', scaleX, 'scaleY=', scaleY);
+            //console.log(globalFlag,isHorizontalFlip,isVerticalFlip,scaleX,scaleY)
+            console.log('应用镜像/翻转: flag=',this.flag, 'globalFlag=', globalFlag, 'globalScale',globalScale, 'scaleX=', scaleX, 'scaleY=', scaleY);
+
         }
 
         // 5. 绘制图片（使用调整后的坐标）
@@ -84,9 +100,9 @@ class FrameModule {
             imageItem.image,
             rectModule.x, rectModule.y,
             width, height,
-            -width / 2,  // 相对于中心的X坐标
-            -height / 2, // 相对于中心的Y坐标
-            width, height
+            -drawWidth / 2,  // 相对于中心的X坐标
+            -drawHeight / 2, // 相对于中心的Y坐标
+            drawWidth, drawHeight
         );
         
         ctx.restore();
