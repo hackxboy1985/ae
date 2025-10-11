@@ -145,11 +145,49 @@
         
         /* 表情列表样式 */
         .expression-list {
+            display: flex;
+            flex-direction: column;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        /* 表情分组按钮样式 */
+        .expression-group-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        .expression-group-buttons::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        .expression-group-buttons::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .expression-group-buttons::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 3px;
+        }
+        
+        .expression-group-buttons::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
+        }
+        
+        /* 表情网格容器 */
+        .expression-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
-            max-height: 400px;
-            overflow-y: auto;
+            flex: 1;
         }
         
         .expression-item {
@@ -778,7 +816,7 @@
         </div>
         
         <!-- 右侧控制面板容器 -->
-        <div class="right-panel-container" style="min-width: 350px; display: flex; flex-direction: column; height: 100%;">
+        <div class="right-panel-container" style="width: 350px; min-width: 350px; max-width: 350px; display: flex; flex-direction: column; height: 100%;">
             <!-- 动作编辑模式控制面板 -->
             <div id="control-panel" class="control-panel" style="display: flex; flex-direction: column; height: 100%; overflow-y: auto;">
                 <!-- 动作编辑模式选项卡 -->
@@ -840,7 +878,14 @@
                     <div id="expression-list-section" class="tab-content" style="display: flex; flex-direction: column; height: 100%; overflow-y: auto;">
                         <div class="control-section">
                             <div class="control-title">表情列表</div>
-                            <div id="expression-list-container" class="expression-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 400px; overflow-y: auto;">
+                            <!-- 表情分组按钮 -->
+                            <div id="expression-group-buttons" class="expression-group-buttons" style="display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background-color: #f9f9f9; border-radius: 4px; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; width: 100%; box-sizing: border-box;">
+                                <button class="tab-button active" data-group="all" style="flex: 0 0 auto;">全部</button>
+                                <button class="tab-button" data-group="common" style="flex: 0 0 auto;">通用</button>
+                                <button class="tab-button" data-group="male" style="flex: 0 0 auto;">男</button>
+                                <button class="tab-button" data-group="female" style="flex: 0 0 auto;">女</button>
+                            </div>
+                            <div id="expression-list-container" class="expression-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 400px; overflow-y: auto; width: 100%; box-sizing: border-box;">
                                 <!-- 表情列表将通过JavaScript动态生成 -->
                             </div>
                         </div>
@@ -6093,12 +6138,33 @@
                     
                     // 初始化表情列表
                     initExpressionList();
+                    // 初始化分组按钮事件监听
+                    initExpressionGroupButtons();
                 });
             }
         });
         
         // 全局变量：当前选中的表情
         let currentSelectedExpression = null;
+        // 当前选中的表情分组
+        let currentExpressionGroup = 'all'; // 'all', 'common', 'male', 'female'
+        
+        // 初始化分组按钮事件监听
+        function initExpressionGroupButtons() {
+            const groupButtons = document.querySelectorAll('#expression-group-buttons .tab-button');
+            groupButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // 移除所有按钮的选中状态
+                    groupButtons.forEach(btn => btn.classList.remove('active'));
+                    // 添加当前按钮的选中状态
+                    this.classList.add('active');
+                    // 更新当前选中的分组
+                    currentExpressionGroup = this.dataset.group;
+                    // 重新初始化表情列表
+                    initExpressionList();
+                });
+            });
+        }
         
         // 初始化表情列表
         function initExpressionList() {
@@ -6112,66 +6178,98 @@
             if (!expressions || expressions.length === 0) {
                 console.log('没有加载到表情数据',window.expressions,expressions);
                 return;
+            }            // 创建表情网格容器
+            const expressionGrid = document.createElement('div');
+            expressionGrid.className = 'expression-grid';
+            
+            // 根据当前选中的分组筛选表情
+            let filteredExpressions = [];
+            switch (currentExpressionGroup) {
+                case 'all':
+                    filteredExpressions = expressions;
+                    break;
+                case 'common':
+                    filteredExpressions = expressions.filter(expr => expr.type === 0);
+                    break;
+                case 'male':
+                    filteredExpressions = expressions.filter(expr => expr.type === 1);
+                    break;
+                case 'female':
+                    filteredExpressions = expressions.filter(expr => expr.type === 2);
+                    break;
             }
             
-            // 创建表情列表项
-            expressions.forEach(expression => {
-                const expressionItem = document.createElement('div');
-                expressionItem.className = `expression-item ${currentSelectedExpression === expression.name ? 'selected' : ''}`;
-                expressionItem.dataset.expressionId = expression.name;
-                
-                // 创建表情图片
-                const expressionImage = document.createElement('img');
-                expressionImage.className = 'expression-image';
-                expressionImage.src = expression.imageUrls[0]; // 使用第一张图片
-                expressionImage.alt = expression.name;
-                expressionImage.onerror = function() {
-                    // 如果图片加载失败，显示默认样式
-                    this.style.display = 'none';
-                    const defaultDiv = document.createElement('div');
-                    defaultDiv.style.width = '60px';
-                    defaultDiv.style.height = '60px';
-                    defaultDiv.style.backgroundColor = '#f0f0f0';
-                    defaultDiv.style.margin = '0 auto 5px';
-                    defaultDiv.style.borderRadius = '4px';
-                    defaultDiv.style.display = 'flex';
-                    defaultDiv.style.alignItems = 'center';
-                    defaultDiv.style.justifyContent = 'center';
-                    defaultDiv.textContent = expression.name;
-                    this.parentNode.appendChild(defaultDiv);
-                };
-                
-                // 创建表情名称
-                const expressionName = document.createElement('div');
-                expressionName.textContent = expression.name;
-                expressionName.style.fontSize = '12px';
-                
-                // 添加到表情项
-                expressionItem.appendChild(expressionImage);
-                expressionItem.appendChild(expressionName);
-                
-                // 添加点击事件
-                expressionItem.addEventListener('click', function() {
-                    // 移除其他选中项的选中状态
-                    document.querySelectorAll('.expression-item').forEach(item => {
-                        item.classList.remove('selected');
+            // 如果筛选后没有表情，显示提示信息
+            if (filteredExpressions.length === 0) {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.style.textAlign = 'center';
+                emptyMessage.style.padding = '20px';
+                emptyMessage.style.color = '#666';
+                emptyMessage.textContent = '当前分组没有表情';
+                expressionGrid.appendChild(emptyMessage);
+            } else {
+                // 创建表情列表项
+                filteredExpressions.forEach(expression => {
+                    const expressionItem = document.createElement('div');
+                    expressionItem.className = `expression-item ${currentSelectedExpression === expression.name ? 'selected' : ''}`;
+                    expressionItem.dataset.expressionId = expression.name;
+                    
+                    // 创建表情图片
+                    const expressionImage = document.createElement('img');
+                    expressionImage.className = 'expression-image';
+                    expressionImage.src = expression.imageUrls[0]; // 使用第一张图片
+                    expressionImage.alt = expression.name;
+                    expressionImage.onerror = function() {
+                        // 如果图片加载失败，显示默认样式
+                        this.style.display = 'none';
+                        const defaultDiv = document.createElement('div');
+                        defaultDiv.style.width = '60px';
+                        defaultDiv.style.height = '60px';
+                        defaultDiv.style.backgroundColor = '#f0f0f0';
+                        defaultDiv.style.margin = '0 auto 5px';
+                        defaultDiv.style.borderRadius = '4px';
+                        defaultDiv.style.display = 'flex';
+                        defaultDiv.style.alignItems = 'center';
+                        defaultDiv.style.justifyContent = 'center';
+                        defaultDiv.textContent = expression.name;
+                        this.parentNode.appendChild(defaultDiv);
+                    };
+                    
+                    // 创建表情名称
+                    const expressionName = document.createElement('div');
+                    expressionName.textContent = expression.name;
+                    expressionName.style.fontSize = '12px';
+                    
+                    // 添加到表情项
+                    expressionItem.appendChild(expressionImage);
+                    expressionItem.appendChild(expressionName);
+                    
+                    // 添加点击事件
+                    expressionItem.addEventListener('click', function() {
+                        // 移除其他选中项的选中状态
+                        document.querySelectorAll('.expression-item').forEach(item => {
+                            item.classList.remove('selected');
+                        });
+                        
+                        // 添加当前项的选中状态
+                        this.classList.add('selected');
+                        
+                        // 保存选中的表情到全局变量
+                        currentSelectedExpression = expression.name;
+                        
+                        console.log(`已选择表情: ${expression.name}`);
+                        
+                        // 重新渲染画布，将表情绘制到当前帧
+                        renderCanvas(20);
                     });
                     
-                    // 添加当前项的选中状态
-                    this.classList.add('selected');
-                    
-                    // 保存选中的表情到全局变量
-                    currentSelectedExpression = expression.name;
-                    
-                    console.log(`已选择表情: ${expression.name}`);
-                    
-                    // 重新渲染画布，将表情绘制到当前帧
-                    renderCanvas(20);
+                    // 添加到表情网格
+                    expressionGrid.appendChild(expressionItem);
                 });
-                
-                // 添加到容器
-                expressionListContainer.appendChild(expressionItem);
-            });
+            }
+            
+            // 添加表情网格到容器
+            expressionListContainer.appendChild(expressionGrid);
         }
         
         // 在渲染当前帧时绘制表情
