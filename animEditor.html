@@ -102,12 +102,17 @@
         /* 选项卡样式 */
         .control-tabs {
             margin-bottom: 20px;
+             overflow-y: auto;
         }
         
         .tab-header {
             display: flex;
             border-bottom: 2px solid #ddd;
             margin-bottom: 15px;
+            position: sticky;
+            top: 0;
+            background-color: #f0f0f0;
+            z-index: 10;
         }
         
         .tab-button {
@@ -771,85 +776,88 @@
             </div>
         </div>
         
-        <!-- 控制面板 -->
-        <div class="control-panel" style="min-width: 350px;">
-
-            <!-- 动作编辑模式选项卡 -->
-            <div class="control-tabs">
-                <div id="anim-tab-header" class="tab-header">
-                    <button id="tab-animation-control" class="tab-button active">图片模块</button>
-                    <button id="tab-expression-list" class="tab-button">表情列表</button>
-                </div>
-                
-                <!-- 原有的动画控制区域 -->
-                <div id="animation-control-section" class="tab-content active">
-                
-                    <div class="control-section" style="position: relative;">
-                        <div class="control-title">当前图片</div>
-                        <!-- 上半部分：图片选择下拉列表和显示完整图片的canvas -->
-                        <div class="image-selection-container">
-                            <select id="image-dropdown" style="width: 100%; padding: 8px; margin-bottom: 12px; ">
-                                <option value="">请选择图片</option>
-                            </select>
+        <!-- 右侧控制面板容器 -->
+        <div class="right-panel-container" style="min-width: 350px; display: flex; flex-direction: column; height: 100%;">
+            <!-- 动作编辑模式控制面板 -->
+            <div id="control-panel" class="control-panel" style="display: flex; flex-direction: column; height: 100%; overflow-y: auto;">
+                <!-- 动作编辑模式选项卡 -->
+                <div class="control-tabs" style="display: flex; flex-direction: column; height: 100%; overflow-y: auto;">
+                    <div id="anim-tab-header" class="tab-header">
+                        <button id="tab-animation-control" class="tab-button active">图片模块</button>
+                        <button id="tab-expression-list" class="tab-button">表情列表</button>
+                    </div>
+                    
+                    <!-- 原有的动画控制区域 -->
+                    <div id="animation-control-section" class="tab-content active" style="display: flex; flex-direction: column; height: 100%; overflow-y: auto;">
+                    
+                        <div class="control-section" style="position: relative;">
+                            <div class="control-title">当前图片</div>
+                            <!-- 上半部分：图片选择下拉列表和显示完整图片的canvas -->
+                            <div class="image-selection-container">
+                                <select id="image-dropdown" style="width: 100%; padding: 8px; margin-bottom: 12px; ">
+                                    <option value="">请选择图片</option>
+                                </select>
+                            </div>
+                            <!-- 上半部分canvas容器 -->
+                            <div class="image-preview-container" style="border: 1px solid #ddd; margin: 10px 0; overflow: auto;">
+                                <canvas id="image-preview-canvas" style="background-color: white;"></canvas>
+                            </div>
+                            <!-- 缩放控制按钮 -->
+                            <div class="zoom-controls" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                <button id="zoom-in-btn" style="padding: 5px 10px;">放大</button>
+                                <button id="zoom-out-btn" style="padding: 5px 10px;">缩小</button>
+                                <button id="reset-zoom-btn" style="padding: 5px 10px;">重置缩放</button>
+                            </div>
                         </div>
-                        <!-- 上半部分canvas容器 -->
-                        <div class="image-preview-container" style="border: 1px solid #ddd; margin: 10px 0; overflow: auto;">
-                            <canvas id="image-preview-canvas" style="background-color: white;"></canvas>
+                    
+                        <!-- 下半部分：变形预览区域 -->
+                        <div class="control-section">
+                            <div class="control-title">变形选项</div>
+                            <div id="transformation-preview" class="transformation-preview" style="display: flex; flex: 1; min-height: 200px; overflow-y: auto;">
+                                <div class="transformation-item" data-type="original">
+                                    <canvas id="original-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                                    <br><span>原图</span>
+                                </div>
+                                <div class="transformation-item" data-type="flip-horizontal">
+                                    <canvas id="flip-horizontal-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                                <br><span>水平翻转</span>
+                                </div>
+                                <div class="transformation-item" data-type="flip-vertical">
+                                    <canvas id="flip-vertical-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                                    <br><span>垂直翻转</span>
+                                </div>
+                                <div class="transformation-item" data-type="flip-both">
+                                    <canvas id="flip-both-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
+                                    <br><span>水平+垂直翻转</span>
+                                </div>
+                            </div>
                         </div>
-                        <!-- 缩放控制按钮 -->
-                        <div class="zoom-controls" style="display: flex; gap: 10px; margin-bottom: 10px;">
-                            <button id="zoom-in-btn" style="padding: 5px 10px;">放大</button>
-                            <button id="zoom-out-btn" style="padding: 5px 10px;">缩小</button>
-                            <button id="reset-zoom-btn" style="padding: 5px 10px;">重置缩放</button>
-                        </div>
+                    
                     </div>
                 
-                    <!-- 下半部分：变形预览区域 -->
-                    <div class="control-section">
-                        <div class="control-title">变形选项</div>
-                        <div id="transformation-preview" class="transformation-preview" style="display: none;">
-                            <div class="transformation-item" data-type="original">
-                                <canvas id="original-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
-                                <span>原图</span>
+                    <!-- 表情列表区域 -->
+                    <div id="expression-list-section" class="tab-content" style="display: flex; flex-direction: column; height: 100%; overflow-y: auto;">
+                        <div class="control-section">
+                            <div class="control-title">表情列表</div>
+                            <div id="expression-list-container" class="expression-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 400px; overflow-y: auto;">
+                                <!-- 表情列表将通过JavaScript动态生成 -->
                             </div>
-                            <div class="transformation-item" data-type="flip-horizontal">
-                                <canvas id="flip-horizontal-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
-                                <span>水平翻转</span>
-                            </div>
-                            <div class="transformation-item" data-type="flip-vertical">
-                                <canvas id="flip-vertical-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
-                                <span>垂直翻转</span>
-                            </div>
-                            <div class="transformation-item" data-type="flip-both">
-                                <canvas id="flip-both-preview" width="60" height="60" style="border: 1px solid #ddd;"></canvas>
-                                <span>水平+垂直翻转</span>
-                            </div>
-                        </div>
-                    </div>
-                
-                </div>
-            
-                <!-- 表情列表区域 -->
-                <div id="expression-list-section" class="tab-content">
-                    <div class="control-section">
-                        <div class="control-title">表情列表</div>
-                        <div id="expression-list-container" class="expression-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 400px; overflow-y: auto;">
-                            <!-- 表情列表将通过JavaScript动态生成 -->
                         </div>
                     </div>
                 </div>
             </div>
-        
-            <!-- 图片模块编辑模式 -->
-            <div id="image-control-section" style="display: none;">
+            
+            <!-- 图片模块编辑模式控制面板 -->
+            <div id="image-control-section" style="display: none; flex-direction: column; height: 100%; overflow-y: auto;">
                 <!-- 图片列表区域 -->
                 <div class="images-list-container mb-2">
                     <div class="control-title">加载的图片</div>
                     <div id="images-list" class="images-list"></div>
                 </div>
-                
             </div>
         </div>
+
+        
     </div>
     
     <!-- 编辑角色模态框 -->
@@ -1431,7 +1439,7 @@
                 showPreviewWithMouse = true;
                 
                 // 显示变形预览区域
-                document.getElementById('transformation-preview').style.display = 'block';
+                document.getElementById('transformation-preview').style.display = 'flex';
                 console.log('绘制变形', clickedModuleIndex);
                 // 渲染变形预览
                 renderTransformationPreviews(imageItem, clickedModuleIndex);
@@ -2143,9 +2151,11 @@
                 // document.getElementById('selected-image-title').textContent = '选择图片查看模块';
                 
                 // 显示动作编辑控制面板，隐藏图片模块编辑控制面板
-                document.getElementById('animation-control-section').style.display = 'block';
-                document.getElementById('anim-tab-header').style.display = 'block';
+                document.getElementById('control-panel').style.display = 'flex';
+                document.getElementById('expression-list-section').style.display = 'none';
                 document.getElementById('image-control-section').style.display = 'none';
+                
+                
 
                 // 重新初始化图片预览相关元素
                 console.log('Initializing image preview elements in switchTab(animation)');
@@ -2204,10 +2214,8 @@
                 renderImagesList();
                 
                 // 显示图片模块编辑控制面板，隐藏动作编辑控制面板
-                document.getElementById('animation-control-section').style.display = 'none';
-                document.getElementById('anim-tab-header').style.display = 'none';
-                
-                document.getElementById('image-control-section').style.display = 'block';
+                document.getElementById('control-panel').style.display = 'none';
+                document.getElementById('image-control-section').style.display = 'flex';
             }
         }
         
@@ -6006,7 +6014,7 @@
                     // 显示当前选项卡内容，隐藏其他内容
                     // tabContentAnimation.classList.add('active');
                     // tabContentExpression.classList.remove('active');
-                    tabContentAnimation.style.display = 'block';
+                    tabContentAnimation.style.display = 'flex';
                     tabContentExpression.style.display = 'none';
                     
                     // 清除图片模块编辑的框选模块操作与编辑模块操作
@@ -6028,7 +6036,7 @@
                     // tabContentExpression.classList.add('active');
                     // tabContentAnimation.classList.remove('active');
                     tabContentAnimation.style.display = 'none';
-                    tabContentExpression.style.display = 'block';
+                    tabContentExpression.style.display = 'flex';
                     
                     
                     // 初始化表情列表
