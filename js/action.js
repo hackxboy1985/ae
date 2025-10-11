@@ -1,13 +1,4 @@
-// import { Sprite, Anim, AnimFrame, ImageItem } from 'sprite.js';
-// import { Project } from './project.js';
-// import { Commands } from './commands.js';
-// import { ModuleMove } from './moduleMove.js';
-// import { Api } from './api.js';
-// import {LWImageManager} from './image.js';
-
-
 // 全局变量
-        
 
         // 新增：图片预览canvas
         let imagePreviewCanvas = document.getElementById('image-preview-canvas');
@@ -5053,3 +5044,352 @@
                 ctx.fillText(currentSelectedExpression, expressionRect.x + expressionRect.width / 2, expressionRect.y + expressionRect.height / 2);
             };
         }
+
+        // 初始化函数
+        function init() {
+            imageManager = new LWImageManager(); // 在init函数中初始化
+            
+            // 初始化图像原点位置
+            updateImageOriginPos();
+            
+            // 尝试加载保存的项目数据
+            const projectLoaded = loadProject();
+            
+            // 如果没有加载到项目数据，创建默认项目
+            if (!projectLoaded) {
+                currentProject = new Project();
+                
+                // 创建默认角色和动作
+                const defaultSprite = new Sprite('角色1');
+                currentProject.addSprite(defaultSprite);
+                
+                const defaultAnim = new Anim('动作1');
+                defaultSprite.mAnimList.push(defaultAnim);
+                
+                // 添加默认帧
+                const defaultFrame = new Frame();
+                const defaultAnimFrame = new AnimFrame(defaultFrame, true);
+                defaultAnim.aframeList.push(defaultAnimFrame);
+                
+                // 选择默认角色和动作
+                currentSprite = defaultSprite;
+                currentAnim = defaultAnim;
+                currentFrame = defaultFrame;
+            }
+            
+            switchTab("animation");
+            
+            // 渲染界面
+            renderSpriteList();
+            renderAnimList();
+            renderTimeline();
+            renderImagesList();
+
+            // 调整canvas大小, 触发renderCanvas
+            resizeCanvas();
+
+            // 绑定事件
+            bindEvents();
+            
+            // 为显示所有模块复选框添加事件监听
+            document.getElementById('show-all-modules').addEventListener('change', drawCurrentImage);
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 绑定缩放控件事件
+            document.getElementById('zoom-in').addEventListener('click', handleZoomIn);
+            document.getElementById('zoom-out').addEventListener('click', handleZoomOut);
+            document.getElementById('zoom-reset').addEventListener('click', handleZoomReset);
+            
+            // 绑定鼠标滚轮缩放事件
+            imageCanvas.addEventListener('wheel', handleMouseWheel);
+            imageCanvas.addEventListener('mousemove', showImageMousePosition);
+
+            // 绑定鼠标移动事件用于显示鼠标位置
+            canvas.addEventListener('mousemove', showMousePosition);
+            
+            
+            // 初始化图片预览相关元素
+            if (!imagePreviewCanvas) {
+                imagePreviewCanvas = document.getElementById('image-preview-canvas');
+                imagePreviewCtx = imagePreviewCanvas.getContext('2d');
+            }
+            
+            // 初始化变形预览canvas
+            if (!originalPreviewCanvas) {
+                originalPreviewCanvas = document.getElementById('original-preview');
+                originalPreviewCtx = originalPreviewCanvas.getContext('2d');
+            }
+            if (!flipHorizontalPreviewCanvas) {
+                flipHorizontalPreviewCanvas = document.getElementById('flip-horizontal-preview');
+                flipHorizontalPreviewCtx = flipHorizontalPreviewCanvas.getContext('2d');
+            }
+            if (!flipVerticalPreviewCanvas) {
+                flipVerticalPreviewCanvas = document.getElementById('flip-vertical-preview');
+                flipVerticalPreviewCtx = flipVerticalPreviewCanvas.getContext('2d');
+            }
+            // 初始化水平+垂直翻转预览canvas
+            if (!flipBothPreviewCanvas) {
+                flipBothPreviewCanvas = document.getElementById('flip-both-preview');
+                flipBothPreviewCtx = flipBothPreviewCanvas.getContext('2d');
+            }
+            
+            // 添加调试按钮
+            const debugBtn = document.createElement('button');
+            debugBtn.textContent = '检查Canvas状态';
+            debugBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1001; padding: 8px; background-color: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer;';
+            debugBtn.style.display = 'none'; // 隐藏调试按钮
+            debugBtn.addEventListener('click', function() {
+                // 在页面加载完成后添加调试面板功能
+                // window.addEventListener('load', showDebugInfo);
+                showDebugInfo();
+                debugCanvasState();
+                if (currentImage && imagePreviewCanvas) {
+                    console.log('强制渲染预览');
+                    renderImagePreview();
+                }
+            });
+            document.body.appendChild(debugBtn);
+            
+            // 绑定图片选择下拉列表事件
+            const imageDropdown = document.getElementById('image-dropdown');
+            if (imageDropdown) {
+                imageDropdown.addEventListener('change', function() {
+                    const imageId = this.value;
+                    console.log('Image dropdown changed to:', imageId);
+                    
+                    if (imageId && currentSprite) {
+                        console.log('Current sprite exists, getting image with id:', imageId);
+                        for (let img of currentSprite.m_imageList) {
+                            console.log('Image item:', img.id, img.name);
+                        }
+                        // console.log('Current sprite image list:', currentSprite.m_imageList);
+                        const imageItem = currentSprite.getImage(imageId);
+                        
+                        if (imageItem) {
+                            console.log('Found image item:', imageItem.name);
+                            previewImageId = imageId;
+                            previewImage = imageItem.image; // 设置专门用于canvas渲染的图片
+                            console.log('Set currentImage and previewImageId:', previewImageId);
+                            
+                            // 确保imagePreviewCanvas和imagePreviewCtx已初始化
+                            if (!imagePreviewCanvas) {
+                                imagePreviewCanvas = document.getElementById('image-preview-canvas');
+                                if (imagePreviewCanvas) {
+                                    imagePreviewCtx = imagePreviewCanvas.getContext('2d');
+                                }
+                            }
+                            
+                            // 确保canvas有正确的尺寸
+                            if (imagePreviewCanvas && previewImage) {
+                                // imagePreviewCanvas.width = previewImage.width;
+                                // imagePreviewCanvas.height = previewImage.height;
+                            }
+                            
+                            console.log('About to call renderImagePreview');
+                            renderImagePreview(1);
+                        } else {
+                            console.warn('Image item not found for id:', imageId);
+                        }
+                    } else {
+                        console.warn('No imageId or currentSprite not available');
+                    }
+                });
+            }
+            
+            // 绑定缩放控制按钮事件
+            document.getElementById('zoom-in-btn').addEventListener('click', function() {
+                previewZoomLevel = Math.min(previewZoomLevel + 0.1, 5);
+                renderImagePreview();
+            });
+            document.getElementById('zoom-out-btn').addEventListener('click', function() {
+                previewZoomLevel = Math.max(previewZoomLevel - 0.1, 0.1);
+                renderImagePreview();
+            });
+            document.getElementById('reset-zoom-btn').addEventListener('click', function() {
+                previewZoomLevel = 1;
+                renderImagePreview();
+            });
+            
+            // 绑定变形选项点击事件
+            const transformationItems = document.querySelectorAll('.transformation-item');
+            transformationItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    selectedTransformation = this.dataset.type;
+                    showPreviewWithMouse = true;
+                    // 高亮选中的变形选项
+                    transformationItems.forEach(i => i.style.border = 'none');
+                    this.style.border = '2px solid #4CAF50';
+                });
+            });
+            
+            // 绑定图片预览canvas的点击事件
+            if (imagePreviewCanvas) {
+                imagePreviewCanvas.addEventListener('click', handlePreviewCanvasClick);
+                imagePreviewCanvas.addEventListener('mousemove', updateMousePosition);
+            }
+            
+            // 绑定动画canvas的点击事件，用于添加模块
+            canvas.addEventListener('click', function(e) {
+                // console.log('showPreviewWithMouse',showPreviewWithMouse);
+                // console.log('selectedImageModule',selectedImageModule);
+                if (showPreviewWithMouse && selectedImageModule !== -1 && currentFrame) {
+                    addModuleToFrame(e);
+                }
+            });
+            
+            // 绑定动画canvas的鼠标移动事件，用于显示预览
+            canvas.addEventListener('mousemove', function(e) {
+                if (showPreviewWithMouse && selectedImageModule !== -1) {
+                    mouseXOnCanvas = e.offsetX;
+                    mouseYOnCanvas = e.offsetY;
+                    renderCanvas(); // 触发重绘以显示预览
+                }
+            });
+            
+            // 绑定动画canvas的鼠标离开事件，隐藏预览
+            canvas.addEventListener('mouseleave', function() {
+                if (showPreviewWithMouse) {
+                    showPreviewWithMouse = false;
+                    renderCanvas();
+                }
+            });
+
+            // 初始化时加载表情数据
+            loadExpression();
+        }
+
+          // 绑定事件函数
+        function bindEvents() {
+            // 角色相关事件
+            document.getElementById('add-sprite').addEventListener('click', showNewSpriteModal);
+            document.getElementById('create-sprite').addEventListener('click', createSprite);
+            document.getElementById('cancel-create-sprite').addEventListener('click', hideNewSpriteModal);
+            
+            // 动作相关事件
+            document.getElementById('add-anim').addEventListener('click', showNewAnimModal);
+            document.getElementById('create-anim').addEventListener('click', createAnim);
+            document.getElementById('cancel-create-anim').addEventListener('click', hideNewAnimModal);
+            
+            // 上传图片相关事件
+            document.getElementById('upload-image').addEventListener('click', showUploadImageModal);
+            document.getElementById('confirm-upload').addEventListener('click', uploadImage);
+            document.getElementById('cancel-upload').addEventListener('click', hideUploadImageModal);
+            
+            // 帧相关事件
+            document.getElementById('add-frame').addEventListener('click', addFrame);
+            document.getElementById('add-frame-end').addEventListener('click', addFrameToEnd);
+            document.getElementById('clone-frame').addEventListener('click', cloneFrame);
+            document.getElementById('delete-frame').addEventListener('click', deleteFrame);
+            
+            // 模块相关事件
+            document.getElementById('delete-frame-module').addEventListener('click', deleteFrameModule);
+            document.getElementById('copy-module').addEventListener('click', copyModule);
+            document.getElementById('paste-module').addEventListener('click', pasteModule);
+            
+            // 撤销和重做
+            document.getElementById('undo').addEventListener('click', undoAction);
+            document.getElementById('redo').addEventListener('click', redoAction);
+            
+            // 快捷键支持
+            document.addEventListener('keydown', function(event) {
+                // 检查是否按下Ctrl键
+                const isCtrl = event.ctrlKey || event.metaKey; // metaKey for Mac
+                
+                if (isCtrl && !event.shiftKey && !event.altKey) {
+                    // Ctrl+C 复制模块
+                    if (event.key === 'c' || event.key === 'C') {
+                        event.preventDefault(); // 阻止默认的复制行为
+                        copyModule();
+                    }
+                    // Ctrl+V 粘贴模块
+                    else if (event.key === 'v' || event.key === 'V') {
+                        event.preventDefault(); // 阻止默认的粘贴行为
+                        pasteModule();
+                    }
+                    // Ctrl+D 删除模块
+                    else if (event.key === 'd' || event.key === 'D') {
+                        event.preventDefault(); // 阻止默认行为
+                        deleteFrameModule();
+                    }
+                    // Ctrl+Z 撤销
+                    else if (event.key === 'z' || event.key === 'Z') {
+                        event.preventDefault(); // 阻止默认的撤销行为
+                        undoAction();
+                    }
+                    // Ctrl+Y 重做
+                    else if (event.key === 'y' || event.key === 'Y') {
+                        event.preventDefault(); // 阻止默认的重做行为
+                        redoAction();
+                    }
+                }
+            });
+            document.getElementById('flip-horizontal').addEventListener('click', flipHorizontal);
+            document.getElementById('flip-vertical').addEventListener('click', flipVertical);
+            document.getElementById('move-module-up').addEventListener('click', moveModuleUp);
+            document.getElementById('move-module-down').addEventListener('click', moveModuleDown);
+            document.getElementById('rotate').addEventListener('click', rotateModule);
+            
+            // 动画播放相关事件
+            document.getElementById('play-animation').addEventListener('click', togglePlayAnimation);
+            document.getElementById('speed-range').addEventListener('input', changeAnimationSpeed);
+            
+            // 网格显示相关事件
+            document.getElementById('toggle-grid').addEventListener('click', function() {
+                showGrid = !showGrid;
+                this.textContent = showGrid ? '隐藏网格' : '显示网格';
+                renderCanvas(2);
+            });
+            
+            // 图片相关事件
+            document.getElementById('upload-image').addEventListener('click', showUploadImageModal);
+            document.getElementById('confirm-upload').addEventListener('click', uploadImage);
+            document.getElementById('cancel-upload').addEventListener('click', hideUploadImageModal);
+            document.getElementById('crop-module').addEventListener('click', toggleCropping);
+            document.getElementById('edit-module').addEventListener('click', toggleEditModule);
+            document.getElementById('save-module').addEventListener('click', saveModule);
+            
+            // 项目保存事件
+            document.getElementById('save-project').addEventListener('click', saveProject);
+            document.getElementById('new-project').addEventListener('click', newProject);
+            
+            // 画布事件
+            canvas.addEventListener('mousedown', handleFrameMouseDown);
+            canvas.addEventListener('mousemove', handleFrameMouseMove);
+            canvas.addEventListener('mouseup', handleFrameMouseUp);
+            canvas.addEventListener('mouseleave', handleFrameMouseUp);
+            canvas.addEventListener('wheel', handleMouseWheel);
+            canvas.addEventListener('mousemove', handleFrameMouseHover);
+
+            // 动作编辑模式缩放控制
+            document.getElementById('animation-zoom-in').addEventListener('click', handleZoomIn);
+            document.getElementById('animation-zoom-out').addEventListener('click', handleZoomOut);
+            document.getElementById('animation-zoom-reset').addEventListener('click', handleZoomReset);
+            
+            // 添加键盘事件监听
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+            
+
+            imageCanvas.addEventListener('dblclick', handleImageMouseDblClick);
+            imageCanvas.addEventListener('mousedown', handleImageMouseDown);
+            imageCanvas.addEventListener('mousemove', handleImageMouseMove);
+            document.addEventListener('mouseup', handleImageMouseUp);
+            // imageCanvas.addEventListener('mouseleave', handleImageMouseUp);
+            
+
+            // 处理显示表情复选框点击事件
+            document.getElementById('show-expression').addEventListener('change', function() {
+                isShowExpression = this.checked;
+                renderCanvas();
+            });
+
+            // 处理表情区域复选框点击事件
+            document.getElementById('add-expression-rect').addEventListener('change', handleShowExpressionRectChange);
+
+
+            // 处理水平镜像复选框点击事件
+            document.getElementById('horizontal-mirror').addEventListener('change', handleHorizontalMirrorChange);
+        }
+        
