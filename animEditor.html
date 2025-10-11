@@ -1012,7 +1012,6 @@
         let currentSprite = null;
         let currentAnim = null;
         let currentFrame = null;
-        // let currentFrameExpressionRect = null;//当前帧表情
         let currentFrameIndex = 0;
         let selectedModuleIndex = -1; // 当前选中的单个模块索引
         let selectedModuleIndices = []; // 存储多个选中模块的索引数组
@@ -4640,7 +4639,8 @@
             let [x, y] = getCurrentXY(e);
 
             // 如果正在拖拽表情区域，优先处理表情区域的拖拽
-            if (isDraggingExpressionRect && currentAnim && currentFrameIndex && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
+            // console.log('isDraggingExpressionRect;',isDraggingExpressionRect,currentFrameIndex);
+            if (isDraggingExpressionRect && currentAnim && currentFrameIndex !== -1 && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
                 const rect = currentAnim.aframeList[currentFrameIndex].expressionRect;
                 const deltaX = x - expressionDragStartX;
                 const deltaY = y - expressionDragStartY;
@@ -4648,7 +4648,7 @@
                 // 更新表情区域的位置
                 rect.x = expressionOriginalX + deltaX;
                 rect.y = expressionOriginalY + deltaY;
-                
+                //console.log('drag表情区域1',rect);
                 renderCanvas();
                 return;
             }
