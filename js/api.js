@@ -159,10 +159,11 @@ function saveProject() {
         // 使用localStorage保存项目数据
         localStorage.setItem('animationEditorProject', JSON.stringify(projectData));
         
-        alert('项目保存成功！');
+        // alert('项目保存成功！');
+        notification('项目保存成功！');
     } catch (error) {
         console.error('保存项目失败:', error);
-        alert('保存项目失败，请刷新页面重试。');
+        alert('保存项目失败，请检查网络后，重新尝试，请勿刷新页面，否则数据可能丢失。可先选择本地保存，稍后再尝试同步。');
     }
 }
 
@@ -176,7 +177,7 @@ function loadProject() {
         }
         
         const projectData = JSON.parse(savedData);
-        console.log('load projectData', projectData);
+        // console.log('load projectData', projectData);
         // 重建图像管理器和所有图片
         imageManager = new LWImageManager();
         projectData.images.forEach(savedImage => {
@@ -234,7 +235,7 @@ function loadProject() {
             }
         }
         
-        console.log('项目加载成功！');
+        // console.log('项目加载成功！');
         // renderCanvas(0);
         return true;
     } catch (error) {
