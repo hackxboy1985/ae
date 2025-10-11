@@ -1575,13 +1575,16 @@
             // console.log('currentSprite', currentSprite,previewImageId,selectedImageModule);
             if (currentTab !== 'animation' || !showPreviewWithMouse || !currentSprite || !previewImageId || selectedImageModule === -1) return;
             
-            console.log('previewImageId', previewImageId);
-            const imageItem = currentSprite.getImage(parseInt(previewImageId));
-            console.log('imageItem', imageItem);
-            if (!imageItem || !imageItem.image || selectedImageModule >= imageItem.modulesList.length) return;
+            // console.log('previewImageId', previewImageId);
+            const imageItem = currentSprite.getImage(previewImageId);
+            // console.log('imageItem', imageItem);
+            if (!imageItem || !imageItem.image || selectedImageModule >= imageItem.modulesList.length) {
+                console.log('null， can not review');
+                return;
+            }
             
             const module = imageItem.modulesList[selectedImageModule];
-            console.log('绘制跟随鼠标的预览', module);
+
             ctx.save();
             
             // 移动到鼠标位置
@@ -1599,7 +1602,9 @@
             ctx.drawImage(
                 imageItem.image,
                 module.x, module.y, module.width, module.height,
-                -module.width / 2, -module.height / 2, module.width, module.height
+                //-module.width / 2, -module.height / 2,
+                0,0,
+                 module.width, module.height
             );
             
             ctx.restore();
