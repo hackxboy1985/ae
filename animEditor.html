@@ -668,18 +668,22 @@
                             <button id="undo" title="撤销 (Ctrl+Z)">撤销</button>
                             <button id="redo" title="重做 (Ctrl+Y)">重做</button>
                             <button id="delete-frame-module" title="删除模块 (Ctrl+D)">✕</button>
-                            <button id="copy-module" title="复制模块 (Ctrl+C)">复制模块</button>
-                            <button id="paste-module" title="粘贴模块 (Ctrl+V)">粘贴模块</button>
-                            <button id="flip-horizontal">水平翻转</button>
-                            <button id="flip-vertical">垂直翻转</button>
+                            <button id="copy-module" title="复制模块 (Ctrl+C)">复制</button>
+                            <button id="paste-module" title="粘贴模块 (Ctrl+V)">粘贴</button>
+                            <button id="flip-horizontal">水平翻</button>
+                            <button id="flip-vertical">垂直翻</button>
                             <button id="move-module-up" title="向上移动一层 (Ctrl+↑)">向上</button>
                             <button id="move-module-down" title="向下移动一层 (Ctrl+↓)">向下</button>
                             <button id="rotate">旋转</button>
                             <button id="play-animation">播放</button>
-                            <button id="toggle-grid">显示网格</button>
+                            <button id="toggle-grid">网格</button>
                             <label class="checkbox-label" style="display: flex; align-items: center; cursor: pointer;">
                                 <input type="checkbox" id="add-expression-rect" style="margin-right: 5px;">
-                                <span>表情区域</span>
+                                <span>表情框</span>
+                            </label>
+                            <label class="checkbox-label" style="display: flex; align-items: center; cursor: pointer; margin-left: 10px;">
+                                <input type="checkbox" id="show-expression" style="margin-right: 5px;">
+                                <span>表情</span>
                             </label>
                             <label class="checkbox-label" style="display: flex; align-items: center; cursor: pointer; margin-left: 10px;">
                                 <input type="checkbox" id="horizontal-mirror" style="margin-right: 5px;">
@@ -1568,9 +1572,12 @@
         // 绘制跟随鼠标的预览
         function drawMouseFollowPreview(ctx) {
             // 只在动作编辑标签页显示预览
+            // console.log('currentSprite', currentSprite,previewImageId,selectedImageModule);
             if (currentTab !== 'animation' || !showPreviewWithMouse || !currentSprite || !previewImageId || selectedImageModule === -1) return;
             
+            console.log('previewImageId', previewImageId);
             const imageItem = currentSprite.getImage(parseInt(previewImageId));
+            console.log('imageItem', imageItem);
             if (!imageItem || !imageItem.image || selectedImageModule >= imageItem.modulesList.length) return;
             
             const module = imageItem.modulesList[selectedImageModule];
@@ -4109,7 +4116,7 @@
             // console.log('click:',x, y);
             
             // 如果正在编辑表情区域，优先处理表情区域的交互
-            if (isEditingExpressionRect && currentFrameIndex === expressionRectFrameIndex && currentAnim && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
+            if (isEditingExpressionRect && currentFrameIndex !== -1 && currentAnim && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
                 const rect = currentAnim.aframeList[currentFrameIndex].expressionRect;
                 
                 // 计算表情区域的边界
@@ -4674,7 +4681,6 @@
         let isEditingExpressionRect = false; // 是否正在编辑表情区域
         let isDraggingExpressionRect = false; // 是否正在拖拽表情区域
         let isResizingExpressionRect = false; // 是否正在修改表情区域宽高
-        let expressionRectFrameIndex = -1; // 当前编辑的表情区域所在的帧索引
         let expressionResizeControlPoint = -1; // 表情区域的缩放控制点索引
         let expressionDragStartX = 0; // 表情区域拖拽开始时的X坐标
         let expressionDragStartY = 0; // 表情区域拖拽开始时的Y坐标
@@ -4684,7 +4690,14 @@
         let expressionOriginalHeight = 0; // 表情区域原始高度
         let expressions = []; // 存储加载的表情数据
         let globalHorizontalMirrorFlag = 0; // 水平镜像标志，0表示不镜像，1表示镜像
+        let isShowExpression = false; // 是否显示表情
         
+        // 处理显示表情复选框点击事件
+        document.getElementById('show-expression').addEventListener('change', function() {
+            isShowExpression = this.checked;
+            renderCanvas();
+        });
+
         // 处理鼠标移动事件
         function handleFrameMouseMove(e) {
             // 如果处于拖拽原点模式
@@ -4703,7 +4716,7 @@
             let [x, y] = getCurrentXY(e);
 
             // 如果正在拖拽表情区域，优先处理表情区域的拖拽
-            if (isDraggingExpressionRect && currentAnim && currentFrameIndex === expressionRectFrameIndex && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
+            if (isDraggingExpressionRect && currentAnim && currentFrameIndex && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
                 const rect = currentAnim.aframeList[currentFrameIndex].expressionRect;
                 const deltaX = x - expressionDragStartX;
                 const deltaY = y - expressionDragStartY;
@@ -4717,7 +4730,7 @@
             }
             
             // 如果正在调整表情区域大小，处理表情区域的大小调整
-            if (isResizingExpressionRect && expressionResizeControlPoint !== -1 && isDragging && currentAnim && currentFrameIndex === expressionRectFrameIndex && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
+            if (isResizingExpressionRect && expressionResizeControlPoint !== -1 && isDragging && currentAnim && currentFrameIndex !== -1 && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
                 const rect = currentAnim.aframeList[currentFrameIndex].expressionRect;
                 const deltaX = x - expressionDragStartX;
                 const deltaY = y - expressionDragStartY;
@@ -4771,7 +4784,7 @@
             // 如果正在编辑表情区域，不允许执行fm相关操作
             if (isEditingExpressionRect) {
                 // 更新鼠标样式
-                if (currentFrameIndex === expressionRectFrameIndex && currentAnim && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
+                if (currentFrameIndex !== -1 && currentAnim && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
                     const rect = currentAnim.aframeList[currentFrameIndex].expressionRect;
                     
                     // 计算表情区域的边界
@@ -5707,37 +5720,33 @@
             // 应用缩放
             ctx.save();
             ctx.scale(zoomLevel, zoomLevel);
-            // console.log('currentSelectedExpression',currentSelectedExpression)
-
-            //currentSelectedExpression
-            if (isEditingExpressionRect && currentAnim && currentFrameIndex >= 0 && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex]) {
-
-                let currentFrameExpressionImg = null;
-                if(currentSelectedExpression){
-                    // 查找表情对象
-                    const expression = expressions.find(expr => expr.name === currentSelectedExpression);
-                    // const currentFrameExpressionRect =  aframe.expressionRect;
-                    if(expression && currentFrameIndex < expression.images.length){
-                        currentFrameExpressionImg = expression.images[currentFrameIndex];
-                    }
-                }
                 
+            //     // 获取当前帧
+            //     const aframe = currentAnim.aframeList[currentFrameIndex];
+            //     // 绘制当前帧
+            //     aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, currentFrameExpressionImg, globalHorizontalMirrorFlag,1,0);// 1 表示应用全局水平镜像
+
+            //表情图片
+            let currentFrameExpressionImg = null;
+            // console.log('显示表情:',currentSelectedExpression,isShowExpression);
+            if (isShowExpression && currentSelectedExpression && currentFrameIndex >= 0 ) {
+                // 查找表情对象
+                const expression = expressions.find(expr => expr.name === currentSelectedExpression);
+                if(expression && currentFrameIndex < expression.images.length){
+                    currentFrameExpressionImg = expression.images[currentFrameIndex];
+                }
+            } 
+
+            //绘制当前帧
+            if( currentAnim && currentFrameIndex >= 0 && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex]) {
                 // 获取当前帧
                 const aframe = currentAnim.aframeList[currentFrameIndex];
                 // 绘制当前帧
-                aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, currentFrameExpressionImg, globalHorizontalMirrorFlag,1,0);// 1 表示应用全局水平镜像
-                // else{
-                //     console.log('2');
-                //     // 绘制当前帧
-                //     currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel);
-                // }
-            } else {
-                // 绘制当前帧
-                currentFrame.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, globalHorizontalMirrorFlag,1,0);// 1 表示应用全局水平镜像
+                aframe.draw(ctx, currentSprite, m_imageOriginPos.x / zoomLevel, m_imageOriginPos.y / zoomLevel, currentFrameExpressionImg, globalHorizontalMirrorFlag,1,0);
             }
             
             // 绘制表情区域矩形框
-            if (isEditingExpressionRect && currentFrameIndex === expressionRectFrameIndex && currentAnim && currentFrameIndex >= 0 && currentAnim.aframeList[currentFrameIndex]) {
+            if (!isPlaying && isEditingExpressionRect && currentAnim && currentFrameIndex >= 0 && currentAnim.aframeList[currentFrameIndex]) {
                 const animFrame = currentAnim.aframeList[currentFrameIndex];
                 if (animFrame.expressionRect) {
                     const rect = animFrame.expressionRect;
@@ -5751,24 +5760,22 @@
                         rect.width, 
                         rect.height
                     );
+
+                    // 绘制四个角的控制点
+                    const points = [
+                        { x: m_imageOriginPos.x/zoomLevel + rect.x, y: m_imageOriginPos.y/zoomLevel - rect.y },
+                        { x: m_imageOriginPos.x/zoomLevel + rect.x + rect.width, y: m_imageOriginPos.y/zoomLevel - rect.y },
+                        { x: m_imageOriginPos.x/zoomLevel + rect.x + rect.width, y: m_imageOriginPos.y/zoomLevel - rect.y + rect.height },
+                        { x: m_imageOriginPos.x/zoomLevel + rect.x, y: m_imageOriginPos.y/zoomLevel - rect.y + rect.height }
+                    ];
                     
-                    // 如果当前正在编辑表情区域，绘制控制点
-                    if (isEditingExpressionRect) {
-                        // 绘制四个角的控制点
-                        const points = [
-                            { x: m_imageOriginPos.x/zoomLevel + rect.x, y: m_imageOriginPos.y/zoomLevel - rect.y },
-                            { x: m_imageOriginPos.x/zoomLevel + rect.x + rect.width, y: m_imageOriginPos.y/zoomLevel - rect.y },
-                            { x: m_imageOriginPos.x/zoomLevel + rect.x + rect.width, y: m_imageOriginPos.y/zoomLevel - rect.y + rect.height },
-                            { x: m_imageOriginPos.x/zoomLevel + rect.x, y: m_imageOriginPos.y/zoomLevel - rect.y + rect.height }
-                        ];
-                        
-                        ctx.fillStyle = 'purple';
-                        points.forEach(point => {
-                            ctx.beginPath();
-                            ctx.arc(point.x, point.y, 4 / zoomLevel, 0, 2 * Math.PI);
-                            ctx.fill();
-                        });
-                    }
+                    ctx.fillStyle = 'purple';
+                    points.forEach(point => {
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, 4 / zoomLevel, 0, 2 * Math.PI);
+                        ctx.fill();
+                    });
+
                 }
             }
             
@@ -6099,7 +6106,6 @@
                 
                 // 进入编辑模式
                 isEditingExpressionRect = true;
-                expressionRectFrameIndex = currentFrameIndex;
                 
                 // 确保不会同时选中其他模块
                 selectedModuleIndex = -1;
@@ -6123,7 +6129,7 @@
         // 在switchTab函数中更新复选框状态
         function updateExpressionCheckboxState() {
             const checkbox = document.getElementById('add-expression-rect');
-            if (checkbox && currentFrameIndex >= 0 && currentFrameIndex === expressionRectFrameIndex) {
+            if (checkbox && currentFrameIndex >= 0) {
                 checkbox.checked = isEditingExpressionRect;
             } else if (checkbox) {
                 checkbox.checked = false;
@@ -6156,7 +6162,7 @@
             
             // 创建Expression对象
             mockExpressions.forEach(exprData => {
-                const expression = new Expression(exprData.name, exprData.imageUrls);
+                const expression = new Expression(exprData.name,exprData.type, exprData.imageUrls);
                 expressions.push(expression);
             });
             

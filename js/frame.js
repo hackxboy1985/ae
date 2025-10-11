@@ -135,8 +135,9 @@ class AnimFrame {
 }
 
 class Expression {
-    constructor(name,imageUrls) {
+    constructor(name,type,imageUrls) {
         this.name = name;
+        this.type = type;
         this.imageUrls = imageUrls;
         this.images = [];
         this.loadImages();

@@ -1,3 +1,11 @@
+// 动画类定义
+class Anim {
+    constructor(name) {
+        this.name = name;
+        this.aframeList = []; // 存储AnimFrame对象
+    }
+}
+
 // 角色类定义
 class Sprite {
     constructor(name) {
