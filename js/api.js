@@ -95,6 +95,29 @@ function loadExpression() {
     // 这里可以添加UI来展示加载的表情
 }
 
+// 新建项目函数
+function newProject() {
+
+    // 清空所有数据
+    imageManager.clearImages();
+    expressions = [];
+    currentProject = new Project();
+    currentSprite = null;
+    currentAnim = null;
+
+    currentImage = null;
+    currentImageId = null;
+    // 重置UI
+    renderAnimList();
+    // 重置帧
+    renderTimeline();
+    renderImagesList();
+    renderModulesList();
+    // renderExpressionsList();
+    console.log('新建项目');
+    showNewSpriteModal();
+
+}
 
 // 保存项目函数
 function saveProject() {

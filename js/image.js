@@ -15,4 +15,7 @@ class LWImageManager {
     removeImage(imageId) {
         this.m_imageMap.delete(imageId);
     }
+    clearImages() {
+        this.m_imageMap.clear();
+    }
 }

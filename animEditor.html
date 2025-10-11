@@ -750,11 +750,12 @@
                     
 
                     
-                    <div class="image-controls mb-2">
+                    <div class="image-controls mb-2" style="display: flex; align-items: center;">
                         <button id="zoom-in" class="mr-2 p-1 bg-gray-200 rounded">放大</button>
                         <button id="zoom-out" class="mr-2 p-1 bg-gray-200 rounded">缩小</button>
                         <button id="zoom-reset" class="p-1 bg-gray-200 rounded">重置缩放</button>
                         <span id="zoom-level" class="ml-2">100%</span>
+                        <div id="image-mouse-position" style="font-size: 12px; color: #666; margin-left: auto; margin-right: 10px;">鼠标位置: (0, 0)</div>
                     </div>
                     
                     <div class="image-canvas-container" style="flex: 1; overflow-y: auto; border: 1px solid #ddd; margin-bottom: 10px;">
@@ -1079,10 +1080,11 @@
             
             // 绑定鼠标滚轮缩放事件
             imageCanvas.addEventListener('wheel', handleMouseWheel);
-            
+            imageCanvas.addEventListener('mousemove', showImageMousePosition);
+
             // 绑定鼠标移动事件用于显示鼠标位置
             canvas.addEventListener('mousemove', showMousePosition);
-            imageCanvas.addEventListener('mousemove', showImageMousePosition);
+            
             
             // 初始化图片预览相关元素
             if (!imagePreviewCanvas) {
@@ -1457,8 +1459,9 @@
         // 更新鼠标位置
         function updateMousePosition(e) {
             const rect = imagePreviewCanvas.getBoundingClientRect();
-            mouseXOnCanvas = e.clientX - rect.left;
-            mouseYOnCanvas = e.clientY - rect.top;
+            const canvasScale = (imagePreviewCanvas.width/rect.width);
+            mouseXOnCanvas = (e.clientX - rect.left) * canvasScale;
+            mouseYOnCanvas = (e.clientY - rect.top) * canvasScale;
         }
         
         // 渲染变形预览
@@ -1852,8 +1855,9 @@
         // 显示动作编辑区鼠标位置
         function showMousePosition(e) {
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const canvasScale = (canvas.width/rect.width);
+            const x = (e.clientX - rect.left) * canvasScale;
+            const y = (e.clientY - rect.top) * canvasScale;
             
             // 计算相对于画布中心的坐标
             const relativeX = Math.round((x - m_imageOriginPos.x)/zoomLevel);
@@ -1865,20 +1869,7 @@
                 `鼠标位置: 绝对(${Math.round(x)}, ${Math.round(y)}) 相对(${relativeX}, ${relativeY})`;
         }
         
-        // 显示图片模块编辑区鼠标位置
-        function showImageMousePosition(e) {
-            const rect = imageCanvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            // 计算相对于原始图片的坐标（考虑缩放）
-            const imageX = Math.round(x / zoomLevel);
-            const imageY = Math.round(y / zoomLevel);
-            
-            // 更新鼠标位置显示
-            document.getElementById('mouse-position').textContent = 
-                `图片模块编辑鼠标位置: 画布(${Math.round(x)}, ${Math.round(y)}) 原图(${imageX}, ${imageY} 全局(${e.clientX}, ${e.clientY}))`;
-        }
+        
         
         // 更新缩放级别显示
         function updateZoomLevel() {
@@ -2006,6 +1997,7 @@
             
             // 项目保存事件
             document.getElementById('save-project').addEventListener('click', saveProject);
+            document.getElementById('new-project').addEventListener('click', newProject);
             
             // 画布事件
             canvas.addEventListener('mousedown', handleFrameMouseDown);
@@ -2024,34 +2016,14 @@
             document.addEventListener('keyup', handleKeyUp);
             
 
-            imageCanvas.addEventListener('dblclick', function(e) {
-                console.log('dblclick1');
-                if (!isCropping || !currentImage) return;
-                // 阻止事件冒泡，避免触发其他元素的双击事件
-                e.stopPropagation();
-                console.log('dblclick2');
-
-                
-                const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
-                const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
-                // console.log('图片在画布上的绘制位置：',drawX,drawY);
-                
-                const rect = imageCanvas.getBoundingClientRect();
-                // 计算相对于图片的坐标（考虑缩放）
-                const imageX = (e.clientX - rect.left - drawX) / zoomLevel;
-                const imageY = (e.clientY - rect.top - drawY) / zoomLevel;
-
-                console.log('imageX', imageX, 'imageY', imageY, 'cropRange:',cropLeft,cropTop,cropWidth,cropHeight);
-                if (isCropping && imageX >= cropLeft && imageX <= cropLeft+cropWidth && imageY >= cropTop && imageY <= cropTop+cropHeight) {
-                    saveModule();
-                }
-            });
+            imageCanvas.addEventListener('dblclick', handleImageMouseDblClick);
             imageCanvas.addEventListener('mousedown', handleImageMouseDown);
             imageCanvas.addEventListener('mousemove', handleImageMouseMove);
             document.addEventListener('mouseup', handleImageMouseUp);
             // imageCanvas.addEventListener('mouseleave', handleImageMouseUp);
             
         }
+        
         
         
         
@@ -2374,10 +2346,6 @@
                     
                     // 绘制图片
                     drawCurrentImage();
-                    
-                    // 更新当前图片信息
-                    // document.getElementById('current-image-info').textContent = 
-                    //     `${imageItem.name} (${currentImage.width}x${currentImage.height})`;
                     
                     // 重新渲染模块列表
                     renderModulesList();
@@ -2742,8 +2710,6 @@
             document.getElementById('modal-image-upload').value = '';
         }
         
-        
-        
         // 切换裁剪模式
         function toggleCropping() {
             if (!currentImage) {
@@ -2799,35 +2765,86 @@
         }
         
 
+        // 显示图片模块编辑区鼠标位置
+        function showImageMousePosition(e) {
+            //
+            const rect = imageCanvas.getBoundingClientRect();
+            const canvasScale = (imageCanvas.width/rect.width);
+            const x = (e.clientX - rect.left)*canvasScale;
+            const y = (e.clientY - rect.top)*canvasScale;
+          
+
+            // 计算相对于原始图片的坐标（考虑缩放）
+            let imageX = 0;
+            let imageY = 0;
+            let imageOriX = 0;
+            let imageOriY = 0;
+            console.log('canvasScale:',canvasScale,'真像素imageCanvas.width:', imageCanvas.width, '区域rect.width:', rect.width, 'currentImage.width',currentImage.width,'zoomLevel:', zoomLevel);
+            if(currentImage){
+                
+                // 计算图片在画布上的绘制位置
+                imageOriX = Math.round((imageCanvas.width - currentImage.width * zoomLevel) / 2 );
+                imageOriY = Math.round((imageCanvas.height - currentImage.height * zoomLevel) / 2 );
+                console.debug('imageOriX:', imageOriX, 'imageOriY:', imageOriY);
+                imageX = Math.round((x - imageOriX) / zoomLevel);
+                imageY = Math.round((y - imageOriY) / zoomLevel);
+            }
+            
+            // 更新鼠标位置显示
+            document.getElementById('image-mouse-position').textContent = 
+                `鼠标位置: 画布(${Math.round(x)}, ${Math.round(y)}) 原图左上角(${imageOriX}, ${imageOriY}) 原图(${imageX}, ${imageY}) 全局(${e.clientX}, ${e.clientY}))`;
+        }
+
+        function getImageEditXY(e){
+            const rect = imageCanvas.getBoundingClientRect();
+            const canvasScale = (imageCanvas.width/rect.width);
+            const clickX = (e.clientX - rect.left)*canvasScale;
+            const clickY = (e.clientY - rect.top)*canvasScale;
+
+            if(!currentImage) return {clickX, clickY, imageOriX:0, imageOriY:0, imageX:0, imageY:0};
+            // 计算图片在画布上的绘制位置
+            const imageOriX = Math.round((imageCanvas.width - currentImage.width * zoomLevel) / 2 );
+            const imageOriY = Math.round((imageCanvas.height - currentImage.height * zoomLevel) / 2 );
+            imageX = Math.round((clickX - imageOriX) / zoomLevel);
+            imageY = Math.round((clickY - imageOriY) / zoomLevel);
+            return {clickX, clickY, imageOriX, imageOriY, imageX, imageY};
+        }
+
         // 处理图片画布鼠标按下事件
         function handleImageMouseDown(e) {
             if (!currentImage) return;
+            const {clickX, clickY, imageOriX, imageOriY, imageX, imageY} = getImageEditXY(e);
+            // const rect = imageCanvas.getBoundingClientRect();
+            // const canvasScale = (imageCanvas.width/rect.width);
+            // // 计算相对于Canvas的实际坐标（考虑Canvas缩放）
+            // const clickX = (e.clientX - rect.left) * canvasScale;
+            // const clickY = (e.clientY - rect.top) * canvasScale;
 
+            
             // 计算图片在画布上的绘制位置
-            const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
-            const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+            // const imageOriX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
+            // const imageOriY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+            console.log('drawX:',imageOriX, imageOriY);
 
-            const rect = imageCanvas.getBoundingClientRect();
+
+            // // 计算相对于图片的坐标（考虑缩放）
+            // const imageX = (clickX - drawX) / zoomLevel;
+            // const imageY = (clickY - drawY) / zoomLevel;
             
-            // 计算相对于图片的坐标（考虑缩放）
-            const imageX = (e.clientX - rect.left - drawX) / zoomLevel;
-            const imageY = (e.clientY - rect.top - drawY) / zoomLevel;
-            
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
+
             
             // 根据当前模式执行不同的处理
             if (editMode === 'crop') {
                 if (!isCropping) return;
                 
                 // 检查是否点击在虚拟裁剪框上
-                const canvasLeft = drawX + cropLeft * zoomLevel;
-                const canvasTop = drawY + cropTop * zoomLevel;
+                const canvasLeft = imageOriX + cropLeft * zoomLevel;
+                const canvasTop = imageOriY + cropTop * zoomLevel;
                 const canvasWidth = cropWidth * zoomLevel;
                 const canvasHeight = cropHeight * zoomLevel;
                 
                 // 判断点击位置，确定调整模式
-                const borderWidth = 15; // 边缘检测宽度，扩大以便于操作
+                const borderWidth = 6; // 边缘检测宽度，扩大以便于操作
                 if (cropWidth > 0 && cropHeight > 0 &&
                     clickX >= canvasLeft - borderWidth/2 && clickX <= canvasLeft + canvasWidth + borderWidth/2 &&
                     clickY >= canvasTop - borderWidth/2 && clickY <= canvasTop + canvasHeight + borderWidth/2) {
@@ -2925,8 +2942,8 @@
                     dragStartY = clickY;
                     
                     // 判断点击的是模块的哪个部分
-                    const moduleLeft = drawX + module.x * zoomLevel;
-                    const moduleTop = drawY + module.y * zoomLevel;
+                    const moduleLeft = imageOriX + module.x * zoomLevel;
+                    const moduleTop = imageOriY + module.y * zoomLevel;
                     const moduleRight = moduleLeft + module.width * zoomLevel;
                     const moduleBottom = moduleTop + module.height * zoomLevel;
                     const borderWidth = 15; // 边缘检测宽度，扩大以便于操作
@@ -2969,15 +2986,18 @@
                 }
             }
         }
-        // }
+
         
         // 处理图片画布鼠标移动事件
         function handleImageMouseMove(e) {
             if (!currentImage) return;
             
             const rect = imageCanvas.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
+            const canvasScale = (imageCanvas.width/rect.width);
+            
+            // 计算相对于Canvas的实际坐标（考虑Canvas缩放）
+            const clickX = (e.clientX - rect.left) * canvasScale;
+            const clickY = (e.clientY - rect.top) * canvasScale;
             
             // 处理调整/移动模式
             if (resizeMode) {
@@ -3073,11 +3093,12 @@
             // 处理新建裁剪（仅在裁剪模式下）
             else if (editMode === 'crop' && isCropping && isImageModuleRangeMoving) {
                 // 计算图片在画布上的绘制位置
-                const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
-                const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+                const imageOriX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
+                const imageOriY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
                 
-                const currentX = (e.clientX - rect.left - drawX) / zoomLevel;
-                const currentY = (e.clientY - rect.top - drawY) / zoomLevel;
+                // 计算当前鼠标位置时考虑canvas的缩放比例
+                const currentX = (clickX - imageOriX) / zoomLevel;
+                const currentY = (clickY - imageOriY) / zoomLevel;
                 
                 // 计算裁剪框的位置和大小
                 const x = Math.min(cropStartX, currentX);
@@ -3162,7 +3183,7 @@
                 imageCanvas.style.cursor = 'default';
             }
         }
-        // }
+
         
         // 处理图片画布鼠标释放事件
         function handleImageMouseUp() {
@@ -3205,8 +3226,33 @@
                 drawCurrentImage();
             }
         }
-        // }
+
         
+        function handleImageMouseDblClick(e) {
+            console.log('dblclick1');
+            if (!isCropping || !currentImage) return;
+            // 阻止事件冒泡，避免触发其他元素的双击事件
+            e.stopPropagation();
+            console.log('dblclick2');
+
+            
+            const drawX = (imageCanvas.width - currentImage.width * zoomLevel) / 2;
+            const drawY = (imageCanvas.height - currentImage.height * zoomLevel) / 2;
+            console.log('图片在画布上的绘制位置：',drawX,drawY);
+            
+            const rect = imageCanvas.getBoundingClientRect();
+            const canvasScale = (imageCanvas.width/rect.width);
+            
+            // 计算相对于图片的坐标（考虑Canvas缩放和图片缩放）
+            const imageX = ((e.clientX - rect.left) * canvasScale - drawX) / zoomLevel;
+            const imageY = ((e.clientY - rect.top) * canvasScale - drawY) / zoomLevel;
+
+            console.log('imageX', imageX, 'imageY', imageY, 'cropRange:',cropLeft,cropTop,cropWidth,cropHeight);
+            if (isCropping && imageX >= cropLeft && imageX <= cropLeft+cropWidth && imageY >= cropTop && imageY <= cropTop+cropHeight) {
+                saveModule();
+            }
+        }
+
         // 保存模块
         function saveModule() {
             if (!currentImage || !isCropping) {
@@ -3853,6 +3899,374 @@
             document.getElementById('speed-value').textContent = animationSpeed;
         }
         
+
+        // 处理键盘按下事件
+        function handleKeyDown(e) {
+            
+            if (e.code === 'Space') {
+                isSpacePressed = true;
+                // 当按下空格键且鼠标在画布上时，将鼠标变为手形
+                if (canvas.matches(':hover')) {
+                    canvas.style.cursor = 'grab';
+                }
+                e.preventDefault();
+            }
+            
+            // 如果正在编辑表情区域，不允许对fm的键盘操作
+            if (isEditingExpressionRect) {
+                return;
+            }
+
+            if (e.code === 'Ctrl' || e.code === 'MetaLeft' || e.code === 'ControlLeft') {
+                isCtrlPressed = true;
+            }
+
+            // 处理图片编辑模式下的键盘事件
+            if (editMode === 'edit' && selectedImageModule !== -1) {
+                const imageItem = currentSprite.getImage(currentImageId);
+                if (imageItem && imageItem.modulesList && imageItem.modulesList[selectedImageModule]) {
+                    const module = imageItem.modulesList[selectedImageModule];
+                    
+                    // 处理上下左右键移动选中的图片模块
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                        // 移动量
+                        let dx = 0;
+                        let dy = 0;
+                        
+                        // 根据按键方向设置移动量
+                        if (e.code === 'ArrowUp') {
+                            dy = -1; // 向上移动1个单位
+                        } else if (e.code === 'ArrowDown') {
+                            dy = 1; // 向下移动1个单位
+                        } else if (e.code === 'ArrowLeft') {
+                            dx = -1; // 向左移动1个单位
+                        } else if (e.code === 'ArrowRight') {
+                            dx = 1; // 向右移动1个单位
+                        }
+
+                        // 更新模块位置
+                        module.x += dx;
+                        module.y += dy;
+                        
+                        // 确保模块不超出图片范围
+                        module.x = Math.max(0, module.x);
+                        module.y = Math.max(0, module.y);
+                        module.x = Math.min(module.x, currentImage.width - module.width);
+                        module.y = Math.min(module.y, currentImage.height - module.height);
+                        
+                        // 重新绘制画布
+                        drawCurrentImage();
+                        
+                        e.preventDefault(); // 阻止默认行为
+                    } else if (e.code === 'Delete' || e.code === 'Backspace') {
+                        // 处理删除键删除选中的图片模块
+                        if (confirm('确定要删除选中的模块吗？此操作无法恢复。')) {
+                            // 从模块列表中删除选中的模块
+                            imageItem.modulesList.splice(selectedImageModule, 1);
+                            
+                            // 重置选中状态
+                            selectedImageModule = -1;
+                            resizeMode = null;
+                            
+                            // 重新绘制画布
+                            drawCurrentImage();
+                            
+                            // 更新模块列表
+                            renderModulesList();
+                        }
+                        
+                        e.preventDefault(); // 阻止默认行为
+                    }
+                }
+            }
+            
+            // 处理帧编辑模式下的键盘事件
+            if (currentFrame && (selectedModuleIndex >= 0 || selectedModuleIndices.length > 0)) {
+                // 检查是否有选中的模块
+                let modulesToMove = [];
+                
+                if (selectedModuleIndices.length > 0) {
+                    // 如果有多个模块被选中，移动所有选中的模块
+                    modulesToMove = selectedModuleIndices.map(index => currentFrame.fmList[index]);
+                } else if (selectedModuleIndex >= 0) {
+                    // 如果只有一个模块被选中，移动这个模块
+                    modulesToMove = [currentFrame.fmList[selectedModuleIndex]];
+                }
+                
+                // 检查是否按下了箭头键
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                    // 创建一个组合命令来包含所有模块的移动命令
+                    const compositeCommand = new CompositeCommand();
+                    
+                    // 移动量
+                    let dx = 0;
+                    let dy = 0;
+                    
+                    // 根据按键方向设置移动量
+                    if (e.code === 'ArrowUp') {
+                        dy = 1; // 向上移动1个单位
+                    } else if (e.code === 'ArrowDown') {
+                        dy = -1; // 向下移动1个单位
+                    } else if (e.code === 'ArrowLeft') {
+                        dx = -1; // 向左移动1个单位
+                    } else if (e.code === 'ArrowRight') {
+                        dx = 1; // 向右移动1个单位
+                    }
+
+                    // 移动每个模块
+                    modulesToMove.forEach(fm => {
+                        // 先记录当前位置作为旧位置
+                        const oldX = fm.x;
+                        const oldY = fm.y;
+                        
+                        // 更新模块位置
+                        fm.x += dx;
+                        fm.y += dy;
+                        
+                        // 在位置更新后创建移动命令，并传入新的位置值
+                        const moveCommand = {
+                            execute: function() {
+                                fm.x = oldX + dx;
+                                fm.y = oldY + dy;
+                            },
+                            undo: function() {
+                                fm.x = oldX;
+                                fm.y = oldY;
+                            }
+                        };
+                        compositeCommand.addCommand(moveCommand);
+                    });
+
+                    // 执行组合命令
+                    CommandManager.instance.addCommand(compositeCommand);
+                    
+                    // 更新界面
+                    renderCanvas(7);
+                    
+                    // 更新模块属性面板
+                    if (selectedModuleIndex >= 0) {
+                        updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+                    }
+                    
+                    e.preventDefault(); // 阻止默认行为
+                } else if (e.code === 'Delete' || e.code === 'Backspace') {
+                    // 处理删除键删除选中的模块
+                    // 创建一个组合命令来包含所有模块的删除命令
+                    const compositeCommand = new CompositeCommand();
+                    let hasDeletedModules = false;
+                    
+                    if (selectedModuleIndices.length > 0) {
+                        // 如果有多个模块被选中，按索引从大到小删除，避免索引错误
+                        const sortedIndices = [...selectedModuleIndices].sort((a, b) => b - a);
+                        
+                        sortedIndices.forEach(index => {
+                            if (index >= 0 && index < currentFrame.fmList.length) {
+                                hasDeletedModules = true;
+                                const fm = currentFrame.fmList[index];
+                                // 保存索引，因为在删除后索引会变化
+                                const originalIndex = index;
+                                // 创建删除命令并添加到组合命令
+                                const deleteCommand = {
+                                    execute: function() {},
+                                    undo: function() {
+                                        // 使用原始索引插入，确保位置正确
+                                        currentFrame.fmList.splice(originalIndex, 0, fm);
+                                        renderCanvas(5);
+                                        if (currentFrame.fmList.length > 0) {
+                                            selectedModuleIndex = Math.min(originalIndex, currentFrame.fmList.length - 1);
+                                            updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
+                                        }
+                                    }
+                                };
+                                compositeCommand.addCommand(deleteCommand);
+                                
+                                // 从当前帧中删除模块
+                                currentFrame.fmList.splice(index, 1);
+                            }
+                        });
+                    } else if (selectedModuleIndex >= 0 && selectedModuleIndex < currentFrame.fmList.length) {
+                        // 如果只有一个模块被选中，删除这个模块
+                        hasDeletedModules = true;
+                        const fm = currentFrame.fmList[selectedModuleIndex];
+                        // 保存索引，因为在删除后索引会变化
+                        const originalIndex = selectedModuleIndex;
+                        // 创建删除命令并添加到组合命令
+                        const deleteCommand = {
+                            execute: function() {},
+                            undo: function() {
+                                // 使用原始索引插入，确保位置正确
+                                currentFrame.fmList.splice(originalIndex, 0, fm);
+                                renderCanvas(5);
+                                updateModuleProperties(fm);
+                            }
+                        };
+                        compositeCommand.addCommand(deleteCommand);
+                        
+                        // 从当前帧中删除模块
+                        currentFrame.fmList.splice(selectedModuleIndex, 1);
+                    }
+                    
+                    // 只有在实际删除了模块的情况下才执行命令和更新界面
+                    if (hasDeletedModules) {
+                        // 执行组合命令
+                        CommandManager.instance.addCommand(compositeCommand);
+                        
+                        // 重置选中状态
+                        selectedModuleIndex = -1;
+                        selectedModuleIndices = [];
+                        
+                        // 更新界面
+                        renderCanvas(6);
+                        
+                        e.preventDefault(); // 阻止默认行为
+                    }
+                }
+            }
+        }
+        
+        // 处理键盘释放事件
+        function handleKeyUp(e) {
+            if (e.code === 'Space') {
+                isSpacePressed = false;
+                isDraggingOrigin = false;
+                // 恢复鼠标形状
+                canvas.style.cursor = 'default';
+            }
+            
+            if (e.code === 'Ctrl' || e.code === 'MetaLeft' || e.code === 'ControlLeft') {
+                isCtrlPressed = false;
+            }
+        }
+        
+        // 处理鼠标悬停事件 - 检测fm模块的 旋转控制点和调整尺寸控制点
+        canvas.addEventListener('mousemove', function(e) {
+
+            //针对fm模块悬停时鼠标改变形状
+            if (isDragging || isSpacePressed || !currentFrame || selectedModuleIndex < 0 || !currentSprite) {
+                return;
+            }
+            // 如果正在编辑表情区域，不处理fm的鼠标悬停事件
+            if (isEditingExpressionRect) {
+                // canvas.style.cursor = 'default';
+                return;
+            }
+
+            // const rect = canvas.getBoundingClientRect();
+            // const mouseX = e.clientX - rect.left;
+            // const mouseY = e.clientY - rect.top;
+            const [mouseX, mouseY] = getCurrentXY(e);
+
+            // 检查选中的模块的旋转控制点和尺寸控制点
+            const fm = currentFrame.fmList[selectedModuleIndex];
+            const module = fm.module;
+            if (module) {
+                const imageItem = currentSprite.getImage(module.imageId);
+                if (imageItem && imageItem.modulesList[module.imageModuleId]) {
+                    const rectModule = imageItem.modulesList[module.imageModuleId];
+                    let width = rectModule.width;
+                    let height = rectModule.height;
+                    
+                    // 应用缩放
+                    if (fm.scale) {
+                        width *= fm.scale;
+                        height *= fm.scale;
+                    }
+                    
+                    // 应用变换后的尺寸
+                    if (fm.flag & 4) { // 90度旋转
+                        [width, height] = [height, width];
+                    }
+
+                    // 计算旋转控制点位置（右下角向外延伸一点）
+                    const rotateHandleX = fm.x + width + 10;
+                    const rotateHandleY = fm.y - height;
+                    
+                    // 检查鼠标是否在旋转控制点上
+                    const dx = mouseX - rotateHandleX;
+                    const dy = mouseY - rotateHandleY;
+                    if (dx * dx + dy * dy <= 16) { // 4px的点击范围
+                        canvas.style.cursor = 'grabbing'; // 使用旋转光标
+                        return;
+                    }
+                    
+                    // 计算四个调整尺寸控制点的位置,相对于原点坐标系
+                    const points = [
+                        { x: fm.x, y: fm.y }, // 左上
+                        { x: fm.x + width, y:  fm.y }, // 右上
+                        { x: fm.x + width, y: fm.y - height }, // 右下
+                        { x: fm.x, y: fm.y - height } // 左下
+                    ];
+                    
+                    // 检查鼠标是否在任何一个尺寸控制点上
+                    for (let i = 0; i < points.length; i++) {
+                        const dx = mouseX - points[i].x;
+                        const dy = mouseY - points[i].y;
+                        if (dx * dx + dy * dy <= 16) { // 4px的点击范围
+                            // 根据控制点位置设置相应的光标样式
+                            if (i === 0 || i === 2) {
+                                canvas.style.cursor = 'nwse-resize'; // 对角线光标
+                            } else {
+                                canvas.style.cursor = 'nesw-resize'; // 另一条对角线光标
+                            }
+                            return;
+                        }
+                    }
+                    
+                    // 检查鼠标是否在模块上
+                    const left = fm.x;
+                    const top = fm.y;
+                    const right = left + width;
+                    const bottom = top - height;
+                    
+                    if (mouseX >= left - 4 && mouseX <= right + 4 && mouseY <= top - 4 && mouseY >= bottom + 4) {
+                        canvas.style.cursor = 'move'; // 移动光标
+                        //console.log('in move');
+                        return;
+                    }
+                }
+            }
+            
+            // 如果没有悬停在旋转控制点、尺寸控制点或模块上，恢复默认光标
+            if (canvas.style.cursor !== 'default' && canvas.style.cursor !== 'grab') {
+                canvas.style.cursor = 'default';
+            }
+        });
+        
+        // 原始鼠标事件处理函数引用
+        const originalHandleMouseDown = handleFrameMouseDown;
+        const originalHandleMouseMove = handleFrameMouseMove;
+        const originalHandleMouseUp = handleFrameMouseUp;
+        
+        // 保存模块拖拽开始时的状态
+        let dragStartModuleState = null;
+        
+        // 旋转相关状态变量
+        let isDraggingRotate = false;
+        let originalAngle = 0;
+        let moduleCenterX = 0;
+        let moduleCenterY = 0;
+        
+        // 表情区域相关状态变量
+        let isEditingExpressionRect = false; // 是否正在编辑表情区域
+        let isDraggingExpressionRect = false; // 是否正在拖拽表情区域
+        let isResizingExpressionRect = false; // 是否正在修改表情区域宽高
+        let expressionResizeControlPoint = -1; // 表情区域的缩放控制点索引
+        let expressionDragStartX = 0; // 表情区域拖拽开始时的X坐标
+        let expressionDragStartY = 0; // 表情区域拖拽开始时的Y坐标
+        let expressionOriginalX = 0; // 表情区域原始X坐标
+        let expressionOriginalY = 0; // 表情区域原始Y坐标
+        let expressionOriginalWidth = 0; // 表情区域原始宽度
+        let expressionOriginalHeight = 0; // 表情区域原始高度
+        let expressions = []; // 存储加载的表情数据
+        let globalHorizontalMirrorFlag = 0; // 水平镜像标志，0表示不镜像，1表示镜像
+        let isShowExpression = false; // 是否显示表情
+        
+        // 处理显示表情复选框点击事件
+        document.getElementById('show-expression').addEventListener('change', function() {
+            isShowExpression = this.checked;
+            renderCanvas();
+        });
+
         // 记录当前拖拽的控制点
         let resizeControlPoint = -1;
         let originalWidth = 0;
@@ -3862,6 +4276,7 @@
         
 
         function checkPointInFm(x, y, currentFrame) {
+            if(!currentSprite) return [null, false, false, 0, 0];
             for (let i = currentFrame.fmList.length - 1; i >= 0; i--) {
                 const fm = currentFrame.fmList[i];
                 const module = fm.module;
@@ -4161,372 +4576,6 @@
             renderCanvas();
         }
         
-        // 处理键盘按下事件
-        function handleKeyDown(e) {
-            
-            if (e.code === 'Space') {
-                isSpacePressed = true;
-                // 当按下空格键且鼠标在画布上时，将鼠标变为手形
-                if (canvas.matches(':hover')) {
-                    canvas.style.cursor = 'grab';
-                }
-                e.preventDefault();
-            }
-            
-            // 如果正在编辑表情区域，不允许对fm的键盘操作
-            if (isEditingExpressionRect) {
-                return;
-            }
-
-            if (e.code === 'Ctrl' || e.code === 'MetaLeft' || e.code === 'ControlLeft') {
-                isCtrlPressed = true;
-            }
-
-            // 处理图片编辑模式下的键盘事件
-            if (editMode === 'edit' && selectedImageModule !== -1) {
-                const imageItem = currentSprite.getImage(currentImageId);
-                if (imageItem && imageItem.modulesList && imageItem.modulesList[selectedImageModule]) {
-                    const module = imageItem.modulesList[selectedImageModule];
-                    
-                    // 处理上下左右键移动选中的图片模块
-                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-                        // 移动量
-                        let dx = 0;
-                        let dy = 0;
-                        
-                        // 根据按键方向设置移动量
-                        if (e.code === 'ArrowUp') {
-                            dy = -1; // 向上移动1个单位
-                        } else if (e.code === 'ArrowDown') {
-                            dy = 1; // 向下移动1个单位
-                        } else if (e.code === 'ArrowLeft') {
-                            dx = -1; // 向左移动1个单位
-                        } else if (e.code === 'ArrowRight') {
-                            dx = 1; // 向右移动1个单位
-                        }
-
-                        // 更新模块位置
-                        module.x += dx;
-                        module.y += dy;
-                        
-                        // 确保模块不超出图片范围
-                        module.x = Math.max(0, module.x);
-                        module.y = Math.max(0, module.y);
-                        module.x = Math.min(module.x, currentImage.width - module.width);
-                        module.y = Math.min(module.y, currentImage.height - module.height);
-                        
-                        // 重新绘制画布
-                        drawCurrentImage();
-                        
-                        e.preventDefault(); // 阻止默认行为
-                    } else if (e.code === 'Delete' || e.code === 'Backspace') {
-                        // 处理删除键删除选中的图片模块
-                        if (confirm('确定要删除选中的模块吗？此操作无法恢复。')) {
-                            // 从模块列表中删除选中的模块
-                            imageItem.modulesList.splice(selectedImageModule, 1);
-                            
-                            // 重置选中状态
-                            selectedImageModule = -1;
-                            resizeMode = null;
-                            
-                            // 重新绘制画布
-                            drawCurrentImage();
-                            
-                            // 更新模块列表
-                            renderModulesList();
-                        }
-                        
-                        e.preventDefault(); // 阻止默认行为
-                    }
-                }
-            }
-            
-            // 处理帧编辑模式下的键盘事件
-            if (currentFrame && (selectedModuleIndex >= 0 || selectedModuleIndices.length > 0)) {
-                // 检查是否有选中的模块
-                let modulesToMove = [];
-                
-                if (selectedModuleIndices.length > 0) {
-                    // 如果有多个模块被选中，移动所有选中的模块
-                    modulesToMove = selectedModuleIndices.map(index => currentFrame.fmList[index]);
-                } else if (selectedModuleIndex >= 0) {
-                    // 如果只有一个模块被选中，移动这个模块
-                    modulesToMove = [currentFrame.fmList[selectedModuleIndex]];
-                }
-                
-                // 检查是否按下了箭头键
-                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-                    // 创建一个组合命令来包含所有模块的移动命令
-                    const compositeCommand = new CompositeCommand();
-                    
-                    // 移动量
-                    let dx = 0;
-                    let dy = 0;
-                    
-                    // 根据按键方向设置移动量
-                    if (e.code === 'ArrowUp') {
-                        dy = 1; // 向上移动1个单位
-                    } else if (e.code === 'ArrowDown') {
-                        dy = -1; // 向下移动1个单位
-                    } else if (e.code === 'ArrowLeft') {
-                        dx = -1; // 向左移动1个单位
-                    } else if (e.code === 'ArrowRight') {
-                        dx = 1; // 向右移动1个单位
-                    }
-
-                    // 移动每个模块
-                    modulesToMove.forEach(fm => {
-                        // 先记录当前位置作为旧位置
-                        const oldX = fm.x;
-                        const oldY = fm.y;
-                        
-                        // 更新模块位置
-                        fm.x += dx;
-                        fm.y += dy;
-                        
-                        // 在位置更新后创建移动命令，并传入新的位置值
-                        const moveCommand = {
-                            execute: function() {
-                                fm.x = oldX + dx;
-                                fm.y = oldY + dy;
-                            },
-                            undo: function() {
-                                fm.x = oldX;
-                                fm.y = oldY;
-                            }
-                        };
-                        compositeCommand.addCommand(moveCommand);
-                    });
-
-                    // 执行组合命令
-                    CommandManager.instance.addCommand(compositeCommand);
-                    
-                    // 更新界面
-                    renderCanvas(7);
-                    
-                    // 更新模块属性面板
-                    if (selectedModuleIndex >= 0) {
-                        updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
-                    }
-                    
-                    e.preventDefault(); // 阻止默认行为
-                } else if (e.code === 'Delete' || e.code === 'Backspace') {
-                    // 处理删除键删除选中的模块
-                    // 创建一个组合命令来包含所有模块的删除命令
-                    const compositeCommand = new CompositeCommand();
-                    let hasDeletedModules = false;
-                    
-                    if (selectedModuleIndices.length > 0) {
-                        // 如果有多个模块被选中，按索引从大到小删除，避免索引错误
-                        const sortedIndices = [...selectedModuleIndices].sort((a, b) => b - a);
-                        
-                        sortedIndices.forEach(index => {
-                            if (index >= 0 && index < currentFrame.fmList.length) {
-                                hasDeletedModules = true;
-                                const fm = currentFrame.fmList[index];
-                                // 保存索引，因为在删除后索引会变化
-                                const originalIndex = index;
-                                // 创建删除命令并添加到组合命令
-                                const deleteCommand = {
-                                    execute: function() {},
-                                    undo: function() {
-                                        // 使用原始索引插入，确保位置正确
-                                        currentFrame.fmList.splice(originalIndex, 0, fm);
-                                        renderCanvas(5);
-                                        if (currentFrame.fmList.length > 0) {
-                                            selectedModuleIndex = Math.min(originalIndex, currentFrame.fmList.length - 1);
-                                            updateModuleProperties(currentFrame.fmList[selectedModuleIndex]);
-                                        }
-                                    }
-                                };
-                                compositeCommand.addCommand(deleteCommand);
-                                
-                                // 从当前帧中删除模块
-                                currentFrame.fmList.splice(index, 1);
-                            }
-                        });
-                    } else if (selectedModuleIndex >= 0 && selectedModuleIndex < currentFrame.fmList.length) {
-                        // 如果只有一个模块被选中，删除这个模块
-                        hasDeletedModules = true;
-                        const fm = currentFrame.fmList[selectedModuleIndex];
-                        // 保存索引，因为在删除后索引会变化
-                        const originalIndex = selectedModuleIndex;
-                        // 创建删除命令并添加到组合命令
-                        const deleteCommand = {
-                            execute: function() {},
-                            undo: function() {
-                                // 使用原始索引插入，确保位置正确
-                                currentFrame.fmList.splice(originalIndex, 0, fm);
-                                renderCanvas(5);
-                                updateModuleProperties(fm);
-                            }
-                        };
-                        compositeCommand.addCommand(deleteCommand);
-                        
-                        // 从当前帧中删除模块
-                        currentFrame.fmList.splice(selectedModuleIndex, 1);
-                    }
-                    
-                    // 只有在实际删除了模块的情况下才执行命令和更新界面
-                    if (hasDeletedModules) {
-                        // 执行组合命令
-                        CommandManager.instance.addCommand(compositeCommand);
-                        
-                        // 重置选中状态
-                        selectedModuleIndex = -1;
-                        selectedModuleIndices = [];
-                        
-                        // 更新界面
-                        renderCanvas(6);
-                        
-                        e.preventDefault(); // 阻止默认行为
-                    }
-                }
-            }
-        }
-        
-        // 处理键盘释放事件
-        function handleKeyUp(e) {
-            if (e.code === 'Space') {
-                isSpacePressed = false;
-                isDraggingOrigin = false;
-                // 恢复鼠标形状
-                canvas.style.cursor = 'default';
-            }
-            
-            if (e.code === 'Ctrl' || e.code === 'MetaLeft' || e.code === 'ControlLeft') {
-                isCtrlPressed = false;
-            }
-        }
-        
-        // 处理鼠标悬停事件 - 检测fm模块的 旋转控制点和调整尺寸控制点
-        canvas.addEventListener('mousemove', function(e) {
-
-            //针对fm模块悬停时鼠标改变形状
-            if (isDragging || isSpacePressed || !currentFrame || selectedModuleIndex < 0) {
-                return;
-            }
-            // 如果正在编辑表情区域，不处理fm的鼠标悬停事件
-            if (isEditingExpressionRect) {
-                // canvas.style.cursor = 'default';
-                return;
-            }
-
-            // const rect = canvas.getBoundingClientRect();
-            // const mouseX = e.clientX - rect.left;
-            // const mouseY = e.clientY - rect.top;
-            const [mouseX, mouseY] = getCurrentXY(e);
-
-            // 检查选中的模块的旋转控制点和尺寸控制点
-            const fm = currentFrame.fmList[selectedModuleIndex];
-            const module = fm.module;
-            if (module) {
-                const imageItem = currentSprite.getImage(module.imageId);
-                if (imageItem && imageItem.modulesList[module.imageModuleId]) {
-                    const rectModule = imageItem.modulesList[module.imageModuleId];
-                    let width = rectModule.width;
-                    let height = rectModule.height;
-                    
-                    // 应用缩放
-                    if (fm.scale) {
-                        width *= fm.scale;
-                        height *= fm.scale;
-                    }
-                    
-                    // 应用变换后的尺寸
-                    if (fm.flag & 4) { // 90度旋转
-                        [width, height] = [height, width];
-                    }
-
-                    // 计算旋转控制点位置（右下角向外延伸一点）
-                    const rotateHandleX = fm.x + width + 10;
-                    const rotateHandleY = fm.y - height;
-                    
-                    // 检查鼠标是否在旋转控制点上
-                    const dx = mouseX - rotateHandleX;
-                    const dy = mouseY - rotateHandleY;
-                    if (dx * dx + dy * dy <= 16) { // 4px的点击范围
-                        canvas.style.cursor = 'grabbing'; // 使用旋转光标
-                        return;
-                    }
-                    
-                    // 计算四个调整尺寸控制点的位置,相对于原点坐标系
-                    const points = [
-                        { x: fm.x, y: fm.y }, // 左上
-                        { x: fm.x + width, y:  fm.y }, // 右上
-                        { x: fm.x + width, y: fm.y - height }, // 右下
-                        { x: fm.x, y: fm.y - height } // 左下
-                    ];
-                    
-                    // 检查鼠标是否在任何一个尺寸控制点上
-                    for (let i = 0; i < points.length; i++) {
-                        const dx = mouseX - points[i].x;
-                        const dy = mouseY - points[i].y;
-                        if (dx * dx + dy * dy <= 16) { // 4px的点击范围
-                            // 根据控制点位置设置相应的光标样式
-                            if (i === 0 || i === 2) {
-                                canvas.style.cursor = 'nwse-resize'; // 对角线光标
-                            } else {
-                                canvas.style.cursor = 'nesw-resize'; // 另一条对角线光标
-                            }
-                            return;
-                        }
-                    }
-                    
-                    // 检查鼠标是否在模块上
-                    const left = fm.x;
-                    const top = fm.y;
-                    const right = left + width;
-                    const bottom = top - height;
-                    
-                    if (mouseX >= left - 4 && mouseX <= right + 4 && mouseY <= top - 4 && mouseY >= bottom + 4) {
-                        canvas.style.cursor = 'move'; // 移动光标
-                        //console.log('in move');
-                        return;
-                    }
-                }
-            }
-            
-            // 如果没有悬停在旋转控制点、尺寸控制点或模块上，恢复默认光标
-            if (canvas.style.cursor !== 'default' && canvas.style.cursor !== 'grab') {
-                canvas.style.cursor = 'default';
-            }
-        });
-        
-        // 原始鼠标事件处理函数引用
-        const originalHandleMouseDown = handleFrameMouseDown;
-        const originalHandleMouseMove = handleFrameMouseMove;
-        const originalHandleMouseUp = handleFrameMouseUp;
-        
-        // 保存模块拖拽开始时的状态
-        let dragStartModuleState = null;
-        
-        // 旋转相关状态变量
-        let isDraggingRotate = false;
-        let originalAngle = 0;
-        let moduleCenterX = 0;
-        let moduleCenterY = 0;
-        
-        // 表情区域相关状态变量
-        let isEditingExpressionRect = false; // 是否正在编辑表情区域
-        let isDraggingExpressionRect = false; // 是否正在拖拽表情区域
-        let isResizingExpressionRect = false; // 是否正在修改表情区域宽高
-        let expressionResizeControlPoint = -1; // 表情区域的缩放控制点索引
-        let expressionDragStartX = 0; // 表情区域拖拽开始时的X坐标
-        let expressionDragStartY = 0; // 表情区域拖拽开始时的Y坐标
-        let expressionOriginalX = 0; // 表情区域原始X坐标
-        let expressionOriginalY = 0; // 表情区域原始Y坐标
-        let expressionOriginalWidth = 0; // 表情区域原始宽度
-        let expressionOriginalHeight = 0; // 表情区域原始高度
-        let expressions = []; // 存储加载的表情数据
-        let globalHorizontalMirrorFlag = 0; // 水平镜像标志，0表示不镜像，1表示镜像
-        let isShowExpression = false; // 是否显示表情
-        
-        // 处理显示表情复选框点击事件
-        document.getElementById('show-expression').addEventListener('change', function() {
-            isShowExpression = this.checked;
-            renderCanvas();
-        });
 
         // 处理鼠标移动事件
         function handleFrameMouseMove(e) {
@@ -4838,9 +4887,10 @@
                 return;
             }
 
+
             
             // 处理框选结束
-            if (isMarqueeSelecting && currentFrame) {
+            if (isMarqueeSelecting && currentFrame && currentSprite) {
                 isMarqueeSelecting = false;
                 
                 // 计算框选区域
@@ -4897,6 +4947,8 @@
                 // 重绘画布以显示选中状态
                 renderCanvas();
                 return;
+            }else{
+                isMarqueeSelecting = false;
             }
             
             // 如果是拖拽模块结束，创建变换命令
@@ -5109,8 +5161,8 @@
                 
                 // 清空画布
                 imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
-                document.getElementById('current-image-info').textContent = '未选择图片';
                 renderModulesList(); // 清空模块列表
+
             }
             
             // 重新渲染图片列表
