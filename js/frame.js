@@ -41,14 +41,14 @@ class AnimFrame {
         this.frame.draw(ctx, sprite, originX, originY, globalFlag,globalScale,globalAngle);
 
         if(this.expressionRect && expressionImg) {
-            //if (!expressionImg || !expressionImg.image.complete) return;
-            console.log('111');
+            if (!expressionImg || !expressionImg.complete) return;
             const rotateOrigin = { x:originX,y:originY};
             const config = {
                 source: { x: 0, y: 0, width: expressionImg.width, height: expressionImg.height },
                 drawPosition: { x: this.expressionRect.x, y: -this.expressionRect.y, width: this.expressionRect.width, height: this.expressionRect.height },  // 相对于旋转原点的位置
                 flipX: false,
                 flipY: false,  // 自身垂直翻转
+                selfRotate: 0, // 自身旋转角度（弧度）默认表情无旋转
                 color: 'blue',
                 drawInfo: false,
             };

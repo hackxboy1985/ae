@@ -49,6 +49,7 @@ class FrameModule {
             drawPosition: { x: this.x, y: -this.y, width: width, height: height },  // 相对于旋转原点的位置
             flipX: (this.flag & 1) !== 0,  // 自身水平翻转
             flipY: (this.flag & 2) !== 0,  // 自身垂直翻转
+            selfRotate: this.angle, // 自身旋转角度（弧度）
             color: 'blue',
             drawInfo: false,
         };
@@ -248,21 +249,29 @@ class DrawApi{
         // 5. 平移到配置项的相对位置
         ctx.translate(config.drawPosition.x, config.drawPosition.y);
 
-        // 6. 自身水平翻转（基于自身中心点，核心修改）
+        // 6. 自身旋转（围绕自身中心点，新增逻辑）
+        if (config.selfRotate !== 0) {
+            ctx.translate(config.drawPosition.width / 2, config.drawPosition.height / 2);
+            const selfRotateRad = config.selfRotate * Math.PI / 180;
+            ctx.rotate(selfRotateRad);
+            ctx.translate(-config.drawPosition.width / 2, -config.drawPosition.height / 2);
+        }
+
+        // 7. 自身水平翻转（基于自身中心点，核心修改）
         if (config.flipX) {
             ctx.translate(config.drawPosition.width / 2, config.drawPosition.height / 2);
             ctx.scale(-1, 1);
             ctx.translate(-config.drawPosition.width / 2, -config.drawPosition.height / 2);
         }
 
-        // 7. 自身垂直翻转（基于自身中心点，新增逻辑）
+        // 8. 自身垂直翻转（基于自身中心点，新增逻辑）
         if (config.flipY) {
             ctx.translate(config.drawPosition.width / 2, config.drawPosition.height / 2);
             ctx.scale(1, -1);
             ctx.translate(-config.drawPosition.width / 2, -config.drawPosition.height / 2);
         }
 
-        // 8. 绘制截取的图片区域
+        // 9. 绘制截取的图片区域
         ctx.drawImage(
             img,
             config.source.x, config.source.y,

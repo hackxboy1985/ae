@@ -4857,13 +4857,13 @@
                 // 计算鼠标相对于模块中心点的位置
                 const mouseX = e.clientX - rect.left;
                 const mouseY = e.clientY - rect.top;
-                
-                // 计算鼠标与模块中心点之间的连线与水平线的夹角
+
+                // 计算鼠标与模块中心点之间的连线与水平线的夹角（弧度）
                 const dx = mouseX - moduleCenterX;
                 const dy = mouseY - moduleCenterY;
                 const angle = Math.atan2(dy, dx);
-
-                fm.angle = originalAngle + angle;
+                const degree = angle * 180 / Math.PI; // 弧度转角度
+                fm.angle = originalAngle + degree;
                 
                 renderCanvas();
                 updateModuleProperties(fm);
