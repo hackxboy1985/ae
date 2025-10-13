@@ -112,6 +112,27 @@ class FlipVerticalCommand extends Command {
     }
 }
 
+// 表情框变换命令类定义
+class TransformExpressionRectCommand extends Command {
+    constructor(aframe,expressionRect, oldX, oldY) {
+        super();
+        this.aframe = aframe;
+        this.oldX = oldX;
+        this.oldY = oldY;
+        this.newX = expressionRect.x;
+        this.newY = expressionRect.y;
+    }
+    
+    execute() {
+        this.aframe.expressionRect.x = this.newX;
+        this.aframe.expressionRect.y = this.newY;
+    }
+    
+    undo() {
+        this.aframe.expressionRect.x = this.oldX;
+        this.aframe.expressionRect.y = this.oldY;
+    }
+}
 
 
 // 组合命令类定义 - 用于组合多个命令

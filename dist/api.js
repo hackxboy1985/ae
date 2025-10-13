@@ -123,7 +123,7 @@ function newProject() {
 function saveProject() {
     try {
         // 准备项目数据进行保存
-        const projectData = {
+        const avatarData = {
             // 保存所有图片数据（包括Base64编码的图片）
             images: Array.from(imageManager.m_imageMap.entries()).map(([id, imageItem]) => ({
                 id: imageItem.id,
@@ -155,9 +155,9 @@ function saveProject() {
                 }))
             }
         };
-        // console.log('projectData', JSON.stringify(projectData));
+        // console.log('avatarData', JSON.stringify(avatarData));
         // 使用localStorage保存项目数据
-        localStorage.setItem('animationEditorProject', JSON.stringify(projectData));
+        localStorage.setItem('animationEditorProject', JSON.stringify(avatarData));
         
         // alert('项目保存成功！');
         notification('项目保存成功！');
@@ -176,11 +176,11 @@ function loadProject() {
             return false;
         }
         
-        const projectData = JSON.parse(savedData);
+        const avatarData = JSON.parse(savedData);
         // console.log('load projectData', projectData);
         // 重建图像管理器和所有图片
         imageManager = new LWImageManager();
-        projectData.images.forEach(savedImage => {
+        avatarData.images.forEach(savedImage => {
             const imageItem = new ImageItem(savedImage.id, savedImage.src, savedImage.name);
             imageItem.modulesList = savedImage.modulesList || [];
             imageManager.addImage(imageItem);
@@ -188,12 +188,12 @@ function loadProject() {
         
         // 重建项目、角色、动作、帧等数据
         currentProject = new Project();
-        projectData.project.m_spriteList.forEach(savedSprite => {
+        avatarData.project.m_spriteList.forEach(savedSprite => {
             const sprite = new Sprite(savedSprite.name);
             currentProject.addSprite(sprite);
             
             // 为角色添加图片引用
-            projectData.images.forEach(savedImage => {
+            avatarData.images.forEach(savedImage => {
                 const imageItem = imageManager.getImage(savedImage.id);
                 if (imageItem) {
                     sprite.addImage(imageItem);
@@ -243,5 +243,6 @@ function loadProject() {
         alert('加载项目失败，请尝试重新创建项目。');
         return false;
     }
+
 }
 

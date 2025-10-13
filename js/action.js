@@ -2666,7 +2666,52 @@
             }
             
             // 如果正在编辑表情区域，不允许对fm的键盘操作
-            if (isEditingExpressionRect) {
+            if(isEditingExpressionRect &&  currentFrameIndex !== -1 && currentAnim !== null && currentFrameIndex < currentAnim.aframeList.length && currentAnim.aframeList[currentFrameIndex] && currentAnim.aframeList[currentFrameIndex].expressionRect) {
+                const expressionRect = currentAnim.aframeList[currentFrameIndex].expressionRect;
+                // 检查是否按下了箭头键
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                    // 创建一个组合命令来包含所有模块的移动命令
+                    const compositeCommand = new CompositeCommand();
+                    console.log('aaa');
+                    // 移动量
+                    let dx = 0;
+                    let dy = 0;
+                    
+                    // 根据按键方向设置移动量
+                    if (e.code === 'ArrowUp') {
+                        dy = 1; // 向上移动1个单位
+                    } else if (e.code === 'ArrowDown') {
+                        dy = -1; // 向下移动1个单位
+                    } else if (e.code === 'ArrowLeft') {
+                        dx = -1; // 向左移动1个单位
+                    } else if (e.code === 'ArrowRight') {
+                        dx = 1; // 向右移动1个单位
+                    }
+
+                    
+                    // 移动表情框
+                    // const expressionRect = rect.expressionRect;
+                    console.log('expressionRect',expressionRect);
+                    // 保存原始坐标，用于创建撤销命令
+                    const oldX = expressionRect.x;
+                    const oldY = expressionRect.y;
+                    
+                    // 应用移动
+                    expressionRect.x += dx;
+                    expressionRect.y += dy;
+                    
+                    // 创建表情框移动命令并添加到组合命令中
+                    const moveCommand = new TransformExpressionRectCommand(currentAnim.aframeList[currentFrameIndex],expressionRect, oldX, oldY);
+                    compositeCommand.addCommand(moveCommand);
+                    
+                    // 执行组合命令
+                    CommandManager.instance.addCommand(compositeCommand);
+                    
+                    // 更新界面
+                    renderCanvas(7);
+                    
+                    e.preventDefault(); // 阻止默认行为
+                }
                 return;
             }
 
@@ -2733,6 +2778,7 @@
                 }
             }
             
+
             // 处理帧编辑模式下的键盘事件
             if (currentFrame && (selectedModuleIndex >= 0 || selectedModuleIndices.length > 0)) {
                 // 检查是否有选中的模块
@@ -2874,7 +2920,7 @@
                         e.preventDefault(); // 阻止默认行为
                     }
                 }
-            }
+            } 
         }
         
         // 处理键盘释放事件
@@ -5056,26 +5102,26 @@
             const projectLoaded = loadProject();
             
             // 如果没有加载到项目数据，创建默认项目
-            if (!projectLoaded) {
-                currentProject = new Project();
+            // if (!projectLoaded) {
+            //     currentProject = new Project();
                 
-                // 创建默认角色和动作
-                const defaultSprite = new Sprite('角色1');
-                currentProject.addSprite(defaultSprite);
+            //     // 创建默认角色和动作
+            //     const defaultSprite = new Sprite('角色1');
+            //     currentProject.addSprite(defaultSprite);
                 
-                const defaultAnim = new Anim('动作1');
-                defaultSprite.mAnimList.push(defaultAnim);
+            //     const defaultAnim = new Anim('动作1');
+            //     defaultSprite.mAnimList.push(defaultAnim);
                 
-                // 添加默认帧
-                const defaultFrame = new Frame();
-                const defaultAnimFrame = new AnimFrame(defaultFrame, true);
-                defaultAnim.aframeList.push(defaultAnimFrame);
+            //     // 添加默认帧
+            //     const defaultFrame = new Frame();
+            //     const defaultAnimFrame = new AnimFrame(defaultFrame, true);
+            //     defaultAnim.aframeList.push(defaultAnimFrame);
                 
-                // 选择默认角色和动作
-                currentSprite = defaultSprite;
-                currentAnim = defaultAnim;
-                currentFrame = defaultFrame;
-            }
+            //     // 选择默认角色和动作
+            //     currentSprite = defaultSprite;
+            //     currentAnim = defaultAnim;
+            //     currentFrame = defaultFrame;
+            // }
             
             switchTab("animation");
             
@@ -5091,23 +5137,7 @@
             // 绑定事件
             bindEvents();
             
-            // 为显示所有模块复选框添加事件监听
-            document.getElementById('show-all-modules').addEventListener('change', drawCurrentImage);
             
-            // 监听窗口大小变化
-            window.addEventListener('resize', resizeCanvas);
-            
-            // 绑定缩放控件事件
-            document.getElementById('zoom-in').addEventListener('click', handleZoomIn);
-            document.getElementById('zoom-out').addEventListener('click', handleZoomOut);
-            document.getElementById('zoom-reset').addEventListener('click', handleZoomReset);
-            
-            // 绑定鼠标滚轮缩放事件
-            imageCanvas.addEventListener('wheel', handleMouseWheel);
-            imageCanvas.addEventListener('mousemove', showImageMousePosition);
-
-            // 绑定鼠标移动事件用于显示鼠标位置
-            canvas.addEventListener('mousemove', showMousePosition);
             
             
             // 初始化图片预览相关元素
@@ -5230,31 +5260,7 @@
                 imagePreviewCanvas.addEventListener('mousemove', updateMousePosition);
             }
             
-            // 绑定动画canvas的点击事件，用于添加模块
-            canvas.addEventListener('click', function(e) {
-                // console.log('showPreviewWithMouse',showPreviewWithMouse);
-                // console.log('selectedImageModule',selectedImageModule);
-                if (showPreviewWithMouse && selectedImageModule !== -1 && currentFrame) {
-                    addModuleToFrame(e);
-                }
-            });
-            
-            // 绑定动画canvas的鼠标移动事件，用于显示预览
-            canvas.addEventListener('mousemove', function(e) {
-                if (showPreviewWithMouse && selectedImageModule !== -1) {
-                    mouseXOnCanvas = e.offsetX;
-                    mouseYOnCanvas = e.offsetY;
-                    renderCanvas(); // 触发重绘以显示预览
-                }
-            });
-            
-            // 绑定动画canvas的鼠标离开事件，隐藏预览
-            canvas.addEventListener('mouseleave', function() {
-                if (showPreviewWithMouse) {
-                    showPreviewWithMouse = false;
-                    renderCanvas();
-                }
-            });
+           
 
             // 初始化时加载表情数据
             loadExpression();
@@ -5391,5 +5397,49 @@
 
             // 处理水平镜像复选框点击事件
             document.getElementById('horizontal-mirror').addEventListener('change', handleHorizontalMirrorChange);
+
+            // 为显示所有模块复选框添加事件监听
+            document.getElementById('show-all-modules').addEventListener('change', drawCurrentImage);
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 绑定缩放控件事件
+            document.getElementById('zoom-in').addEventListener('click', handleZoomIn);
+            document.getElementById('zoom-out').addEventListener('click', handleZoomOut);
+            document.getElementById('zoom-reset').addEventListener('click', handleZoomReset);
+            
+            // 绑定鼠标滚轮缩放事件
+            imageCanvas.addEventListener('wheel', handleMouseWheel);
+            imageCanvas.addEventListener('mousemove', showImageMousePosition);
+
+            // 绑定鼠标移动事件用于显示鼠标位置
+            canvas.addEventListener('mousemove', showMousePosition);
+
+             // 绑定动画canvas的点击事件，用于添加模块
+            canvas.addEventListener('click', function(e) {
+                // console.log('showPreviewWithMouse',showPreviewWithMouse);
+                // console.log('selectedImageModule',selectedImageModule);
+                if (showPreviewWithMouse && selectedImageModule !== -1 && currentFrame) {
+                    addModuleToFrame(e);
+                }
+            });
+            
+            // 绑定动画canvas的鼠标移动事件，用于显示预览
+            canvas.addEventListener('mousemove', function(e) {
+                if (showPreviewWithMouse && selectedImageModule !== -1) {
+                    mouseXOnCanvas = e.offsetX;
+                    mouseYOnCanvas = e.offsetY;
+                    renderCanvas(); // 触发重绘以显示预览
+                }
+            });
+            
+            // 绑定动画canvas的鼠标离开事件，隐藏预览
+            canvas.addEventListener('mouseleave', function() {
+                if (showPreviewWithMouse) {
+                    showPreviewWithMouse = false;
+                    renderCanvas();
+                }
+            });
         }
         

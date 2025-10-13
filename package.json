@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "start:80": "sudo http-server -p 80",
+    "start": "http-server -p 8080"
+  },
   "devDependencies": {
     "javascript-obfuscator": "^4.1.1"
   }
