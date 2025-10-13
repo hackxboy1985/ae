@@ -5091,6 +5091,14 @@
             };
         }
 
+        function renderAfterInit(){
+            renderSpriteList();
+            renderAnimList();
+            renderTimeline();
+            renderImagesList();
+            renderCanvas(0);
+        }
+
         // 初始化函数
         function init() {
             // imageManager = new LWImageManager(); // 在init函数中初始化
@@ -5101,11 +5109,7 @@
             // 尝试加载保存的项目数据
             const projectLoaded = loadProject(() => {
                 // 项目加载完成后，渲染界面
-                renderSpriteList();
-                renderAnimList();
-                renderTimeline();
-                renderImagesList();
-                renderCanvas(0);
+                renderAfterInit();
             });
             
             // 如果没有加载到项目数据，创建默认项目

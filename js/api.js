@@ -100,21 +100,23 @@ function newProject() {
 
     // 清空所有数据
     imageManager.clearImages();
-    expressions = [];
+    // expressions = [];
     currentProject = new Project();
+    imageManager = currentProject.imageManager;
     currentSprite = null;
     currentAnim = null;
 
     currentImage = null;
     currentImageId = null;
+    renderAfterInit();
+
     // 重置UI
-    renderAnimList();
-    // 重置帧
-    renderTimeline();
-    renderImagesList();
-    renderModulesList();
+    // renderAnimList();
+    // // 重置帧
+    // renderTimeline();
+    // renderImagesList();
+    // renderModulesList();
     // renderExpressionsList();
-    console.log('新建项目');
     showNewSpriteModal();
 
 }
