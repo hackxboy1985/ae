@@ -2,6 +2,7 @@
 class Project {
     constructor() {
         this.m_spriteList = []; // 存储Sprite对象
+        this.imageManager = new LWImageManager(); // 图像管理器
     }
     
     addSprite(sprite) {

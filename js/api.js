@@ -125,7 +125,7 @@ function saveProject() {
         // 准备项目数据进行保存
         const avatarData = {
             // 保存所有图片数据（包括Base64编码的图片）
-            images: Array.from(imageManager.m_imageMap.entries()).map(([id, imageItem]) => ({
+            images: Array.from(currentProject.imageManager.m_imageMap.entries()).map(([id, imageItem]) => ({
                 id: imageItem.id,
                 name: imageItem.name,
                 src: imageItem.src,
@@ -168,73 +168,80 @@ function saveProject() {
 }
 
 // 加载项目函数
-function loadProject() {
+function loadProject(callback) {
     try {
         const savedData = localStorage.getItem('animationEditorProject');
         if (!savedData) {
             console.log('没有找到保存的项目数据');
             return false;
         }
-        
+        // 重建项目、角色、动作、帧等数据
+        currentProject = new Project();
+        imageManager = currentProject.imageManager;
         const avatarData = JSON.parse(savedData);
         // console.log('load projectData', projectData);
         // 重建图像管理器和所有图片
-        imageManager = new LWImageManager();
-        avatarData.images.forEach(savedImage => {
-            const imageItem = new ImageItem(savedImage.id, savedImage.src, savedImage.name);
-            imageItem.modulesList = savedImage.modulesList || [];
-            imageManager.addImage(imageItem);
-        });
+
         
-        // 重建项目、角色、动作、帧等数据
-        currentProject = new Project();
-        avatarData.project.m_spriteList.forEach(savedSprite => {
-            const sprite = new Sprite(savedSprite.name);
-            currentProject.addSprite(sprite);
-            
-            // 为角色添加图片引用
+        
+        setTimeout(() => {
             avatarData.images.forEach(savedImage => {
-                const imageItem = imageManager.getImage(savedImage.id);
-                if (imageItem) {
-                    sprite.addImage(imageItem);
-                }
+                const imageItem = new ImageItem(savedImage.id, savedImage.src, savedImage.name);
+                imageItem.modulesList = savedImage.modulesList || [];
+                imageManager.addImage(imageItem);
             });
             
-            // 重建动作
-            savedSprite.mAnimList.forEach(savedAnim => {
-                const anim = new Anim(savedAnim.name);
-                sprite.mAnimList.push(anim);
+
+            avatarData.project.m_spriteList.forEach(savedSprite => {
+                const sprite = new Sprite(savedSprite.name);
+                currentProject.addSprite(sprite);
                 
-                // 重建动画帧
-                savedAnim.aframeList.forEach(savedAFrame => {
-                    const frame = new Frame();
-                    frame.fmList = savedAFrame.frame.fmList.map(savedFm => {
-                        const fm = new FrameModule(savedFm.module, savedFm.x, savedFm.y, savedFm.flag);
-                        return fm;
-                    });
-                    const aframe = new AnimFrame(frame, savedAFrame.KeyFrameState);
-                    
-                    // 恢复表情区域数据
-                    if (savedAFrame.expressionRect) {
-                        aframe.expressionRect = savedAFrame.expressionRect;
+                // 为角色添加图片引用
+                avatarData.images.forEach(savedImage => {
+                    const imageItem = imageManager.getImage(savedImage.id);
+                    if (imageItem) {
+                        sprite.addImage(imageItem);
                     }
+                });
+                
+                // 重建动作
+                savedSprite.mAnimList.forEach(savedAnim => {
+                    const anim = new Anim(savedAnim.name);
+                    sprite.mAnimList.push(anim);
                     
-                    anim.aframeList.push(aframe);
+                    // 重建动画帧
+                    savedAnim.aframeList.forEach(savedAFrame => {
+                        const frame = new Frame();
+                        frame.fmList = savedAFrame.frame.fmList.map(savedFm => {
+                            const fm = new FrameModule(savedFm.module, savedFm.x, savedFm.y, savedFm.flag);
+                            return fm;
+                        });
+                        const aframe = new AnimFrame(frame, savedAFrame.KeyFrameState);
+                        
+                        // 恢复表情区域数据
+                        if (savedAFrame.expressionRect) {
+                            aframe.expressionRect = savedAFrame.expressionRect;
+                        }
+                        
+                        anim.aframeList.push(aframe);
+                    });
                 });
             });
-        });
-        
-        // 选择默认的角色和动作
-        if (currentProject.m_spriteList.length > 0) {
-            currentSprite = currentProject.m_spriteList[0];
-            if (currentSprite.mAnimList.length > 0) {
-                currentAnim = currentSprite.mAnimList[0];
-                if (currentAnim.aframeList.length > 0) {
-                    currentFrame = currentAnim.aframeList[0].frame;
+            
+            // 选择默认的角色和动作
+            if (currentProject.m_spriteList.length > 0) {
+                currentSprite = currentProject.m_spriteList[0];
+                if (currentSprite.mAnimList.length > 0) {
+                    currentAnim = currentSprite.mAnimList[0];
+                    if (currentAnim.aframeList.length > 0) {
+                        currentFrame = currentAnim.aframeList[0].frame;
+                    }
                 }
             }
-        }
-        
+            console.log('项目异步加载成功！');
+            callback(true);
+        }, 500);
+
         // console.log('项目加载成功！');
         // renderCanvas(0);
         return true;

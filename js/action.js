@@ -5093,13 +5093,20 @@
 
         // 初始化函数
         function init() {
-            imageManager = new LWImageManager(); // 在init函数中初始化
+            // imageManager = new LWImageManager(); // 在init函数中初始化
             
             // 初始化图像原点位置
             updateImageOriginPos();
             
             // 尝试加载保存的项目数据
-            const projectLoaded = loadProject();
+            const projectLoaded = loadProject(() => {
+                // 项目加载完成后，渲染界面
+                renderSpriteList();
+                renderAnimList();
+                renderTimeline();
+                renderImagesList();
+                renderCanvas(0);
+            });
             
             // 如果没有加载到项目数据，创建默认项目
             // if (!projectLoaded) {
@@ -5122,145 +5129,19 @@
             //     currentAnim = defaultAnim;
             //     currentFrame = defaultFrame;
             // }
-            
             switchTab("animation");
             
             // 渲染界面
-            renderSpriteList();
-            renderAnimList();
-            renderTimeline();
-            renderImagesList();
+            // renderSpriteList();
+            // renderAnimList();
+            // renderTimeline();
+            // renderImagesList();
 
             // 调整canvas大小, 触发renderCanvas
             resizeCanvas();
 
             // 绑定事件
             bindEvents();
-            
-            
-            
-            
-            // 初始化图片预览相关元素
-            if (!imagePreviewCanvas) {
-                imagePreviewCanvas = document.getElementById('image-preview-canvas');
-                imagePreviewCtx = imagePreviewCanvas.getContext('2d');
-            }
-            
-            // 初始化变形预览canvas
-            if (!originalPreviewCanvas) {
-                originalPreviewCanvas = document.getElementById('original-preview');
-                originalPreviewCtx = originalPreviewCanvas.getContext('2d');
-            }
-            if (!flipHorizontalPreviewCanvas) {
-                flipHorizontalPreviewCanvas = document.getElementById('flip-horizontal-preview');
-                flipHorizontalPreviewCtx = flipHorizontalPreviewCanvas.getContext('2d');
-            }
-            if (!flipVerticalPreviewCanvas) {
-                flipVerticalPreviewCanvas = document.getElementById('flip-vertical-preview');
-                flipVerticalPreviewCtx = flipVerticalPreviewCanvas.getContext('2d');
-            }
-            // 初始化水平+垂直翻转预览canvas
-            if (!flipBothPreviewCanvas) {
-                flipBothPreviewCanvas = document.getElementById('flip-both-preview');
-                flipBothPreviewCtx = flipBothPreviewCanvas.getContext('2d');
-            }
-            
-            // 添加调试按钮
-            const debugBtn = document.createElement('button');
-            debugBtn.textContent = '检查Canvas状态';
-            debugBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1001; padding: 8px; background-color: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer;';
-            debugBtn.style.display = 'none'; // 隐藏调试按钮
-            debugBtn.addEventListener('click', function() {
-                // 在页面加载完成后添加调试面板功能
-                // window.addEventListener('load', showDebugInfo);
-                showDebugInfo();
-                debugCanvasState();
-                if (currentImage && imagePreviewCanvas) {
-                    console.log('强制渲染预览');
-                    renderImagePreview();
-                }
-            });
-            document.body.appendChild(debugBtn);
-            
-            // 绑定图片选择下拉列表事件
-            const imageDropdown = document.getElementById('image-dropdown');
-            if (imageDropdown) {
-                imageDropdown.addEventListener('change', function() {
-                    const imageId = this.value;
-                    console.log('Image dropdown changed to:', imageId);
-                    
-                    if (imageId && currentSprite) {
-                        console.log('Current sprite exists, getting image with id:', imageId);
-                        for (let img of currentSprite.m_imageList) {
-                            console.log('Image item:', img.id, img.name);
-                        }
-                        // console.log('Current sprite image list:', currentSprite.m_imageList);
-                        const imageItem = currentSprite.getImage(imageId);
-                        
-                        if (imageItem) {
-                            console.log('Found image item:', imageItem.name);
-                            previewImageId = imageId;
-                            previewImage = imageItem.image; // 设置专门用于canvas渲染的图片
-                            console.log('Set currentImage and previewImageId:', previewImageId);
-                            
-                            // 确保imagePreviewCanvas和imagePreviewCtx已初始化
-                            if (!imagePreviewCanvas) {
-                                imagePreviewCanvas = document.getElementById('image-preview-canvas');
-                                if (imagePreviewCanvas) {
-                                    imagePreviewCtx = imagePreviewCanvas.getContext('2d');
-                                }
-                            }
-                            
-                            // 确保canvas有正确的尺寸
-                            if (imagePreviewCanvas && previewImage) {
-                                // imagePreviewCanvas.width = previewImage.width;
-                                // imagePreviewCanvas.height = previewImage.height;
-                            }
-                            
-                            console.log('About to call renderImagePreview');
-                            renderImagePreview(1);
-                        } else {
-                            console.warn('Image item not found for id:', imageId);
-                        }
-                    } else {
-                        console.warn('No imageId or currentSprite not available');
-                    }
-                });
-            }
-            
-            // 绑定缩放控制按钮事件
-            document.getElementById('zoom-in-btn').addEventListener('click', function() {
-                previewZoomLevel = Math.min(previewZoomLevel + 0.1, 5);
-                renderImagePreview();
-            });
-            document.getElementById('zoom-out-btn').addEventListener('click', function() {
-                previewZoomLevel = Math.max(previewZoomLevel - 0.1, 0.1);
-                renderImagePreview();
-            });
-            document.getElementById('reset-zoom-btn').addEventListener('click', function() {
-                previewZoomLevel = 1;
-                renderImagePreview();
-            });
-            
-            // 绑定变形选项点击事件
-            const transformationItems = document.querySelectorAll('.transformation-item');
-            transformationItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    selectedTransformation = this.dataset.type;
-                    showPreviewWithMouse = true;
-                    // 高亮选中的变形选项
-                    transformationItems.forEach(i => i.style.border = 'none');
-                    this.style.border = '2px solid #4CAF50';
-                });
-            });
-            
-            // 绑定图片预览canvas的点击事件
-            if (imagePreviewCanvas) {
-                imagePreviewCanvas.addEventListener('click', handlePreviewCanvasClick);
-                imagePreviewCanvas.addEventListener('mousemove', updateMousePosition);
-            }
-            
-           
 
             // 初始化时加载表情数据
             loadExpression();
@@ -5441,5 +5322,127 @@
                     renderCanvas();
                 }
             });
+
+
+
+             // 初始化图片预览相关元素
+            if (!imagePreviewCanvas) {
+                imagePreviewCanvas = document.getElementById('image-preview-canvas');
+                imagePreviewCtx = imagePreviewCanvas.getContext('2d');
+            }
+            
+            // 初始化变形预览canvas
+            if (!originalPreviewCanvas) {
+                originalPreviewCanvas = document.getElementById('original-preview');
+                originalPreviewCtx = originalPreviewCanvas.getContext('2d');
+            }
+            if (!flipHorizontalPreviewCanvas) {
+                flipHorizontalPreviewCanvas = document.getElementById('flip-horizontal-preview');
+                flipHorizontalPreviewCtx = flipHorizontalPreviewCanvas.getContext('2d');
+            }
+            if (!flipVerticalPreviewCanvas) {
+                flipVerticalPreviewCanvas = document.getElementById('flip-vertical-preview');
+                flipVerticalPreviewCtx = flipVerticalPreviewCanvas.getContext('2d');
+            }
+            // 初始化水平+垂直翻转预览canvas
+            if (!flipBothPreviewCanvas) {
+                flipBothPreviewCanvas = document.getElementById('flip-both-preview');
+                flipBothPreviewCtx = flipBothPreviewCanvas.getContext('2d');
+            }
+            
+            // 添加调试按钮
+            const debugBtn = document.createElement('button');
+            debugBtn.textContent = '检查Canvas状态';
+            debugBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1001; padding: 8px; background-color: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer;';
+            debugBtn.style.display = 'none'; // 隐藏调试按钮
+            debugBtn.addEventListener('click', function() {
+                // 在页面加载完成后添加调试面板功能
+                // window.addEventListener('load', showDebugInfo);
+                showDebugInfo();
+                debugCanvasState();
+                if (currentImage && imagePreviewCanvas) {
+                    console.log('强制渲染预览');
+                    renderImagePreview();
+                }
+            });
+            document.body.appendChild(debugBtn);
+            
+            // 绑定图片选择下拉列表事件
+            const imageDropdown = document.getElementById('image-dropdown');
+            if (imageDropdown) {
+                imageDropdown.addEventListener('change', function() {
+                    const imageId = this.value;
+                    console.log('Image dropdown changed to:', imageId);
+                    
+                    if (imageId && currentSprite) {
+                        console.log('Current sprite exists, getting image with id:', imageId);
+                        for (let img of currentSprite.m_imageList) {
+                            console.log('Image item:', img.id, img.name);
+                        }
+                        // console.log('Current sprite image list:', currentSprite.m_imageList);
+                        const imageItem = currentSprite.getImage(imageId);
+                        
+                        if (imageItem) {
+                            console.log('Found image item:', imageItem.name);
+                            previewImageId = imageId;
+                            previewImage = imageItem.image; // 设置专门用于canvas渲染的图片
+                            console.log('Set currentImage and previewImageId:', previewImageId);
+                            
+                            // 确保imagePreviewCanvas和imagePreviewCtx已初始化
+                            if (!imagePreviewCanvas) {
+                                imagePreviewCanvas = document.getElementById('image-preview-canvas');
+                                if (imagePreviewCanvas) {
+                                    imagePreviewCtx = imagePreviewCanvas.getContext('2d');
+                                }
+                            }
+                            
+                            // 确保canvas有正确的尺寸
+                            if (imagePreviewCanvas && previewImage) {
+                                // imagePreviewCanvas.width = previewImage.width;
+                                // imagePreviewCanvas.height = previewImage.height;
+                            }
+                            
+                            console.log('About to call renderImagePreview');
+                            renderImagePreview(1);
+                        } else {
+                            console.warn('Image item not found for id:', imageId);
+                        }
+                    } else {
+                        console.warn('No imageId or currentSprite not available');
+                    }
+                });
+            }
+            
+            // 绑定缩放控制按钮事件
+            document.getElementById('zoom-in-btn').addEventListener('click', function() {
+                previewZoomLevel = Math.min(previewZoomLevel + 0.1, 5);
+                renderImagePreview();
+            });
+            document.getElementById('zoom-out-btn').addEventListener('click', function() {
+                previewZoomLevel = Math.max(previewZoomLevel - 0.1, 0.1);
+                renderImagePreview();
+            });
+            document.getElementById('reset-zoom-btn').addEventListener('click', function() {
+                previewZoomLevel = 1;
+                renderImagePreview();
+            });
+            
+            // 绑定变形选项点击事件
+            const transformationItems = document.querySelectorAll('.transformation-item');
+            transformationItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    selectedTransformation = this.dataset.type;
+                    showPreviewWithMouse = true;
+                    // 高亮选中的变形选项
+                    transformationItems.forEach(i => i.style.border = 'none');
+                    this.style.border = '2px solid #4CAF50';
+                });
+            });
+            
+            // 绑定图片预览canvas的点击事件
+            if (imagePreviewCanvas) {
+                imagePreviewCanvas.addEventListener('click', handlePreviewCanvasClick);
+                imagePreviewCanvas.addEventListener('mousemove', updateMousePosition);
+            }
         }
         
