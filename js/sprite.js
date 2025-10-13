@@ -14,6 +14,29 @@ class Sprite {
         this.m_imageList = []; // 存储ImageItem对象
     }
     
+    draw(ctx, animIdx, aframeIdx, expression, posX, posY, globalFlag = 0, globalScale = 1,globalAngle=0) {
+        if(this.mAnimList.length === 0) {
+            return;
+        }
+        if(animIdx < 0 || animIdx >= this.mAnimList.length){
+            return;
+        }
+
+        const anim = this.mAnimList[animIdx];
+        if(aframeIdx < 0 || aframeIdx >= anim.aframeList.length){
+            return;
+        }
+        
+        const aframe = anim.aframeList[aframeIdx];
+        const expressionImg = null;
+        if(aframeIdx < expression.images.length){
+            expressionImg = expression.images[aframeIdx];
+        }
+        if (this.m_imageList.length > 0) {
+            aframe.draw(ctx, this, posX, posY, expressionImg, globalFlag, globalScale,globalAngle);
+        }
+    }
+
     addImage(imageItem) {
         this.m_imageList.push(imageItem);
     }

@@ -34,7 +34,16 @@ export function loadImageWithCORS(url, callback, errorCallback) {
   
   const img = new Image();
   img.crossOrigin = "anonymous"; // 解决跨域问题
+  // imageCache[url] = img;
   
+  // try {
+  // // 先设置crossOrigin再设置src，确保跨域设置生效
+  //   img.src = url;
+  // } catch (error) {
+  //   console.error(`图片加载异常 (${attempts}/${maxAttempts}):`, error);
+  //   handleError();
+  // }
+
   // 记录请求状态
   loadingImages[url] = {
     callbacks: callback ? [callback] : [],
@@ -45,16 +54,15 @@ export function loadImageWithCORS(url, callback, errorCallback) {
   let attempts = 0;
   const maxAttempts = 3;
   
-  function attemptLoad() {
-    attempts++;
-    
-    try {
-      img.src = url;
-    } catch (error) {
-      console.error(`图片加载异常 (${attempts}/${maxAttempts}):`, error);
-      handleError();
-    }
-  }
+  // function attemptLoad() {
+  //   attempts++;
+  //   try {
+  //     img.src = url;
+  //   } catch (error) {
+  //     console.error(`图片加载异常 (${attempts}/${maxAttempts}):`, error);
+  //     handleError();
+  //   }
+  // }
   
   function handleError() {
     if (attempts < maxAttempts) {
@@ -65,6 +73,8 @@ export function loadImageWithCORS(url, callback, errorCallback) {
       }, 500 * Math.pow(2, attempts));
     } else {
       console.error(`图片加载最终失败 (${maxAttempts}次尝试):`, url);
+      // 标记图片为加载失败
+      imageCache[url] = null;
       // 通知所有错误回调
       const currentErrorCallbacks = loadingImages[url]?.errorCallbacks || [];
       currentErrorCallbacks.forEach(cb => cb());
@@ -86,8 +96,16 @@ export function loadImageWithCORS(url, callback, errorCallback) {
     handleError();
   };
   
+  try {
+  // 先设置crossOrigin再设置src，确保跨域设置生效
+    img.src = url;
+  } catch (error) {
+    console.error(`图片加载异常 (${attempts}/${maxAttempts}):`, error);
+    handleError();
+  }
+
   // 开始第一次尝试
-  attemptLoad();
+  // attemptLoad();
   
   return img;
 }

@@ -34,7 +34,6 @@ class AnimFrame {
         this.expressionFlag = expressionFlag;
     }
 
-    
 
     draw(ctx, sprite, originX, originY, expressionImg = null, globalFlag = 0, globalScale = 1,globalAngle=0) {
         // console.log('globalScale',globalScale)

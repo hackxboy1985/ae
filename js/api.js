@@ -101,7 +101,7 @@ function newProject() {
     // 清空所有数据
     imageManager.clearImages();
     // expressions = [];
-    currentProject = new Project();
+    currentProject = new Avatar();
     imageManager = currentProject.imageManager;
     currentSprite = null;
     currentAnim = null;
@@ -178,7 +178,7 @@ function loadProject(callback) {
             return false;
         }
         // 重建项目、角色、动作、帧等数据
-        currentProject = new Project();
+        currentProject = new Avatar();
         imageManager = currentProject.imageManager;
         const avatarData = JSON.parse(savedData);
         // console.log('load projectData', projectData);
@@ -240,6 +240,8 @@ function loadProject(callback) {
                     }
                 }
             }
+
+            
             console.log('项目异步加载成功！');
             callback(true);
         }, 500);

@@ -3510,14 +3510,15 @@
             // 绘制图片（不填充，保持原始比例）
             offscreenCtx.drawImage(cachedImage, drawX, drawY, drawWidth, drawHeight);
             return true;
-          } else if (cachedImage === null) {
-            // 图片已标记为加载失败，绘制备用背景
-            drawErrorBackground();
-            return true;
-          } else {
-            // 图片未加载完成，需要异步处理
-            return false;
-          }
+          } 
+          // else if (cachedImage === null) {
+          //   // 图片已标记为加载失败，绘制备用背景
+          //   drawErrorBackground();
+          //   return true;
+          // } else {
+          //   // 图片未加载完成，需要异步处理
+          //   return false;
+          // }
         };
         
         // 绘制错误背景
@@ -3657,7 +3658,7 @@
           
           // 4. 按角色依次绘制 -- 暂未考虑Z轴排序问题，后续补上
           roleIdsToDraw.forEach(roleId => {
-            // console.log('drawRoles roleId',roleId);
+
             // 找到对应的角色对象
             const role = timeline.value.roles.find(r => r.id === roleId);
             if (!role) return;
