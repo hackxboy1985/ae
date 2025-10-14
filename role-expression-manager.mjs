@@ -29,6 +29,7 @@ export class RoleExpressionManager {
     this.scenes = null;
     this.shots = null;
     this.roles = null;
+    this.avatars = null;
     this.expressionTracks = null;
 
     // this.totalDuration = ref(0);
@@ -36,21 +37,15 @@ export class RoleExpressionManager {
   }
   
   // 初始化表情数据
-  init(scenes, shots, roles, expressionTracks) {
+  init(scenes, shots, roles, expressionTracks, expressions, avatars) {
     this.scenes = scenes;
     this.shots = shots;
     this.roles = roles;
     this.expressionTracks = expressionTracks;
+    this.expressionCache = expressions;
+    this.avatars = avatars;
     // 构建表情缓存
-    this.roles.forEach(role => {
-      if (role.expressions) {
-        role.expressions.forEach(expr => {
-          if (expr && expr.id) {
-            this.expressionCache[expr.id] = expr;
-          }
-        });
-      }
-    });
+
 
     // 计算总时长
     // this.totalDuration.value = computed(() => {
@@ -74,11 +69,13 @@ export class RoleExpressionManager {
   }
   
   // 更新角色表情状态
-  updateRoleState(roleId, currentExpression, frameInterval, startTime,_currentTimeInt) {
+  updateRoleState(roleId, currentAnim, animId, frameInterval, startTime,_currentTimeInt) {
     // console.log('updatRoleState currentExpression:',currentExpression);
     if (!this.roleStates[roleId]) {
       this.roleStates[roleId] = {
-        expressionId: null,
+        // expressionId: null,
+        animId: -1,
+        frameNum: 0,
         currentFrameIndex: 0,
         startTime: startTime // 使用当前时间轴时间作为起始时间
       };
@@ -87,10 +84,13 @@ export class RoleExpressionManager {
     const state = this.roleStates[roleId];
     
     // 如果表情发生变化，重置状态
-    if (state.expressionId !== currentExpression.id) {
-      state.expressionId = currentExpression.id;
+    if ( state.animId !== animId) {
+      // 重置当前帧索引和起始时间
+      // state.expressionId = currentExpression.id;
       state.currentFrameIndex = 0;
       state.startTime = startTime ;// 使用当前时间轴时间作为起始时间
+      state.animId = animId;
+      state.frameNum = currentAnim.getFrameNum();
     }
     
     // 基于时间轴时间计算经过的时间，而不是系统时间
@@ -99,16 +99,21 @@ export class RoleExpressionManager {
     if(elapsed < 0){
       // console.log('drag timeline backward, so elapsed < 0')
       //可能是向前拖拽，倒放所致
-      state.expressionId = currentExpression.id;
+      // state.expressionId = currentExpression.id;
       state.currentFrameIndex = 0;
-      state.startTime = _currentTimeInt;
+      state.startTime = _currentTimeInt; // 更新起始时间为当前时间轴时间
+      state.animId = animId;
+      state.frameNum = currentAnim.getFrameNum();
       return state.currentFrameIndex;
     }
+
+    // console.log('currentAnim:',currentAnim,currentAnim.getFrameNum())
+    // console.log('elapsed:',elapsed, frameInterval, currentAnim.getFrameNum(), startTime,_currentTimeInt,state.startTime);
     // 计算应该显示的帧索引，确保与时间轴指针同步
     // 使用 Math.floor 确保整数帧索引
-    const expectedFrameIndex = Math.floor(elapsed / frameInterval) % currentExpression.frames.length;
+    const expectedFrameIndex = Math.floor(elapsed / frameInterval) % currentAnim.getFrameNum();
     if(expectedFrameIndex == -1){
-      console.log('updateRoleState expectedFrameIndex:',expectedFrameIndex,elapsed,frameInterval,currentExpression.frames.length, startTime,_currentTimeInt,state.startTime);
+      console.log('updateRoleState expectedFrameIndex:', expectedFrameIndex, elapsed, frameInterval, currentAnim.getFrameNum(), startTime,_currentTimeInt,state.startTime);
     }
     state.currentFrameIndex = expectedFrameIndex;
     
@@ -140,12 +145,12 @@ export class RoleExpressionManager {
     return currentExpression.frames[state.currentFrameIndex];
   }
   
-  getRoleExpression(roleId,expressionId) {
-    const role = this.roles.find(r => r.id === roleId);
-    const expression = role.expressions.find(exp => exp && exp.id === expressionId) ||
-            role.expressions  .find(exp => exp && exp.id === role.defaultExpressionId);
-    return expression;
-  }
+  // getRoleExpression(roleId,expressionId) {
+  //   const role = this.roles.find(r => r.id === roleId);
+  //   const expression = role.expressions.find(exp => exp && exp.id === expressionId) ||
+  //           role.expressions  .find(exp => exp && exp.id === role.defaultExpressionId);
+  //   return expression;
+  // }
 
   // 根据当前时间获取所属场景中的角色信息
   getSceneRolesByTime (time)  {
@@ -203,10 +208,12 @@ export class RoleExpressionManager {
       const sceneRoles = this.getSceneRolesByTime(time);
       const sceneRoleConfig = sceneRoles ? sceneRoles.find(r => r.roleId === roleId && r.visible) : null;
       
+      //console.log('sceneRoleConfig:',sceneRoleConfig);
       // 如果场景中找到了角色配置，创建一个临时的表达式轨道用于位置计算
       if (sceneRoleConfig) {
         currentExpressionTrack = {
           roleId: roleId,
+          animId: sceneRoleConfig.animId,
           expressionId: sceneRoleConfig.expressionId,
           x: sceneRoleConfig.x,
           y: sceneRoleConfig.y,
@@ -215,7 +222,8 @@ export class RoleExpressionManager {
           startTime: time,
           endTime: time + 1,
           scale: sceneRoleConfig.scale?.toFixed(2) || 1,
-          _isTemp: true
+          _isTemp: true,
+          remark:'当前时间点未设置表情轨道'
         };
         //console.log('使用默认表情:',currentExpressionTrack);
       }
@@ -291,7 +299,7 @@ export class RoleExpressionManager {
         return false;
       }
       
-      const { currentX, currentY } = { currentX: currentPosition.x, currentY: currentPosition.y };
+      const { currentX, currentY } = { currentX: currentPosition.x - currentPosition.width/2, currentY: currentPosition.y - currentPosition.height/2 };
       // console.log(`点击:${x},${y} 角色 ${role.name} in [${currentX}, ${currentX + currentPosition.width*currentPosition.scale},${currentY},${currentY +currentPosition.height*currentPosition.scale}]`);
       // 检查点击是否在角色当前位置的区域内
       return x >= currentX && 
@@ -304,32 +312,39 @@ export class RoleExpressionManager {
     return clickedRole;
   }
   
-  // 绘制角色表情-- 暂未使用
-  drawRoleExpression(ctx, role, currentExpressionTrack, expression, _currentTimeInt, selectedRoleId) {
-    if (!ctx || !role || !currentExpressionTrack || !expression) {
+  // 绘制角色表情
+  drawRoleExpression(ctx, role, currentExpressionTrack, _currentTimeInt, selectedRoleId) {
+    if (!ctx || !role || !currentExpressionTrack) {
+      console.error('drawRoleExpression参数不完整:', {ctx: !!ctx, role: !!role, currentExpressionTrack: !!currentExpressionTrack});
       return false;
     }
     
-    try {
-      // 获取当前帧索引
-      const frameIndex = this.updateRoleState(role.id, expression, expression.frameInterval, currentExpressionTrack.startTime,_currentTimeInt);
-      
-      // 检查是否有有效的表情帧
-      if (!expression.frames || !expression.frames[frameIndex]) {
-        console.log(`[role] ${role.name} at ${_currentTimeInt} has no frame idx ${frameIndex} , ${expression.name}`);
-        console.log(expression);
+    const animId = currentExpressionTrack.animId;
+    const expressionId = currentExpressionTrack.expressionId;
+    const avatar = this.avatars[role.avatarId];
+    const expression = this.expressionCache[expressionId];
+    
+    // try {
+
+      const anim = avatar.getSprite().getAnim(animId);
+      if(!anim) {
+        console.info('0000 avatar',avatar, 'animId:',animId,'currentExpressionTrack:',currentExpressionTrack);
+        // console.error(`[role] ${role.name} at ${_currentTimeInt} has no anim ${animId}`);
         return false;
       }
-      
-      // 获取图片URL
-      const imageUrl = expression.frames[frameIndex];
-      const img = getCacheImage(imageUrl);
-      this.drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, img, _currentTimeInt, selectedRoleId);
 
-    } catch (error) {
-      console.error(`draw role expression error: ${error}`);
-      return false;
-    }
+
+      // console.log('1111');
+      // 获取当前帧索引
+      const frameIndex = this.updateRoleState(role.id, anim, animId, anim.frameInterval, currentExpressionTrack.startTime,_currentTimeInt);
+      // console.log('2222',frameIndex);
+      this.drawRoleImage(ctx, role, avatar, currentExpressionTrack, expression, frameIndex, _currentTimeInt, selectedRoleId);
+      // console.log('3333');
+
+    // } catch (error) {
+    //   console.error(`draw role expression error: ${error}`);
+    //   return false;
+    // }
   }
   
   // 绘制角色选中状态
@@ -340,12 +355,13 @@ export class RoleExpressionManager {
     // 注意：这里需要currentTime，但该方法没有传入，我们假设使用当前时间
     // 由于calculateCurrentPosition需要currentTime参数
     // 所以这里使用了全局的currentTime
+    const width = 100;//currentPosition.isValid ? currentPosition.width * track.scale : this.config.roleWidth;
+    const height = 100;//currentPosition.isValid ? currentPosition.height * track.scale : this.config.roleHeight;
+    
     const currentPosition = this.calculateCurrentExpressPosition(track, _currentTimeInt);
     //console.log('drawRolSelection the currentPosition :', currentPosition);
-    const x = currentPosition.isValid ? currentPosition.x : track.x;
-    const y = currentPosition.isValid ? currentPosition.y : track.y;
-    const width = currentPosition.isValid ? currentPosition.width * track.scale : this.config.roleWidth;
-    const height = currentPosition.isValid ? currentPosition.height * track.scale : this.config.roleHeight;
+    const x = currentPosition.x - width/2;//currentPosition.isValid ? currentPosition.x : track.x;
+    const y = currentPosition.y - height/2;//currentPosition.isValid ? currentPosition.y : track.y;
     
     // 绘制闪烁的黄色边框
     ctx.strokeStyle = '#EAB308';
@@ -416,7 +432,7 @@ export class RoleExpressionManager {
     ctx.save();
     
     // 绘制表情名称标签
-    const expression = role.expressions.find(exp => exp && exp.id === track.expressionId);
+    const expression = this.expressionCache[track.expressionId];
     const expressionName = expression ? expression.name : '未知表情';
     
     // 计算文本宽度以正确设置背景
@@ -450,8 +466,8 @@ export class RoleExpressionManager {
     const textCenterX = labelX + textWidth / 2 ;
     const textCenterY = labelY + textHeight / 2 ;
     ctx.translate(textCenterX, textCenterY);
-    ctx.scale(1, -1); // 翻转Y轴
-    ctx.translate(-textCenterX, -textCenterY);
+    // ctx.scale(1, -1); // 翻转Y轴
+    // ctx.translate(-textCenterX, -textCenterY);
     
     // 绘制标签文本（字体增大到50px）
     ctx.fillStyle = 'white';
@@ -461,7 +477,7 @@ export class RoleExpressionManager {
     ctx.fillText(expressionName, textCenterX, textCenterY);
     
     // 恢复原始状态
-    ctx.restore();
+    // ctx.restore();
     
     // 恢复原始状态
     ctx.restore();
@@ -542,8 +558,48 @@ export class RoleExpressionManager {
     }
   }
 
+    // 绘制角色图片的具体实现
+  drawRoleImage(ctx, role, avatar, currentExpressionTrack, expression, frameIndex, _currentTimeInt, selectedRoleId) {
+    if (!ctx || !role || !currentExpressionTrack || !expression) {
+      return;
+    }
+
+    // console.log('draw avatar',role.name,currentExpressionTrack.animId,expression.name,frameIndex);
+
+    // try{
+      const currentPosition = this.calculateCurrentExpressPosition(currentExpressionTrack, _currentTimeInt);
+      // 如果坐标计算无效，返回
+      if (!currentPosition.isValid) {
+        console.log(`${role.name} ${currentExpressionTrack.expressionId} ${expression.name} miss start/end pos`);
+        return;
+      }
+
+      // const anim = avatar.getSprite().getAnim(expression.animId);
+
+      const x = currentPosition.x;
+      const y = currentPosition.y;
+      const globalFlag = currentExpressionTrack.flipX ? 1 : 0;
+      const globalScale = currentExpressionTrack.scale;
+      const globalAngle = currentExpressionTrack.angle;
+      // console.log('expression:',expression);
+      // const expressionImg = expression.getFrame(frameIndex);
+      // anim.draw(ctx, avatar.getSprite(), frameIndex, x, y, img, globalFlag,globalScale,globalAngle); 
+      // console.log('draw avatar',role.name,currentExpressionTrack.animId,expression.name,frameIndex,x,y,globalFlag,globalScale,globalAngle);
+      avatar.draw(ctx, currentExpressionTrack.animId, frameIndex,  x, y, expression, globalFlag,globalScale,globalAngle);
+
+    // } catch (error) {
+    //     console.error('绘制缓存图片时出错: ' + error);
+    //     // this.drawRolePlaceholder(ctx, currentExpressionTrack, role, true);
+    // }
+
+        // 在Canvas上绘制选中状态
+    if (selectedRoleId === role.id) {
+      this.drawRoleSelection(ctx, currentExpressionTrack, role, _currentTimeInt);
+    }
+  }
+
   // 绘制角色图片的具体实现
-  drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, img, _currentTimeInt, selectedRoleId) {
+  drawRoleImageOld(ctx, role, currentExpressionTrack, expression, imageUrl, img, _currentTimeInt, selectedRoleId) {
     if (!ctx || !role || !currentExpressionTrack || !expression) {
       return;
     }
@@ -657,7 +713,7 @@ export class RoleExpressionManager {
             (loadedImg) => {
               // 添加到缓存
               //console.log('加载角色图片成功: ' + imageUrl);
-              self.drawRoleImage(ctx, role, currentExpressionTrack, expression, imageUrl, loadedImg, _currentTimeInt, selectedRoleId);
+              self.drawRoleImageOld(ctx, role, currentExpressionTrack, expression, imageUrl, loadedImg, _currentTimeInt, selectedRoleId);
             },
             () => {
               console.error('无法加载角色图片: ' + imageUrl);
@@ -719,29 +775,29 @@ export class RoleExpressionManager {
     }
     
     // 获取当前帧图片的实际宽高
-    let frameWidth = 50;
-    let frameHeight = 50;
+    let frameWidth = 100;
+    let frameHeight = 100;
     
-    try {
-      // 获取当前帧图片URL
-      const currentExpression = this.getRoleExpression(currentExpressionTrack.roleId,currentExpressionTrack.expressionId);
-      const currentFrameUrl = this.getCurrentFrameUrl(currentExpressionTrack.roleId,currentExpression);
-      const imageUrl = currentFrameUrl;  
-      // console.log('currentExpression:',currentExpression,',imageUrl:',imageUrl);
-      // 尝试从图片缓存中获取图片的实际宽高
-      const cachedImg = getCacheImage(imageUrl);
-      // console.log('calculateCurrentExpressPosition cachedImg:',cachedImg);
-      if (cachedImg && cachedImg.width && cachedImg.height) {
-        //console.log('cachedImg.width:',cachedImg.width);
-        frameWidth = cachedImg.width;
-        frameHeight = cachedImg.height;
-      }else{
-        console.info('get image cache for w/h error, use frameWidth:50  , url:',imageUrl);//, 'imageCache:',Object.keys(imageCache),imageCache);
-      }
-    } catch (error) {
-      console.error('get frame w/h err:', error);
-      // 出错时使用默认宽高
-    }
+    // try {
+    //   // 获取当前帧图片URL
+    //   const currentExpression = this.getRoleExpression(currentExpressionTrack.roleId,currentExpressionTrack.expressionId);
+    //   const currentFrameUrl = this.getCurrentFrameUrl(currentExpressionTrack.roleId,currentExpression);
+    //   const imageUrl = currentFrameUrl;  
+    //   // console.log('currentExpression:',currentExpression,',imageUrl:',imageUrl);
+    //   // 尝试从图片缓存中获取图片的实际宽高
+    //   const cachedImg = getCacheImage(imageUrl);
+    //   // console.log('calculateCurrentExpressPosition cachedImg:',cachedImg);
+    //   if (cachedImg && cachedImg.width && cachedImg.height) {
+    //     //console.log('cachedImg.width:',cachedImg.width);
+    //     frameWidth = cachedImg.width;
+    //     frameHeight = cachedImg.height;
+    //   }else{
+    //     console.info('get image cache for w/h error, use frameWidth:50  , url:',imageUrl);//, 'imageCache:',Object.keys(imageCache),imageCache);
+    //   }
+    // } catch (error) {
+    //   console.error('get frame w/h err:', error);
+    //   // 出错时使用默认宽高
+    // }
 
 
     //console.log('222>>>>',currentX,currentY,frameWidth,frameHeight,currentExpressionTrack.scale);
@@ -803,26 +859,28 @@ export class RoleExpressionManager {
     let frameWidth = 50;
     let frameHeight = 50;
     
-    try {
-      // 获取当前帧图片URL
-      const currentExpression = this.getRoleExpression(currentExpressionTrack.roleId,currentExpressionTrack.expressionId);
-      const currentFrameUrl = this.getCurrentFrameUrl(currentExpressionTrack.roleId,currentExpression);
-      const imageUrl = currentFrameUrl;  
-      console.log('currentExpression:',currentExpression,',imageUrl:',imageUrl);
-      // 尝试从图片缓存中获取图片的实际宽高
-      const cachedImg = getCacheImage(imageUrl);
-      if (cachedImg && cachedImg.width && cachedImg.height) {
-        console.log('cachedImg.width:',cachedImg.width);
-        frameWidth = cachedImg.width;
-        frameHeight = cachedImg.height;
-      }else{
-        console.error('图片缓存中没有找到,获取帧宽高!!!!!');
-      }
-    } catch (error) {
-      console.error('获取当前帧图片宽高时出错:', error);
-      // 出错时使用默认宽高
-    }
-    
+    // try {
+    //   // 获取当前帧图片URL
+    //   const currentExpression = this.getRoleExpression(currentExpressionTrack.roleId,currentExpressionTrack.expressionId);
+    //   const currentFrameUrl = this.getCurrentFrameUrl(currentExpressionTrack.roleId,currentExpression);
+    //   const imageUrl = currentFrameUrl;  
+    //   console.log('currentExpression:',currentExpression,',imageUrl:',imageUrl);
+    //   // 尝试从图片缓存中获取图片的实际宽高
+    //   const cachedImg = getCacheImage(imageUrl);
+    //   if (cachedImg && cachedImg.width && cachedImg.height) {
+    //     console.log('cachedImg.width:',cachedImg.width);
+    //     frameWidth = cachedImg.width;
+    //     frameHeight = cachedImg.height;
+    //   }else{
+    //     console.error('图片缓存中没有找到,获取帧宽高!!!!!');
+    //   }
+    // } catch (error) {
+    //   console.error('获取当前帧图片宽高时出错:', error);
+    //   // 出错时使用默认宽高
+    // }
+    frameWidth = 100;
+    frameHeight = 100;
+
 
 
     console.log('222>>>>',currentX,currentY,frameWidth,frameHeight,currentExpressionTrack.scale);

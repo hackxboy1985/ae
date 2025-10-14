@@ -54,6 +54,25 @@ class AnimFrame {
             DrawApi.drawAPI(ctx,rotateOrigin,config,expressionImg,globalFlag===1,globalScale,globalAngle);
         }
 
+        // config.drawInfo=true;
+        const drawInfo = false;
+        if(drawInfo===true){
+            // 绘制辅助边框（基于绘制宽高）
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(originX-50, originY-50, 100, 100);
+        }
+
+
+        // 标记自身中心点（基于绘制宽高）导出视频时不应该绘制
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(
+            originX,  // 绘制区域中心点X
+            originY, // 绘制区域中心点Y
+            3, 0, 2 * Math.PI
+        );
+        ctx.fill();
     }
 
     draw2(ctx, sprite, originX, originY, expressionImg = null, globalFlag = 0, globalScale = 1,globalAngle=0) {
@@ -134,7 +153,8 @@ class AnimFrame {
 }
 
 class Expression {
-    constructor(name,type,imageUrls) {
+    constructor(id,name,type,imageUrls) {
+        this.id = id;
         this.name = name;
         this.type = type;
         this.imageUrls = imageUrls;
@@ -148,5 +168,9 @@ class Expression {
             img.src = url;
             this.images.push(img);
         });
+    }
+
+    getFrame(index) {
+        return this.images[index];
     }
 }

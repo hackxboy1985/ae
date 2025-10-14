@@ -271,16 +271,22 @@ class DrawApi{
             ctx.translate(-config.drawPosition.width / 2, -config.drawPosition.height / 2);
         }
 
+        
         // 9. 绘制截取的图片区域
-        ctx.drawImage(
-            img,
-            config.source.x, config.source.y,
-            config.source.width, config.source.height,
-            0, 0,
-            config.drawPosition.width, 
-            config.drawPosition.height
-        );
+        if(img.complete && img.naturalWidth > 0 && img.naturalHeight > 0){
+            ctx.drawImage(
+                img,
+                config.source.x, config.source.y,
+                config.source.width, config.source.height,
+                0, 0,
+                config.drawPosition.width, 
+                config.drawPosition.height
+            );
+        }else{
+            console.error('图片未加载完成或尺寸无效:', img);
+        }
 
+        // config.drawInfo=true;
         if(config.drawInfo===true){
             // 绘制辅助边框（基于绘制宽高）
             ctx.strokeStyle = config.color;

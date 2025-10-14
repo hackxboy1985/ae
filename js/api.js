@@ -76,18 +76,18 @@ function loadExpression() {
         {
             name: "普通2",
             type: 0,//0是通用表情、1是男专用，2是女专用
-            imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n3.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/n4.png"]
+            imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/normal1.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/normal2.png"]
         },
         {
             name: "开心",
             type: 0,//0是通用表情、1是男专用，2是女专用
-            imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/happy1.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/happy2.png"]
+            imageUrls: ["https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/normal1.png", "https://mints-web.oss-cn-beijing.aliyuncs.com/sdtool/express/normal2.png"]
         }
     ];
     
     // 创建Expression对象
     mockExpressions.forEach(exprData => {
-        const expression = new Expression(exprData.name,exprData.type, exprData.imageUrls);
+        const expression = new Expression(exprData.id,exprData.name,exprData.type, exprData.imageUrls);
         expressions.push(expression);
     });
     
@@ -124,6 +124,21 @@ function newProject() {
 // 保存项目函数
 function saveProject() {
     try {
+
+        const spriteNameInput = document.getElementById('sprite-name');
+            
+        // 如果已有当前角色，将其名称填入输入框
+        if (currentSprite) {
+            spriteNameInput.value = currentSprite.name;
+        } else {
+            spriteNameInput.value = '';
+        }
+        
+        document.getElementById('new-sprite-modal').style.display = 'flex';
+        spriteNameInput.focus();
+        
+        const spriteName = spriteNameInput.value.trim();
+
         // 准备项目数据进行保存
         const avatarData = {
             // 保存所有图片数据（包括Base64编码的图片）
@@ -157,9 +172,10 @@ function saveProject() {
                 }))
             }
         };
+        
         // console.log('avatarData', JSON.stringify(avatarData));
         // 使用localStorage保存项目数据
-        localStorage.setItem('animationEditorProject', JSON.stringify(avatarData));
+        localStorage.setItem(spriteName, JSON.stringify(avatarData));
         
         // alert('项目保存成功！');
         notification('项目保存成功！');
@@ -172,7 +188,16 @@ function saveProject() {
 // 加载项目函数
 function loadProject(callback) {
     try {
-        const savedData = localStorage.getItem('animationEditorProject');
+
+        const spriteNameInput = document.getElementById('sprite-name');
+        spriteNameInput.value = '';
+        document.getElementById('new-sprite-modal').style.display = 'flex';
+        spriteNameInput.focus();
+        
+        const loadItemName = spriteNameInput.value.trim();
+
+        //'animationEditorProject'
+        const savedData = localStorage.getItem(loadItemName);
         if (!savedData) {
             console.log('没有找到保存的项目数据');
             return false;
